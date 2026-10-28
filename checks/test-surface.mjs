@@ -40,8 +40,9 @@ console.log('seeding synthetic corpus…');
 {
   const c = await pool.connect();
   try {
-    await c.query(`DELETE FROM memories WHERE namespace = $1`, [NS]);
+    // Proposals first: promoted_id is a foreign key into memories.
     await c.query(`DELETE FROM proposals WHERE namespace = $1`, [NS]);
+    await c.query(`DELETE FROM memories WHERE namespace = $1`, [NS]);
   } finally { c.release(); }
 }
 const rows = readFileSync(join(__dir, 'fixtures', 'synthetic-corpus.jsonl'), 'utf8')
