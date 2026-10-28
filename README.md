@@ -105,7 +105,7 @@ DATABASE_URL=postgres://… npm run check:recall -- "memoryloom-test" "hybrid re
 Working and verified locally today:
 
 - Schema v1 + migrations 002–005 apply cleanly to a fresh database.
-- All 10 MCP tools pass the surface check (32/32 assertions), including
+- All 10 MCP tools pass the surface check (34/34 assertions), including
   hybrid recall where a paraphrase query hits through the vector leg
   with no keyword overlap, the full propose → review → promote/reject
   flow, and cold-start behaviour on an empty namespace.
