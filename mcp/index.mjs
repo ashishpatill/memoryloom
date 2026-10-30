@@ -28,6 +28,7 @@ import {
   reviewDecide,
   CURATOR_IDENTITY,
 } from '../lib/curator-decide.mjs';
+import { decideGate } from '../lib/gate.mjs';
 import dotenv from 'dotenv';
 import pg from 'pg';
 import { z } from 'zod';
@@ -539,8 +540,43 @@ server.registerTool(
     if (!MEMORY_TYPES.has(type)) return validationError(`type must be one of ${[...MEMORY_TYPES].join(',')}`);
     if (!MEMORY_SCOPES.has(scope)) return validationError(`scope must be one of ${[...MEMORY_SCOPES].join(',')}`);
 
+    // Gate 0 (optional Jev backend, MEMORYLOOM_GATE_BACKEND=jev): the
+    // Jev decision layer decides approve | reject | escalate with the
+    // grounding evidence fetched by id. Fail closed — a Jev failure or
+    // an escalate decision queues the proposal; it never auto-approves.
+    let jevRouteReason = null;
+    let jevScore = null;
+    if (process.env.MEMORYLOOM_GATE_BACKEND === 'jev') {
+      let evidence = [];
+      if (grounding_ids.length) {
+        const ec = await getPool().connect();
+        try {
+          const er = await ec.query('SELECT id, text FROM memories WHERE id = ANY($1)', [grounding_ids]);
+          evidence = er.rows;
+        } finally { ec.release(); }
+      }
+      const d = await decideGate({ proposal: { text, type, scope, pinned, grounding_ids }, evidence });
+      jevScore = d;
+      if (d.decision === 'approve') {
+        const r = await insertMemory(namespace, text, {
+          ...metadata,
+          origin: metadata.origin || 'propose-jev',
+        });
+        if (!r.ok) return r.response;
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: d.reason, backend: 'jev', id: r.id }, null, 2) }],
+        };
+      }
+      if (d.decision === 'reject') {
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'rejected', reason: d.reason, backend: 'jev' }, null, 2) }],
+        };
+      }
+      jevRouteReason = d.failed ? 'jev-unavailable-fail-closed' : 'jev-escalate';
+    }
+
     // Gate 1: episodic / node-local → automatic
-    if (type === 'episodic' || scope === 'node_local') {
+    if (!jevRouteReason && (type === 'episodic' || scope === 'node_local')) {
       const r = await insertMemory(namespace, text, { ...metadata, origin: metadata.origin || 'propose-auto' });
       if (!r.ok) return r.response;
       return {
@@ -549,10 +585,12 @@ server.registerTool(
     }
 
     // Gate 2: procedural / pinned → human-always
-    let route_reason = null;
-    if (type === 'procedural') route_reason = 'procedural-human-always';
-    else if (pinned) route_reason = 'pinned-human-always';
-    else if (grounding_ids.length < MIN_EVIDENCE_AUTO) route_reason = 'low-evidence';
+    let route_reason = jevRouteReason;
+    if (!route_reason) {
+      if (type === 'procedural') route_reason = 'procedural-human-always';
+      else if (pinned) route_reason = 'pinned-human-always';
+      else if (grounding_ids.length < MIN_EVIDENCE_AUTO) route_reason = 'low-evidence';
+    }
 
     // Gate 3: global semantic with enough cited grounding → auto-approve
     if (!route_reason) {
@@ -572,6 +610,7 @@ server.registerTool(
       created_at: new Date().toISOString(),
       embedding_model: null,
     };
+    if (jevScore) provenance.jev = jevScore;
     const client = await getPool().connect();
     try {
       await client.query(
