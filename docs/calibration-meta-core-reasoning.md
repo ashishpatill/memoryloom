@@ -1,6 +1,6 @@
 # Calibration — core reasoning on Meta muse-wonder-1.0
 
-Run 2026-10-30T13:50:20.209Z. Golden set: 12 consolidation +
+Run 2026-10-30T14:53:49.129Z. Golden set: 12 consolidation +
 12 recall-narration + 12
 contradiction-explanation items, all from the synthetic corpus. Owner
 assignment comes from the credit-efficiency plan; this calibration
@@ -8,25 +8,18 @@ verifies quality and measures cost per tier — it is not a contest.
 
 ## Results
 
-- Wonder Full (high effort, class owner): 31/36 items passed.
-- Wonder (medium effort): 33/36 items passed.
+- Wonder Full (high effort, class owner): 36/36 items passed.
+- Wonder (medium effort): 36/36 items passed.
 - Calibration-class spend after this run (router spend log, cumulative,
-  cached calls excluded): 72 paid calls,
-  9230 input tokens,
-  25089 output tokens,
-  est. $0.118175 of the $22.50
+  cached calls excluded): 165 paid calls,
+  26601 input tokens,
+  76762 output tokens,
+  est. $0.359505 of the $22.50
   calibration budget (15% of $150).
 
 ## Failures
 
-- [wonder-full] n11 (narrate): missing receipts: m-s02
-- [wonder-full] n12 (narrate): missing receipts: m-s09
-- [wonder-full] x7 (explain): missing phrases: staged first; indexed first
-- [wonder-full] x8 (explain): missing phrases: human always
-- [wonder-full] x11 (explain): missing phrases: superseded stays readable; superseded is deleted
-- [wonder] n11 (narrate): missing receipts: m-s02
-- [wonder] x7 (explain): missing phrases: staged first; indexed first
-- [wonder] x11 (explain): missing phrases: superseded stays readable; superseded is deleted
+- none
 
 ## Scorer note
 

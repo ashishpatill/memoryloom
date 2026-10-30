@@ -35,6 +35,7 @@
  * privacy rule is that paid calls carry the synthetic/demo corpus and
  * non-sensitive text, never the real corpus.
  */
+import { createHash } from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { resolveProviderKey } from '../lib/config.mjs';
 import {
@@ -237,7 +238,11 @@ function metaPrompt(task, payload) {
         maxOut: 900,
         system:
           'You narrate a memory recall for an agent. Use ONLY the supplied records; never invent facts. ' +
-          'Cite every record you use as [receipt: <id>]. If there are no records, say plainly that nothing matched and nothing was invented. ' +
+          'You MUST use every supplied record: give each record at least one sentence of its own in the narration, ' +
+          'and end each sentence that states a record\'s fact with that record\'s citation marker [receipt: <id>]. ' +
+          'Never drop a record, never merge two records into one sentence, and never cite one record for another record\'s fact. ' +
+          'The "receipts" array must list every supplied record id exactly once, in the order the records were supplied. ' +
+          'If there are no records, say plainly that nothing matched and nothing was invented. ' +
           'Reply with JSON only: {"narration": "...", "receipts": ["ids cited"]}.',
         user: JSON.stringify({ query: payload.query || '', results }),
       };
@@ -247,8 +252,12 @@ function metaPrompt(task, payload) {
         json: true,
         maxOut: 900,
         system:
-          'You explain a contradiction between two memory records for a human reviewer. Say what each record claims, ' +
-          'where they conflict, and what evidence would settle it. Cite both record ids. Reply with JSON only: ' +
+          'You explain a contradiction between two memory records for a human reviewer. ' +
+          'First, quote each record\'s conflicting claim VERBATIM, word for word exactly as written in the record, inside double quotes. ' +
+          'Never paraphrase a claim instead of quoting it: if a record says "staged first", the explanation must contain the exact words staged first. ' +
+          'Quote BOTH records this way, even when one claim is obviously wrong. ' +
+          'Then say where the quoted claims conflict, and what evidence would settle it. ' +
+          'Name both record ids in the explanation text itself, and list both ids in the "cites" array — an explanation that does not name both records is incomplete. Reply with JSON only: ' +
           '{"explanation": "...", "cites": ["id-a", "id-b"]}.',
         user: JSON.stringify({ a: payload.a || null, b: payload.b || null }),
       };
@@ -339,12 +348,28 @@ function metaShapeResult(task, payload, parsed, rawText) {
   return null;
 }
 
+/**
+ * The cache key must cover everything that determines a call's output.
+ * For prompt-built providers that includes the rendered prompt itself:
+ * without it, editing a prompt silently serves the pre-edit result
+ * from cache (found in Block 7 hardening — a full calibration re-run
+ * came back 100% cached after the narrate/explain prompts changed).
+ * Providers that expose promptFingerprint get their fingerprint folded
+ * into the key; providers without one keep the historical key shape.
+ */
+function metaPromptFingerprint(task, payload) {
+  const p = metaPrompt(task, payload);
+  if (!p) return null;
+  return createHash('sha256').update(p.system + '\n' + p.user).digest('hex').slice(0, 16);
+}
+
 let metaResponsesOk = null; // tri-state: unknown until first live call
 
 const metaProvider = {
   id: 'meta',
   live: true,
   paid: true,
+  promptFingerprint: metaPromptFingerprint,
   role: 'muse-wonder-1.0: Wonder Full (core reasoning) + Wonder (implementation, triage)',
   get configured() {
     return hostedEnabled() && Boolean(resolveProviderKey('meta').key);
@@ -554,7 +579,8 @@ async function paidCall(provider, task, payload, opts) {
     return { ok: false, reason: `${provider.id}: paid calls require synthetic:true (privacy rule)`, model: spec.id, tier: spec.tier };
   }
   const spendClass = spendClassFor(provider.id, task, opts);
-  const key = cacheKey(provider.id, spec, task, payload);
+  const pf = typeof provider.promptFingerprint === 'function' ? provider.promptFingerprint(task, payload) : null;
+  const key = pf ? cacheKey(provider.id, spec, task, { payload, pf }) : cacheKey(provider.id, spec, task, payload);
   const hit = cacheGet(key);
   if (hit) {
     logSpend({

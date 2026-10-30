@@ -96,6 +96,10 @@ export function budgetBlock(provider, spendClass) {
 }
 
 // ---- content-hash cache ---------------------------------------------------
+// Key = (provider, model spec, task, payload). A provider whose output
+// also depends on a rendered prompt (router.mjs prompt builders) exposes
+// promptFingerprint(task, payload); paidCall then folds the fingerprint
+// into the payload slot so a prompt edit can never serve a stale result.
 
 function stableStringify(value) {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
