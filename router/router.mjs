@@ -19,10 +19,12 @@
  *    gate decision (fail closed: escalate).
  *  - local: embeddings and all dev/debug traffic; final fallback for
  *    every task, so a dead credit never stops the loop.
- *  - baseten: PARKED (owner decision 2026-10-30 — its grant key serves
- *    only Muse Spark Open, and Spark is not used in MemoryLoom). Its
- *    budget stays untouched. fireworks: no spend authorised in this
- *    build. modal: no role.
+ *  - baseten: CLOSED (probe 2026-10-30 proved the grant key refuses
+ *    all non-Spark inference with HTTP 403 — DeepSeek, GLM and Kimi
+ *    chat calls all rejected; only catalogue reads succeed). The
+ *    DeepSeek triage lane was therefore not built, its budget stays
+ *    untouched, and triage runs on the Meta Wonder medium tier.
+ *    fireworks: no spend authorised in this build. modal: no role.
  *
  * Muse Spark is not used anywhere: no spark ids in config, and the
  * meta provider refuses any model id containing "spark" or
@@ -440,8 +442,8 @@ export const PROVIDERS = {
   baseten: disabledProvider(
     'baseten',
     'BASETEN_API_KEY',
-    'bulk triage (PARKED)',
-    'baseten: parked by owner decision 2026-10-30 — grant key serves only Muse Spark Open, and Spark is not used in MemoryLoom; budget untouched'
+    'bulk triage (CLOSED — probe failed 2026-10-30)',
+    'baseten: closed — probe 2026-10-30 proved the grant key refuses all non-Spark inference (HTTP 403); DeepSeek lane not built, budget untouched, triage on Meta Wonder medium'
   ),
   modal: disabledProvider('modal', 'MODAL_TOKEN_ID', 'batch compute', 'modal: no role in the credit plan ($0 confirmed)'),
   fireworks: disabledProvider('fireworks', 'FIREWORKS_API_KEY', 'live-loop scoring', 'fireworks: spend not authorised in this build'),
