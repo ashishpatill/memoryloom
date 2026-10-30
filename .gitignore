@@ -5,3 +5,4 @@ node_modules/
 checks/out/
 .model-cache/
 *.log
+router/cache/
