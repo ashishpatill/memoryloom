@@ -100,31 +100,51 @@ DATABASE_URL=postgres://… npm run check:roundtrip  # store → recall round tr
 DATABASE_URL=postgres://… npm run check:recall -- "memoryloom-test" "hybrid recall fusion"
 ```
 
-## Status — 28 Oct 2026
+## Status — 30 Oct 2026
 
-Working and verified locally today:
+Working and verified locally:
 
 - Schema v1 + migrations 002–005 apply cleanly to a fresh database.
 - All 10 MCP tools pass the surface check (34/34 assertions), including
   hybrid recall where a paraphrase query hits through the vector leg
   with no keyword overlap, the full propose → review → promote/reject
   flow, and cold-start behaviour on an empty namespace.
-- The provider router's **local fallback is live** and passes its smoke
-  check (8/8); it consolidates, gate-scores, triages and narrates fully
-  offline.
+- The provider router is **live on the Meta Model API**: the only Meta
+  model used is `muse-wonder-1.0`, in two pinned tiers — Wonder Full
+  (high effort: consolidation writing, contradiction explanation,
+  recall narration, eval judging) and Wonder (medium effort:
+  implementation passes, bulk triage). Every paid call goes through
+  the router with a spend log, a content-hash cache and an 80%
+  stop-loss per budget class. Router smoke check: 11/11.
+- Core-reasoning calibration on a 36-item synthetic golden set:
+  Wonder Full 31/36, Wonder 33/36 (`docs/calibration-meta-core-reasoning.md`).
+- **All enumerable decisions go through the Jev API** (TypeSafe,
+  jev-1.13.0): write-gate accept/reject/escalate, consolidation
+  accept, decay keep/drop, learning promotion. The gate calibration
+  passed 40/40 with zero unsafe approvals on its golden set, so the
+  thresholds are live; the gate **fails closed** — on any Jev backend
+  failure a proposal queues for a human, and no fallback ever
+  approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 15/15).
+- Two-plane memory: Plane 1 is the append-only truth store with
+  provenance; Plane 2 is the derived recall index, proven rebuildable
+  from Plane 1. Every recall result dereferences to a Plane-1 record
+  with a provenance receipt or is dropped with a reason. Deterministic
+  decay and Jev-gated consolidation run against the synthetic corpus
+  (`checks/two-plane.mjs` 22/22).
 - Roundtrip and recall smoke checks pass against the synthetic corpus.
 
-Honest limits of the above: these are small-scale local checks on 24
-fictional records. They prove the surface and the routing behave as
-designed; they do not prove recall quality or latency at scale. The
-hosted providers behind the router are configuration stubs in this
-build — routing falls through to the local provider, and no hosted call
-is made yet. The console UI and the public demo are the next blocks.
+Honest limits of the above: these are small-scale local checks on a
+small fictional corpus. They prove the surface, the routing, the
+decision gate and the two-plane mechanics behave as designed; they do
+not prove recall quality or latency at scale. Baseten is parked (its
+grant key serves only Muse Spark Open, which MemoryLoom does not use;
+its budget is untouched). Fireworks and Modal have no role in this
+build. The console UI and the public demo are the next blocks.
 
 ## Roadmap
 
-- Memory-layer depth: decay and consolidation sweeps, reranking,
-  hosted providers wired in behind the router.
+- Memory-layer depth: reranking, bi-temporal (as-of) recall at scale,
+  the data-ingestion and continual-learning layer.
 - Console: propose inbox, recall with receipts, provenance graph,
   as-of date slider for time travel, provider activity panel.
 - Evals published with numbers: recall quality on a labelled set, an
