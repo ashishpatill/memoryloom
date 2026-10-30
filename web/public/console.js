@@ -1,0 +1,348 @@
+/* MemoryLoom console — six views over the real backend.
+   Three states everywhere: a skeleton while loading, a designed
+   empty state when there is nothing to show, and the populated view.
+   The console displays decisions; it never makes or overrides one. */
+(function () {
+  const main = document.getElementById('main');
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  const fmtTs = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+
+  async function api(path, opts) {
+    const r = await fetch(path, opts);
+    const body = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(body.error || ('HTTP ' + r.status));
+    return body;
+  }
+  function skeleton() {
+    main.innerHTML = '<div class="skeleton"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>';
+  }
+  function errorState(err, retry) {
+    main.innerHTML = `<div class="empty-state error-state"><h3>The store did not answer</h3>
+      <p>${esc(err.message || err)}</p>
+      <p class="small">The console reads a seeded demo database. If this is a fresh checkout: <code class="inline">npm run db:init</code>, <code class="inline">npm run seed:web</code>, then reload.</p>
+      <button class="btn" id="retryBtn" type="button">Try again</button></div>`;
+    document.getElementById('retryBtn').addEventListener('click', retry);
+  }
+  function head(title, sub) {
+    return `<h2>${esc(title)}</h2><p class="view-sub">${sub}</p>`;
+  }
+  function verdictBadge(d) {
+    if (d === 'approve' || d === 'approved' || d === 'auto_approved') return '<span class="badge ok">approved</span>';
+    if (d === 'reject' || d === 'rejected') return '<span class="badge bad">rejected</span>';
+    if (d === 'escalate' || d === 'queued_for_review' || d === 'pending') return '<span class="badge warn">escalated · awaiting a human</span>';
+    return `<span class="badge">${esc(d || '—')}</span>`;
+  }
+  function agentBadge(a) {
+    return a ? `<span class="badge ${a === 'grok' || a === 'moose' ? a : ''}">${esc(a)}</span>` : '';
+  }
+  function jevDetail(jev) {
+    if (!jev) return '';
+    const bits = [];
+    if (jev.decision) bits.push('decision ' + jev.decision);
+    if (jev.probability !== undefined) bits.push('calibrated score ' + Number(jev.probability).toFixed(3));
+    if (jev.raw_probability !== undefined) bits.push('raw ' + Number(jev.raw_probability).toFixed(3));
+    if (jev.model) bits.push(jev.model);
+    if (jev.reason) bits.push(jev.reason);
+    return `<div class="receipt">gate record — ${esc(bits.join(' · '))}</div>`;
+  }
+
+  /* ---------------- Live loop ---------------- */
+  async function viewLoop() {
+    skeleton();
+    let ov, props;
+    try {
+      [ov, props] = await Promise.all([api('/api/overview'), api('/api/proposals')]);
+    } catch (e) { return errorState(e, viewLoop); }
+    const pending = props.proposals.filter((p) => p.status === 'pending');
+    const decided = props.proposals.filter((p) => p.status !== 'pending');
+    const memCount = ov.memories_by_type.reduce((a, r) => a + r.n, 0);
+    main.innerHTML = `
+      ${head('The live loop', 'Agents propose; the gate decides; humans settle what the gate escalates. Propose something yourself and watch the real gate answer.')}
+      <div class="kv">
+        <div class="card"><div class="big">${memCount}</div><div class="small">memories in truth</div></div>
+        <div class="card"><div class="big">${pending.length}</div><div class="small">proposals awaiting a human</div></div>
+        <div class="card"><div class="big">${ov.lessons}</div><div class="small">playbook lessons standing</div></div>
+        <div class="card"><div class="big">${ov.learning_events}</div><div class="small">learning events on record</div></div>
+      </div>
+      <div class="card" style="margin-bottom:20px">
+        <h3>Propose a memory</h3>
+        <div class="toolbar" style="margin-bottom:0">
+          <div><label class="f" for="pAuthor">Agent</label>
+            <select id="pAuthor"><option>grok</option><option>moose</option></select></div>
+          <div><label class="f" for="pType">Type</label>
+            <select id="pType"><option value="semantic">semantic (a fact)</option><option value="episodic">episodic (an event)</option><option value="procedural">procedural (a how-to)</option></select></div>
+          <div><label class="f" for="pGround">Grounding record ids (comma-separated, optional)</label>
+            <input type="text" id="pGround" placeholder="e.g. demo-g2, demo-g3"></div>
+        </div>
+        <label class="f" for="pText">The memory</label>
+        <textarea id="pText" placeholder="One atomic claim. Try the firmware claim with no grounding, then with demo-g2 and demo-g3 cited."></textarea>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
+          <button class="btn primary" id="pSend" type="button">Send through the gate</button>
+          <span id="pResult" class="small"></span>
+        </div>
+      </div>
+      <h3>Waiting for a human (${pending.length})</h3>
+      <div id="pendingList">${pending.length ? '' : '<div class="empty-state"><h3>The inbox is clear</h3><p>Nothing is escalated right now. Propose a procedural memory, or a fact with no grounding, and the gate will send it here.</p></div>'}</div>
+      <h3 style="margin-top:22px">Decided (${decided.length})</h3>
+      <div id="decidedList">${decided.length ? '' : '<div class="empty-state"><h3>No decisions yet</h3><p>Decided proposals will appear here with who decided them and why.</p></div>'}</div>
+      ${props.daemon_review_items.length ? `<h3 style="margin-top:22px">Daemon proposals (${props.daemon_review_items.length})</h3>
+        <p class="small">The background daemon may only propose. These items wait for the same human decision as everything else.</p>
+        <div>${props.daemon_review_items.map((i) => `<div class="row-item"><div class="meta"><span class="badge thread">${esc(i.kind || 'daemon')}</span><span class="small">${fmtTs(i.created_at)}</span></div><div class="text">${esc(i.payload?.summary || i.payload?.text || JSON.stringify(i.payload).slice(0, 200))}</div></div>`).join('')}</div>` : ''}
+    `;
+    const pendingList = document.getElementById('pendingList');
+    for (const p of pending) pendingList.appendChild(proposalRow(p, true));
+    const decidedList = document.getElementById('decidedList');
+    for (const p of decided) decidedList.appendChild(proposalRow(p, false));
+    document.getElementById('pSend').addEventListener('click', async () => {
+      const btn = document.getElementById('pSend');
+      const out = document.getElementById('pResult');
+      btn.disabled = true; out.textContent = 'The gate is deciding…';
+      try {
+        const r = await api('/api/propose', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            author: document.getElementById('pAuthor').value,
+            type: document.getElementById('pType').value,
+            text: document.getElementById('pText').value,
+            grounding_ids: document.getElementById('pGround').value.split(',').map((s) => s.trim()).filter(Boolean),
+          }),
+        });
+        out.innerHTML = `Gate: <b>${esc(r.decision)}</b> — ${esc(r.reason || '')}. Reloading the loop…`;
+        setTimeout(viewLoop, 900);
+      } catch (e) {
+        out.textContent = 'The gate did not answer: ' + e.message;
+        btn.disabled = false;
+      }
+    });
+  }
+  function proposalRow(p, actionable) {
+    const div = document.createElement('div');
+    div.className = 'row-item';
+    const prov = p.provenance || {};
+    div.innerHTML = `
+      <div class="meta">${agentBadge(prov.author)}<span class="badge">${esc(p.type)}</span>${verdictBadge(p.status === 'pending' ? 'pending' : p.status)}
+        <span class="small">${fmtTs(p.created_at)} · route: ${esc(p.route_reason || '—')}</span></div>
+      <div class="text">${esc(p.text)}</div>
+      ${p.grounding_ids?.length ? `<div class="detail">cites: ${p.grounding_ids.map((g) => `<code class="inline">${esc(g)}</code>`).join(' ')}</div>` : '<div class="detail">cites: nothing</div>'}
+      ${jevDetail(prov.jev)}
+      ${p.status !== 'pending' ? `<div class="detail">decided by ${esc(p.decided_by || '—')}${p.promoted_id ? ` · became memory <code class="inline">${esc(p.promoted_id)}</code>` : ''}</div>` : ''}
+      ${actionable ? '<div class="actions"><button class="btn small-btn" data-act="approve" type="button">Approve into truth</button><button class="btn small-btn" data-act="reject" type="button">Reject</button><span class="small act-msg"></span></div>' : ''}
+    `;
+    if (actionable) {
+      div.querySelectorAll('button[data-act]').forEach((b) => b.addEventListener('click', async () => {
+        const msg = div.querySelector('.act-msg');
+        div.querySelectorAll('button').forEach((x) => (x.disabled = true));
+        msg.textContent = 'Recording your decision…';
+        try {
+          await api(`/api/proposals/${encodeURIComponent(p.id)}/decide`, {
+            method: 'POST', headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ decision: b.dataset.act }),
+          });
+          msg.textContent = 'Decided. Reloading…';
+          setTimeout(viewLoop, 700);
+        } catch (e) {
+          msg.textContent = 'Failed: ' + e.message;
+          div.querySelectorAll('button').forEach((x) => (x.disabled = false));
+        }
+      }));
+    }
+    return div;
+  }
+
+  /* ---------------- Recall ---------------- */
+  async function viewRecall(prefill) {
+    main.innerHTML = `
+      ${head('Recall, with receipts', 'Ask the store a question. Every answer carries its receipt — the record it came from, who wrote it, what it rests on. Anything that cannot produce a receipt is dropped, and the drop is shown too.')}
+      <div class="toolbar">
+        <div><label class="f" for="q">Question</label>
+          <input type="text" id="q" placeholder="e.g. what firmware does the rig run?"></div>
+        <button class="btn primary" id="ask" type="button">Recall</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        ${['what firmware does the rig run?', 'where is the demo held?', 'when does the venue open?', 'what is the wifi password?'].map((q) => `<button class="btn small-btn chip" data-q="${esc(q)}" type="button">${esc(q)}</button>`).join('')}
+      </div>
+      <div id="recallOut"><div class="empty-state"><h3>Nothing recalled yet</h3><p>Ask a question above. Ask something the corpus cannot answer — the wifi password — and watch the fusion scores: weak matches sink, and anything that cannot produce a receipt is dropped in the open.</p></div></div>
+    `;
+    const ask = async () => {
+      const q = document.getElementById('q').value.trim();
+      const out = document.getElementById('recallOut');
+      if (!q) return;
+      out.innerHTML = '<div class="skeleton"><div class="sk"></div><div class="sk"></div></div>';
+      try {
+        const r = await api('/api/recall?q=' + encodeURIComponent(q) + '&k=8');
+        if (!r.results.length && !r.dropped.length) {
+          out.innerHTML = '<div class="empty-state"><h3>No receipts, no answer</h3><p>The store holds nothing that answers this — and says so, instead of inventing one. That refusal is the feature.</p></div>';
+          return;
+        }
+        out.innerHTML =
+          r.results.map((res) => `
+            <div class="row-item">
+              <div class="meta"><span class="badge ok">receipt ✓</span><span class="badge">${esc(res.type)}</span>${res.rrf != null ? `<span class="small">fusion score ${Number(res.rrf).toFixed(3)}</span>` : ''}</div>
+              <div class="text">${esc(res.text)}</div>
+              <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(res.receipt.origin)} · recorded ${fmtDate(res.receipt.record_created_at)} · valid ${fmtDate(res.receipt.valid_from)}${res.receipt.valid_to ? ' → ' + fmtDate(res.receipt.valid_to) : ' → still held'}${res.receipt.grounding_ids?.length ? ' · rests on ' + res.receipt.grounding_ids.join(', ') : ''}${res.receipt.evidence_refs?.length ? ' · sources ' + res.receipt.evidence_refs.join(', ') : ''}</div>
+            </div>`).join('') +
+          (r.dropped.length ? `<h3 style="margin-top:18px">Dropped before the agent could see them (${r.dropped.length})</h3>` +
+            r.dropped.map((d) => `<div class="row-item"><div class="meta"><span class="badge bad">dropped</span><code class="inline">${esc(d.id)}</code></div><div class="detail">${esc(d.why)}</div></div>`).join('') : '');
+      } catch (e) {
+        out.innerHTML = `<div class="empty-state error-state"><h3>Recall failed</h3><p>${esc(e.message)}</p></div>`;
+      }
+    };
+    document.getElementById('ask').addEventListener('click', ask);
+    document.getElementById('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') ask(); });
+    document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => { document.getElementById('q').value = c.dataset.q; ask(); }));
+    if (prefill) { document.getElementById('q').value = prefill; ask(); }
+  }
+
+  /* ---------------- Graph ---------------- */
+  async function viewGraph() {
+    skeleton();
+    let graph;
+    try { graph = await api('/api/graph'); } catch (e) { return errorState(e, viewGraph); }
+    main.innerHTML = `
+      ${head('The memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”')}
+      <figure class="fig woven">
+        <div class="fig-head"><span>${graph.nodes.length} nodes · ${graph.edges.length} edges</span><span>namespace ${esc(graph.namespace || '')}</span></div>
+        <div class="fig-body"><svg id="graphSvg" class="graph-svg" role="img" aria-label="The demo corpus as a graph"></svg></div>
+        <figcaption><b>Reading it:</b> solid knots are memories on their author&rsquo;s thread; hollow dashed knots are proposals; crossed knots are superseded; gold diamonds are cited sources. <b>Limit:</b> a derived view — it shows only what Plane 1 holds.</figcaption>
+      </figure>
+      <div id="trailOut" style="margin-top:16px"><div class="empty-state"><h3>No knot selected</h3><p>Click a memory in the graph to see its provenance trail and supersession chain.</p></div></div>
+    `;
+    MemoryLoomGraph.renderGraph(document.getElementById('graphSvg'), graph, {
+      onSelect: (n) => { if (n.kind === 'memory') showTrail(n.id); },
+    });
+  }
+  async function showTrail(id) {
+    const out = document.getElementById('trailOut');
+    out.innerHTML = '<div class="skeleton"><div class="sk"></div></div>';
+    try {
+      const [trail, chain] = await Promise.all([api('/api/trail/' + encodeURIComponent(id)), api('/api/chain/' + encodeURIComponent(id))]);
+      if (!trail || !trail.memory) throw new Error('no trail for this record');
+      const chainRows = Array.isArray(chain) ? chain : [];
+      out.innerHTML = `
+        <div class="card">
+          <h3>Provenance trail — <code class="inline">${esc(id)}</code></h3>
+          <div class="row-item"><div class="meta">${agentBadge(trail.author)}<span class="badge">${esc(trail.memory.type)}</span><span class="small">via ${esc(trail.origin || '—')} · recorded ${fmtDate(trail.memory.recorded_at)}</span></div>
+          <div class="text">${esc(trail.memory.text)}</div>
+          ${trail.sources?.length ? `<div class="detail">cited sources: ${trail.sources.map((s) => `<code class="inline">${esc(s)}</code>`).join(' ')}</div>` : ''}</div>
+          ${trail.grounding?.length ? `<h3 style="margin-top:14px">It rests on (${trail.grounding.length})</h3>` + trail.grounding.map((g) => `<div class="row-item"><div class="meta">${agentBadge(g.author)}<code class="inline">${esc(g.id)}</code></div><div class="text">${esc(g.text)}</div></div>`).join('') : ''}
+          ${trail.decisions?.length ? `<h3 style="margin-top:14px">Decisions on its path (${trail.decisions.length})</h3>` + trail.decisions.map((d) => `<div class="row-item"><div class="meta"><span class="badge thread">${esc(d.kind)}</span><span class="small">${esc(d.status || '')} ${d.decided_by ? '· by ' + esc(d.decided_by) : ''} ${d.route_reason ? '· ' + esc(d.route_reason) : ''}</span></div>${d.proposal_id ? `<div class="detail">proposal <code class="inline">${esc(d.proposal_id)}</code></div>` : ''}${jevDetail(d.kind === 'consolidation' ? d : null)}</div>`).join('') : ''}
+          ${trail.superseded_by ? `<div class="detail" style="margin-top:10px">Superseded by <code class="inline">${esc(trail.superseded_by.id)}</code> — ${esc(trail.superseded_by.text)}</div>` : ''}
+          <h3 style="margin-top:16px">Supersession chain</h3>
+          ${chainRows.length > 1 ? `<div class="timeline-strip">${chainRows.map((c, i) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step"><b>${esc(c.id)}</b><br>${esc(c.text || '')}<br><span class="small">${fmtDate(c.valid_from)}${c.valid_to ? ' → ' + fmtDate(c.valid_to) : ' → held now'}</span></div>`).join('')}</div>` : '<p class="small">This belief has never been superseded.</p>'}
+        </div>`;
+    } catch (e) {
+      out.innerHTML = `<div class="empty-state error-state"><h3>Trail failed</h3><p>${esc(e.message)}</p></div>`;
+    }
+  }
+
+  /* ---------------- Time travel ---------------- */
+  async function viewTime() {
+    skeleton();
+    let ov;
+    try { ov = await api('/api/overview'); } catch (e) { return errorState(e, viewTime); }
+    const min = new Date(ov.first_recorded_at), max = new Date(ov.last_recorded_at);
+    main.innerHTML = `
+      ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then — answered from the record, not from what is true now.')}
+      <div class="card">
+        <label class="f" for="asof">Believed on: <span id="asofLabel" class="mono"></span></label>
+        <input type="range" id="asof" min="${min.getTime()}" max="${max.getTime() + 86400000}" step="86400000" value="${max.getTime() + 86400000}">
+        <div style="display:flex;justify-content:space-between" class="small"><span>${fmtDate(min)}</span><span>${fmtDate(max)}</span></div>
+      </div>
+      <div id="believedOut" style="margin-top:16px"></div>
+    `;
+    const slider = document.getElementById('asof');
+    const label = document.getElementById('asofLabel');
+    const load = async () => {
+      const at = new Date(Number(slider.value));
+      label.textContent = fmtDate(at);
+      const out = document.getElementById('believedOut');
+      out.innerHTML = '<div class="skeleton"><div class="sk"></div><div class="sk"></div></div>';
+      try {
+        const rows = await api('/api/believed?at=' + encodeURIComponent(at.toISOString()));
+        const list = Array.isArray(rows) ? rows : rows.beliefs || [];
+        if (!list.length) {
+          out.innerHTML = '<div class="empty-state"><h3>The team believed nothing yet</h3><p>No record had been written by this date. An empty answer is a truthful one.</p></div>';
+          return;
+        }
+        out.innerHTML = `<p class="small">${list.length} beliefs held on ${fmtDate(at)}:</p>` + list.map((b) => `
+          <div class="row-item"><div class="meta">${agentBadge(b.author)}<span class="badge">${esc(b.type)}</span><span class="small">valid ${fmtDate(b.valid_from)}${b.valid_to ? ' → ' + fmtDate(b.valid_to) : ' → still held'}</span></div>
+          <div class="text">${esc(b.text)}</div></div>`).join('');
+      } catch (e) {
+        out.innerHTML = `<div class="empty-state error-state"><h3>Query failed</h3><p>${esc(e.message)}</p></div>`;
+      }
+    };
+    slider.addEventListener('input', load);
+    load();
+  }
+
+  /* ---------------- Providers ---------------- */
+  async function viewProviders() {
+    skeleton();
+    let s;
+    try { s = await api('/api/spend'); } catch (e) { return errorState(e, viewProviders); }
+    const totalCost = s.router.reduce((a, r) => a + r.est_cost_usd, 0);
+    const totalCalls = s.router.reduce((a, r) => a + r.calls, 0);
+    const metaBudget = s.budgets_usd?.meta?.total || 150;
+    main.innerHTML = `
+      ${head('Providers — who did what', 'Only providers that actually did work appear here. Every paid model call went through the router: spend-logged, content-hash cached, and refused past the 80% stop-loss. Decisions are not model calls — they belong to the decision gate, and its record is below.')}
+      <div class="kv">
+        <div class="card"><div class="big">${totalCalls}</div><div class="small">paid router calls (uncached)</div></div>
+        <div class="card"><div class="big">$${totalCost.toFixed(2)}</div><div class="small">estimated router spend, all time</div></div>
+        <div class="card"><div class="big">$${metaBudget}</div><div class="small">Meta credit budget · stop-loss at 80%</div></div>
+        <div class="card"><div class="big">${s.jev_decisions_in_namespace}</div><div class="small">gate verdicts recorded in this namespace</div></div>
+      </div>
+      ${s.router.length ? `<div class="card" style="padding:6px 14px"><table class="data">
+        <thead><tr><th>Provider · model · tier · task</th><th>Calls</th><th>Cached (free)</th><th>Tokens in / out</th><th>Est. cost</th></tr></thead>
+        <tbody>${s.router.map((r) => `<tr><td>${esc(r.key)}</td><td class="num">${r.calls}</td><td class="num">${r.cached}</td><td class="num">${r.input_tokens.toLocaleString()} / ${r.output_tokens.toLocaleString()}</td><td class="num">$${r.est_cost_usd.toFixed(3)}</td></tr>`).join('')}</tbody></table></div>`
+      : '<div class="empty-state"><h3>No paid calls yet</h3><p>The router has logged no spend. Calibration and evaluation runs will appear here when they happen.</p></div>'}
+      <h3 style="margin-top:24px">Per-memory work</h3>
+      ${s.per_memory.length ? s.per_memory.map((w) => `<div class="row-item"><div class="meta"><span class="badge thread">${esc(w.provider)}</span><span class="small">${esc(w.work)} · ${fmtTs(w.at)}</span></div><div class="text">memory <code class="inline">${esc(w.memory_id)}</code></div>${jevDetail(w.decision)}</div>`).join('')
+      : '<div class="empty-state"><h3>No per-memory provider work recorded</h3><p>When the gate decides a proposal from this console, its verdict lands here against the memory it created.</p></div>'}
+      <p class="small" style="margin-top:14px">A note on absence: two further sponsor providers were evaluated for this build and did no work — one grant key proved scoped to a model this product does not use, the other never confirmed a balance. They are not listed, because a provider panel that credits work nobody did would be decoration, not evidence.</p>
+    `;
+  }
+
+  /* ---------------- Learning ---------------- */
+  async function viewLearning() {
+    skeleton();
+    let L;
+    try { L = await api('/api/learning'); } catch (e) { return errorState(e, viewLearning); }
+    const kinds = [...new Set(L.events.map((e) => e.kind))];
+    const verdicts = L.before_after.verdicts;
+    main.innerHTML = `
+      ${head('Learning, on the record', 'Every interaction is an append-only learning event. A lesson stands only because the gate promoted it — its verdict travels with it. Forged lessons (a lesson-shaped record with no gate verdict) are flagged by audit.')}
+      <h3>Before / after — one task class</h3>
+      ${verdicts.length ? `<div class="timeline-strip">${verdicts.map((v, i, a) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step">${v.decision ? verdictBadge(v.decision.decision) : ''}<br>${esc(v.summary)}<br><span class="small">${fmtTs(v.at)}</span></div>`).join('')}</div>
+        <p class="small">The task: lodge a global factual claim so the gate approves it. Before the lesson, claims escalated for want of citations. After it, the second agent — never corrected itself — approved first try. The full event trail is in the stream below.</p>`
+      : '<div class="empty-state"><h3>No before/after story seeded</h3><p>Run <code class="inline">npm run seed:web</code> to record the learning story into this namespace.</p></div>'}
+      <h3 style="margin-top:22px">Standing playbook lessons (${L.lessons.length})</h3>
+      ${L.lessons.length ? L.lessons.map((l) => `<div class="row-item"><div class="meta"><span class="badge ok">gate-promoted</span><span class="small">${fmtDate(l.created_at)}</span>${L.audit.forged_lesson_ids.includes(l.id) ? '<span class="badge bad">audit: no verdict — forged</span>' : ''}</div><div class="text">${esc(l.text)}</div>${jevDetail(l.jev ? { ...l.jev, decision: l.jev.promote ? 'promote' : 'decline' } : null)}</div>`).join('')
+      : '<div class="empty-state"><h3>No lessons standing</h3><p>No event has been promoted yet. Promotion is the gate&rsquo;s decision, not a button here.</p></div>'}
+      <h3 style="margin-top:22px">Event stream (${L.events.length})</h3>
+      <div class="toolbar"><div><label class="f" for="kindFilter">Filter by kind</label>
+        <select id="kindFilter"><option value="">all kinds</option>${kinds.map((k) => `<option>${esc(k)}</option>`).join('')}</select></div></div>
+      <div id="eventList"></div>
+    `;
+    const render = (kind) => {
+      const rows = L.events.filter((e) => !kind || e.kind === kind);
+      document.getElementById('eventList').innerHTML = rows.length ? rows.map((e) => `
+        <div class="row-item"><div class="meta"><span class="badge thread">${esc(e.kind)}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(e.subject_type || '') + ' ' + esc(e.subject_id) : ''}</span></div>
+        <div class="text">${esc(e.summary)}</div></div>`).join('')
+        : '<div class="empty-state"><h3>No events of this kind</h3><p>The stream holds other kinds. An honest filter shows an empty set rather than padding it.</p></div>';
+    };
+    render('');
+    document.getElementById('kindFilter').addEventListener('change', (e) => render(e.target.value));
+  }
+
+  /* ---------------- Router ---------------- */
+  const routes = { loop: viewLoop, recall: () => viewRecall(), graph: viewGraph, time: viewTime, providers: viewProviders, learning: viewLearning };
+  function route() {
+    const name = (location.hash.replace('#/', '') || 'loop').split('?')[0];
+    const fn = routes[name] || viewLoop;
+    document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === name));
+    fn();
+  }
+  window.addEventListener('hashchange', route);
+  route();
+})();

@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemoryLoom — one shared, auditable memory brain for agent teams</title>
+<meta name="description" content="MemoryLoom is a shared memory layer for teams of AI agents: one store written through a review gate, recall that always shows its evidence, and a history that answers what the team believed on any date.">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="site-head">
+    <div class="wordmark">Memory<span class="loom">Loom</span></div>
+    <nav>
+      <a href="#loop">The loop</a>
+      <a href="#memory">Memory</a>
+      <a href="#learning">Learning</a>
+      <a href="#numbers">Numbers</a>
+      <a href="/console">Open the console</a>
+    </nav>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>Agent teams forget. This one doesn&rsquo;t.</h1>
+      <p class="lede">Every agent session starts cold. Each agent keeps its own notes, and afterwards nobody can say <em>why</em> the team believed something.</p>
+      <p>MemoryLoom is the shared memory layer those agents are missing: one store every agent writes to <strong>through a review gate</strong>, one recall path that <strong>always shows its evidence</strong>, and a history that can answer <strong>&ldquo;what did we believe on this date?&rdquo;</strong></p>
+      <div class="cta-row">
+        <a class="btn primary" href="/console">See it working</a>
+        <a class="btn" href="#numbers">Read the numbers</a>
+      </div>
+      <p class="small" style="margin-top:16px">The demonstration runs on a small fictional corpus — a community demo rig called Project Lantern, tended by two agents, grok and moose. Everything you see is that corpus, live from the database.</p>
+    </div>
+    <figure class="fig woven">
+      <div class="fig-head"><span>Fig. 1 — The weave, live</span><span id="heroState">loading the corpus…</span></div>
+      <div class="fig-body">
+        <svg id="heroGraph" class="graph-svg" role="img" aria-label="Animated graph of the demo corpus: two agents weaving memories over time"></svg>
+        <div style="display:flex;gap:10px;align-items:center;padding:2px 4px 4px">
+          <button class="btn small-btn" id="heroToggle" type="button">Pause</button>
+          <span class="small">Each thread is one agent. A knot is a memory, placed at the moment it was recorded; hollow knots are proposals still waiting for a decision, crossed knots have been superseded.</span>
+        </div>
+      </div>
+      <figcaption><b>Proves:</b> the graph on this page is rendered from the same records the console queries — dates, authors, grounding and supersession all come from the store. <b>Does not prove:</b> anything about scale; this corpus is thirteen records by design.</figcaption>
+    </figure>
+  </div>
+
+  <section class="band" id="problem">
+    <div class="kicker">The problem</div>
+    <h2>Three ways a team of agents loses its mind</h2>
+    <div class="cols">
+      <div class="card"><h3>Cold starts</h3><p>Every session begins from nothing. Yesterday&rsquo;s hard-won fact — the rig runs firmware 2.4.1 — is re-derived, re-asked, or quietly contradicted.</p></div>
+      <div class="card"><h3>Private notes</h3><p>Each agent remembers alone, in its own format, in its own silo. The team&rsquo;s knowledge is the union of notebooks nobody else can read.</p></div>
+      <div class="card"><h3>No &ldquo;why&rdquo;</h3><p>When two agents disagree, there is no record of who claimed what, on what evidence, or who approved it. The argument restarts from zero, forever.</p></div>
+    </div>
+  </section>
+
+  <section class="band" id="loop">
+    <div class="kicker">The live loop</div>
+    <h2>Nothing enters memory unexamined</h2>
+    <div class="two-col">
+      <div>
+        <p>An agent <strong>proposes</strong> a memory; it never writes directly. A decision gate scores the proposal with a fixed choice — <strong>approve, reject, or escalate</strong> — and escalate always exists. Approved memories land in the truth store with their provenance attached. Recall then hands the agent not just an answer, but a <strong>receipt</strong>: the record it came from, who wrote it, and what it rests on. If a recalled item cannot produce its receipt, it is dropped before the agent sees it.</p>
+        <p>The loop is synchronous on purpose. The team watches a memory being proposed, scored and committed, and corrects it in the open. Background processes may <em>suggest</em> — they never silently write.</p>
+        <p><a href="/console#/loop">Watch proposals move through the gate in the console →</a></p>
+      </div>
+      <figure class="fig">
+        <div class="fig-head"><span>Fig. 2 — The live loop</span><span>diagram</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 520 240" class="graph-svg" role="img" aria-label="Diagram of the live loop">
+            <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#221d14"/></marker></defs>
+            <g font-family="ui-monospace, Menlo, monospace" font-size="12">
+              <rect x="8" y="86" width="86" height="44" rx="8" fill="#f6f2e9" stroke="#221d14"/>
+              <text x="51" y="112" text-anchor="middle">agent</text>
+              <rect x="138" y="86" width="86" height="44" rx="8" fill="#f6f2e9" stroke="#a63d2a" stroke-width="2"/>
+              <text x="181" y="104" text-anchor="middle">propose</text>
+              <text x="181" y="122" text-anchor="middle" fill="#6a6250" font-size="10">never writes</text>
+              <path d="M224,96 L268,60" stroke="#221d14" fill="none" marker-end="url(#arr)"/>
+              <path d="M224,120 L268,156" stroke="#a97b12" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+              <rect x="272" y="30" width="104" height="44" rx="8" fill="#fdfbf6" stroke="#2f5d50" stroke-width="2"/>
+              <text x="324" y="48" text-anchor="middle">write gate</text>
+              <text x="324" y="66" text-anchor="middle" fill="#6a6250" font-size="10">approve · reject</text>
+              <rect x="272" y="146" width="104" height="44" rx="8" fill="#fdfbf6" stroke="#a97b12" stroke-width="2"/>
+              <text x="324" y="164" text-anchor="middle">escalate</text>
+              <text x="324" y="182" text-anchor="middle" fill="#6a6250" font-size="10">a human decides</text>
+              <path d="M376,52 L424,52" stroke="#221d14" fill="none" marker-end="url(#arr)"/>
+              <rect x="428" y="30" width="84" height="44" rx="8" fill="#efe8d8" stroke="#221d14"/>
+              <text x="470" y="48" text-anchor="middle">truth</text>
+              <text x="470" y="66" text-anchor="middle" fill="#6a6250" font-size="10">append-only</text>
+              <path d="M470,74 L470,120" stroke="#221d14" fill="none" marker-end="url(#arr)"/>
+              <rect x="428" y="124" width="84" height="44" rx="8" fill="#fdfbf6" stroke="#221d14"/>
+              <text x="470" y="142" text-anchor="middle">recall</text>
+              <text x="470" y="160" text-anchor="middle" fill="#6a6250" font-size="10">+ receipt</text>
+              <path d="M428,146 C300,214 140,214 60,134" stroke="#2f5d50" fill="none" stroke-dasharray="1 0" marker-end="url(#arr)"/>
+              <text x="240" y="228" text-anchor="middle" fill="#2f5d50" font-size="10">the agent acts on evidence, not vibes</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>Proves:</b> the shape of the system — every write crosses the gate, every read carries a receipt. <b>Does not prove:</b> that the gate&rsquo;s decisions are right; that is what the calibration numbers below are for.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="band" id="memory">
+    <div class="kicker">Memory</div>
+    <h2>Two planes: truth below, recall above</h2>
+    <div class="two-col">
+      <figure class="fig">
+        <div class="fig-head"><span>Fig. 3 — The two planes</span><span>diagram</span></div>
+        <div class="fig-body">
+          <svg viewBox="0 0 520 250" class="graph-svg" role="img" aria-label="Diagram of the two-plane memory">
+            <g font-family="ui-monospace, Menlo, monospace" font-size="12">
+              <rect x="10" y="10" width="500" height="104" rx="10" fill="#fdfbf6" stroke="#221d14"/>
+              <text x="24" y="34" font-weight="700">PLANE 2 — RECALL (derived, disposable)</text>
+              <rect x="24" y="48" width="110" height="24" rx="5" fill="#efe8d8" stroke="#b8ac8d"/><text x="79" y="64" text-anchor="middle" font-size="10.5">L0 episodes</text>
+              <rect x="146" y="48" width="110" height="24" rx="5" fill="#efe8d8" stroke="#b8ac8d"/><text x="201" y="64" text-anchor="middle" font-size="10.5">L1 atomic facts</text>
+              <rect x="268" y="48" width="110" height="24" rx="5" fill="#efe8d8" stroke="#b8ac8d"/><text x="323" y="64" text-anchor="middle" font-size="10.5">L2 scenarios</text>
+              <rect x="390" y="48" width="106" height="24" rx="5" fill="#efe8d8" stroke="#b8ac8d"/><text x="443" y="64" text-anchor="middle" font-size="10.5">L3 team profile</text>
+              <text x="24" y="96" fill="#6a6250" font-size="10.5">keyword + vector legs, fused and reranked · rebuildable from Plane 1 at any time</text>
+              <path d="M260,114 L260,140" stroke="#a63d2a" stroke-width="2" fill="none" marker-end="url(#arr)"/>
+              <text x="272" y="132" fill="#a63d2a" font-size="10.5">rebuild</text>
+              <rect x="10" y="146" width="500" height="94" rx="10" fill="#efe8d8" stroke="#221d14" stroke-width="1.6"/>
+              <text x="24" y="170" font-weight="700">PLANE 1 — TRUTH (append-only)</text>
+              <text x="24" y="192" font-size="10.5">every record: who proposed it · the evidence cited · when it was recorded</text>
+              <text x="24" y="210" font-size="10.5">valid-from / valid-to on every fact — superseded beliefs stay readable</text>
+              <text x="24" y="228" font-size="10.5">learning events live here too: verdicts, corrections, promotions — never edited, never deleted</text>
+            </g>
+          </svg>
+        </div>
+        <figcaption><b>Proves:</b> why a rebuild is routine — the index is a view, not the memory. <b>Does not prove:</b> recall quality; the index can be rebuilt perfectly and still rank badly, which is why recall is checked separately.</figcaption>
+      </figure>
+      <div>
+        <h3>Forgetting is a feature</h3>
+        <p>Stale memories lose strength on a fixed schedule — same state, same answer, every time. Duplicates are consolidated into single entries, but only when the gate accepts the merge. Nothing quietly vanishes: a forgotten memory leaves its provenance behind.</p>
+        <h3>Time travel</h3>
+        <p>Every fact carries the dates it was believed between. Ask the store what the team believed on a given day and it answers from the record — not from what happens to be true now.</p>
+        <figure class="fig" style="margin-top:14px">
+          <div class="fig-head"><span>Fig. 4 — One belief, replaced</span><span>from the corpus</span></div>
+          <div class="fig-body">
+            <svg viewBox="0 0 520 120" class="graph-svg" role="img" aria-label="Timeline: Hall A believed until 20 October, Hall B from 20 October">
+              <g font-family="ui-monospace, Menlo, monospace" font-size="11">
+                <line x1="30" y1="86" x2="495" y2="86" stroke="#b8ac8d"/>
+                <rect x="40" y="34" width="215" height="22" rx="5" fill="#a97b12" opacity="0.3" stroke="#a97b12"/>
+                <text x="52" y="49">Hall A — believed 5–20 Oct</text>
+                <line x1="52" y1="38" x2="243" y2="52" stroke="#a97b12" stroke-width="1.6"/>
+                <rect x="255" y="34" width="235" height="22" rx="5" fill="#2f5d50" opacity="0.25" stroke="#2f5d50"/>
+                <text x="267" y="49">Hall B — believed from 20 Oct</text>
+                <circle cx="150" cy="86" r="4" fill="#a63d2a"/><text x="150" y="104" text-anchor="middle" fill="#a63d2a">ask on 12 Oct → Hall A</text>
+                <circle cx="420" cy="86" r="4" fill="#2f5d50"/><text x="420" y="104" text-anchor="middle" fill="#2f5d50">ask on 25 Oct → Hall B</text>
+              </g>
+            </svg>
+          </div>
+          <figcaption><b>Proves:</b> supersession keeps both beliefs and their dates, so &ldquo;what did we believe then?&rdquo; has an answer. <b>Does not prove:</b> that the newer belief is correct — only that it is the one the team held. Try it in the <a href="/console#/time">console&rsquo;s time-travel view</a>.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="learning">
+    <div class="kicker">Learning</div>
+    <h2>The team gets better at remembering, on the record</h2>
+    <p style="max-width:68ch">Every interaction — a proposal, a verdict, a correction, a recall that missed — is written down as a learning event. An event becomes a standing <strong>playbook lesson</strong> only by passing the same decision gate as everything else. Then the next agent recalls the lesson, receipt and all, and does the task properly the first time.</p>
+    <div class="timeline-strip" role="img" aria-label="Before and after: an ungrounded claim escalates; after the lesson, a grounded claim is approved first try">
+      <div class="step"><span class="badge bad">before</span><br>grok claims the firmware fact citing <b>no</b> evidence → the gate <b>escalates</b> it</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="badge warn">in the open</span><br>the correction is logged with the verdict as its evidence</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="badge thread">the gate decides</span><br>the episode is promoted into a standing playbook lesson</div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="badge ok">after</span><br>moose recalls the lesson by receipt, cites two records → <b>approved first try</b></div>
+    </div>
+    <p class="small">This exact sequence is recorded in the demo corpus. Read the events, the lesson and its gate verdict in the <a href="/console#/learning">console&rsquo;s learning view</a>.</p>
+  </section>
+
+  <section class="band" id="numbers">
+    <div class="kicker">Numbers</div>
+    <h2>Checked, not claimed</h2>
+    <p style="max-width:68ch">Every figure below comes from a check suite in the repository, run against the synthetic corpus. Small numbers, honestly labelled: they prove the mechanics behave as designed. They do not prove quality at scale, and the captions say so.</p>
+    <div class="card" style="padding:6px 14px">
+      <table class="data">
+        <thead><tr><th>Check</th><th>Result</th><th>What it proves</th><th>What it does not prove</th></tr></thead>
+        <tbody>
+          <tr><td>MCP tool surface — all 10 tools, gate flow, cold start</td><td class="num">34 / 34</td><td>The surface behaves end to end, including a paraphrase recall that hits through the vector leg with no shared words</td><td>Behaviour under production load</td></tr>
+          <tr><td>Write-gate calibration (golden set)</td><td class="num">40 / 40</td><td>Thresholds went live only after zero unsafe approvals on the calibration set; on any backend failure the gate queues for a human instead of approving</td><td>That unseen proposal classes are safe — escalation exists for those</td></tr>
+          <tr><td>Gate behaviour suite</td><td class="num">15 / 15</td><td>Approve, reject, escalate and fail-closed paths all fire as designed</td><td>Decision quality on real-world ambiguity</td></tr>
+          <tr><td>Two-plane memory — rebuild, receipts, decay, consolidation</td><td class="num">22 / 22</td><td>The recall index rebuilds from truth alone; every receipt dereferences; decay is deterministic</td><td>Recall ranking quality on a large corpus</td></tr>
+          <tr><td>Memory graph + daemon</td><td class="num">44 / 44</td><td>Provenance trails, supersession chains and believed-at queries derive correctly; the daemon proposes and never writes</td><td>Graph usefulness at thousands of nodes</td></tr>
+          <tr><td>Learning layer + before/after demo</td><td class="num">36 / 36 · 8 / 8</td><td>Events are append-only, promotion is gate-only, a forged lesson is caught, and the after-case is approved first try</td><td>That lessons keep helping as they accumulate</td></tr>
+          <tr><td>Core-reasoning calibration (36 synthetic items)</td><td class="num">31–33 / 36</td><td>The two reasoning tiers&rsquo; behaviour on consolidation-style items is measured, not assumed</td><td>Anything about public benchmarks — this is a private golden set</td></tr>
+          <tr><td>Provider router smoke</td><td class="num">11 / 11</td><td>Every paid call is spend-logged, content-hash cached and stop-loss guarded</td><td>That the cheapest route is always chosen — budgets are policy, set by hand</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="band" id="run">
+    <div class="kicker">Run it</div>
+    <h2>One database, one command</h2>
+    <pre class="code">cp .env.example .env.local   # set DATABASE_URL (Postgres 16 + pgvector)
+npm install
+npm run db:init                                  # schema + migrations
+DATABASE_URL=postgres://… npm run seed:web       # the Project Lantern demo corpus
+DATABASE_URL=postgres://… npm run web            # this site at / · the console at /console</pre>
+    <p class="small">Agents connect over MCP (<code class="inline">npm run mcp</code>) and speak the same propose / recall / review surface the console renders. The console never touches a live store: it reads the demo namespace you seeded.</p>
+  </section>
+
+  <footer class="site-foot">
+    <p class="small">MemoryLoom — one shared, auditable memory brain for agent teams. The demonstration corpus (Project Lantern) is fictional, written for this demo; no real data appears anywhere on this site or in the console.</p>
+  </footer>
+</div>
+<script src="/graph.js"></script>
+<script>
+(function () {
+  const state = document.getElementById('heroState');
+  const svg = document.getElementById('heroGraph');
+  fetch('/api/graph')
+    .then((r) => { if (!r.ok) throw new Error('api ' + r.status); return r.json(); })
+    .then((graph) => {
+      state.textContent = graph.nodes.length + ' nodes · ' + graph.edges.length + ' threads';
+      const ctl = MemoryLoomGraph.renderGraph(svg, graph, { animated: true });
+      const btn = document.getElementById('heroToggle');
+      btn.addEventListener('click', () => { btn.textContent = ctl.toggle() ? 'Play' : 'Pause'; });
+    })
+    .catch(() => {
+      state.textContent = 'live data unavailable';
+      svg.outerHTML = '<div class="empty-state" style="margin:6px"><h3>The weave needs its database</h3><p>Start the app against a seeded demo database (<code class="inline">npm run seed:web</code>, then <code class="inline">npm run web</code>) and this figure renders the corpus live. Nothing here is a canned picture — that is rather the point.</p></div>';
+    });
+})();
+</script>
+</body>
+</html>
