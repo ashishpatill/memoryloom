@@ -22,6 +22,8 @@
     "check:planes": "node checks/two-plane.mjs",
     "check:challenge": "node checks/challenge-decisions.mjs",
     "check:graph": "node checks/graph-daemon.mjs",
+    "check:learning": "node checks/learning.mjs",
+    "check:learning-demo": "node checks/learning-demo.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "daemon": "node scripts/daemon.mjs",
     "probe:baseten": "node checks/probe-baseten.mjs"
