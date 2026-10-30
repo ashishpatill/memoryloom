@@ -88,6 +88,49 @@ npm run db:init              # schema v1 + migrations 002–005
 npm run mcp                  # stdio MCP server
 ```
 
+## Site + console
+
+One web app serves the product site (the front door) and the console
+(the product). Both render from the same store the agents use — the
+console displays decisions; it never makes or overrides one.
+
+```bash
+DATABASE_URL=postgres://… npm run seed:web   # Project Lantern corpus + learning story + one daemon cycle
+DATABASE_URL=postgres://… npm run web        # site at / · console at /console
+```
+
+The console has six views, each designed in three states (loading,
+empty, populated):
+
+- **Live loop** — the propose inbox with the gate's verdicts and
+  scores, human approve/reject for escalations, and a propose form
+  that runs through the real gate.
+- **Recall + receipts** — every result dereferences to its truth
+  record; dropped results show why they were dropped.
+- **Memory graph** — provenance trails, supersession chains and agent
+  neighbourhoods, drawn from the live records.
+- **Time travel** — an as-of date control answering "what did the
+  team believe on this date?" from the bi-temporal data.
+- **Providers** — per-memory and aggregate record of which provider
+  did what work, with router spend totals. Only providers that
+  actually did work appear.
+- **Learning** — the learning-event stream, standing playbook lessons
+  with their promotion provenance, and the before/after evidence.
+
+Deploying: `vercel.json` + `api/index.mjs` make the repo a one-step
+Vercel import — set `DATABASE_URL` (and optionally `WEB_NAMESPACE`)
+in the project environment to a Postgres 16 + pgvector database
+seeded with `npm run seed:web`; the build command is
+`npm run build:web`, a verification pass over the web sources.
+
+Console captures (placeholders — replace with real captures from a
+running instance; nothing here is a fabricated visual):
+
+- `[capture: site home — the living graph hero over the demo corpus]`
+- `[capture: console live loop — an escalation waiting, with its gate record]`
+- `[capture: console recall — a receipt under the firmware answer]`
+- `[capture: console time travel — beliefs on 12 Oct vs 25 Oct]`
+
 ## Checks
 
 The checks run against a **synthetic, fictional corpus** — no real data
@@ -98,6 +141,8 @@ npm run check:router   # provider router + local fallback (no database)
 DATABASE_URL=postgres://… npm run check:surface    # all 10 tools, write gate, review flow
 DATABASE_URL=postgres://… npm run check:roundtrip  # store → recall round trip
 DATABASE_URL=postgres://… npm run check:recall -- "memoryloom-test" "hybrid recall fusion"
+DATABASE_URL=postgres://… npm run check:web       # site + console API, live gate flow, empty states
+npm run build:web                                  # production build verification for the web app
 ```
 
 ## Status — 30 Oct 2026
@@ -173,14 +218,26 @@ non-Spark inference (HTTP 403 on DeepSeek, GLM and Kimi alike), so
 the DeepSeek triage lane was not built, the challenger runs are
 deferred with Jev standing alone, and the Baseten budget is
 untouched (`docs/baseten-probe-and-challengers.md`). Fireworks and
-Modal have no role in this build. The console UI and the public demo
-are the next blocks.
+Modal have no role in this build.
+- The console UI and product site are built (Block 6): one buildless
+  Node web app (`web/`) serving an animated product site whose hero
+  graph renders live from the seeded demo corpus, and the six-view
+  console described above. The site's scroll story — problem, live
+  loop, two planes, forgetting and time travel, the learning layer,
+  checked numbers — is diagram-led, and every figure is captioned
+  with what it proves and what it does not prove. The web check
+  (`checks/web.mjs`, 29 assertions) exercises the whole API on a
+  fresh database, including a live propose through the gate, a human
+  decision, recall receipts, both sides of the Hall A → Hall B
+  supersession, and the API-level empty states. Deployment is
+  prepared (`vercel.json`, `api/index.mjs`) but not performed: no
+  Vercel CLI auth exists on the build machine.
 
 ## Roadmap
 
 - Memory-layer depth: reranking and bi-temporal (as-of) recall at
   scale.
-- Console: propose inbox, recall with receipts, provenance graph,
-  as-of date slider for time travel, provider activity panel.
+- Deploy the site + console to Vercel against a hosted demo database,
+  and replace the capture placeholders with real screenshots.
 - Evals published with numbers: recall quality on a labelled set, an
   external long-memory eval as the spine, latency at demo scale.
