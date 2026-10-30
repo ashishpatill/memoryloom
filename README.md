@@ -143,6 +143,8 @@ DATABASE_URL=postgres://… npm run check:roundtrip  # store → recall round tr
 DATABASE_URL=postgres://… npm run check:recall -- "memoryloom-test" "hybrid recall fusion"
 DATABASE_URL=postgres://… npm run check:web       # site + console API, live gate flow, empty states
 npm run build:web                                  # production build verification for the web app
+DATABASE_URL=postgres://… node checks/eval-longmem.mjs   # LongMemEval-style recall eval (measurement, not a gate)
+DATABASE_URL=postgres://… npm run rehearse -- 1          # frozen demo script, automated twin (fresh DB per run)
 ```
 
 ## Status — 30 Oct 2026
@@ -162,7 +164,12 @@ Working and verified locally:
   the router with a spend log, a content-hash cache and an 80%
   stop-loss per budget class. Router smoke check: 11/11.
 - Core-reasoning calibration on a 36-item synthetic golden set:
-  Wonder Full 31/36, Wonder 33/36 (`docs/calibration-meta-core-reasoning.md`).
+  Wonder Full 36/36, Wonder 36/36 after the Block 7 prompt hardening
+  (was 31/36 and 33/36; the failures were dropped receipt citations
+  in narration and paraphrased conflicts in explanations — prompts
+  tightened, and a cache bug that hid prompt edits was found and
+  fixed). Records: `docs/calibration-meta-core-reasoning.md`,
+  `docs/prompt-hardening-block7.md`.
 - **All enumerable decisions go through the Jev API** (TypeSafe,
   jev-1.13.0): write-gate accept/reject/escalate, consolidation
   accept, decay keep/drop, learning promotion. The gate calibration
@@ -208,11 +215,43 @@ Working and verified locally:
   with no citations, approved first try by a second agent after
   recalling the lesson by receipt (8/8).
 - Roundtrip and recall smoke checks pass against the synthetic corpus.
+- A LongMemEval-style recall evaluation (Block 7): a 120-memory
+  synthetic haystack (Project Kestrel, six dated sessions) with 42
+  questions in the five LongMemEval families, scored deterministically
+  (needle rank, answer terms in the recalled text, believed-at set
+  membership, near-miss absence; no model judge). Results:
+  recall@1 0.586, recall@5 0.931, recall@10 1.000; single-session
+  8/8, multi-session 8/8, temporal 8/8, knowledge-update 6/10,
+  abstention 3/8. The two weak spots are measured, not hidden:
+  recall ranking has no recency preference, so on four of eight
+  current-value questions the superseded record outranked its
+  replacement by one place (the believed-at path answers those
+  correctly as-of a date); and the vector leg returns nearest
+  neighbours for unanswerable questions, so near-miss records land in
+  the top-10 — abstention lives in the receipt and narration layer,
+  which this eval does not score (`docs/eval-longmem.md`).
+- The demo is packaged and rehearsed (Block 7): `docs/demo-script.md`
+  freezes the three beats with the exact seeded data and a fallback
+  plan; its automated twin ran three full rehearsals on fresh
+  databases, 8/8 beats each. Total rehearsal spend was $0.0034 (one
+  live narration call in run 1; runs 2–3 served the identical prompt
+  from the router cache, as the fallback plan intends).
+- Final clean-room pass (Block 7): every check suite re-run on fresh
+  databases — surface 34/34, router 11/11, Jev gate 15/15, two-plane
+  22/22, graph + daemon 44/44, learning 36/36, learning demo 8/8,
+  web 29/29 — and the documented run path (db:init, seed:web, web,
+  MCP over stdio) verified from a clean shell.
+- Spend, cumulative in the router log: Meta $0.3749 of the $150
+  credit (calibration $0.3595 of $22.50, evals $0 of $52.50 — the
+  recall eval is fully deterministic — demo and final runs $0.0153
+  of $60, reserve untouched). Jev decisions $0.0012. Baseten,
+  Fireworks and Modal: $0.
 
 Honest limits of the above: these are small-scale local checks on a
 small fictional corpus. They prove the surface, the routing, the
-decision gate and the two-plane mechanics behave as designed; they do
-not prove recall quality or latency at scale. **Baseten is closed**:
+decision gate and the two-plane mechanics behave as designed; the
+recall eval is a first measurement at small scale (its own doc states
+the caveats), not evidence of recall quality or latency at scale. **Baseten is closed**:
 the ordered probe (2026-10-30) proved the grant key refuses all
 non-Spark inference (HTTP 403 on DeepSeek, GLM and Kimi alike), so
 the DeepSeek triage lane was not built, the challenger runs are
@@ -236,8 +275,11 @@ Modal have no role in this build.
 ## Roadmap
 
 - Memory-layer depth: reranking and bi-temporal (as-of) recall at
-  scale.
+  scale. Two measured weak spots from the recall eval come first: a
+  recency-aware tie-break for near-identical supersession pairs, and
+  abstention handling in the narration layer for unanswerable
+  questions.
 - Deploy the site + console to Vercel against a hosted demo database,
   and replace the capture placeholders with real screenshots.
-- Evals published with numbers: recall quality on a labelled set, an
-  external long-memory eval as the spine, latency at demo scale.
+- Grow the eval: more questions per family, larger haystacks, and
+  latency numbers at demo scale.
