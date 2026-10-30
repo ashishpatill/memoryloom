@@ -125,6 +125,10 @@ Working and verified locally:
   thresholds are live; the gate **fails closed** — on any Jev backend
   failure a proposal queues for a human, and no fallback ever
   approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 15/15).
+  The decision backend is swappable per class in router config
+  (default Jev everywhere); Baseten's decision models are integrated
+  as challenger adapters, but a challenger may replace Jev only by
+  beating it on every benchmark leg and on price.
 - Two-plane memory: Plane 1 is the append-only truth store with
   provenance; Plane 2 is the derived recall index, proven rebuildable
   from Plane 1. Every recall result dereferences to a Plane-1 record
@@ -136,10 +140,14 @@ Working and verified locally:
 Honest limits of the above: these are small-scale local checks on a
 small fictional corpus. They prove the surface, the routing, the
 decision gate and the two-plane mechanics behave as designed; they do
-not prove recall quality or latency at scale. Baseten is parked (its
-grant key serves only Muse Spark Open, which MemoryLoom does not use;
-its budget is untouched). Fireworks and Modal have no role in this
-build. The console UI and the public demo are the next blocks.
+not prove recall quality or latency at scale. **Baseten is closed**:
+the ordered probe (2026-10-30) proved the grant key refuses all
+non-Spark inference (HTTP 403 on DeepSeek, GLM and Kimi alike), so
+the DeepSeek triage lane was not built, the challenger runs are
+deferred with Jev standing alone, and the Baseten budget is
+untouched (`docs/baseten-probe-and-challengers.md`). Fireworks and
+Modal have no role in this build. The console UI and the public demo
+are the next blocks.
 
 ## Roadmap
 

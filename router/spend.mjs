@@ -27,8 +27,11 @@ export function routerConfig() {
 }
 
 export function estimateCostUsd(provider, model, usage) {
-  const p = CONFIG.pricing_usd_per_1m[provider];
-  if (!p || !usage) return 0;
+  const entry = CONFIG.pricing_usd_per_1m[provider];
+  if (!entry || !usage) return 0;
+  // A provider entry may carry per-model prices under `models`;
+  // the flat {in, out} on the entry is the default for its models.
+  const p = (model && entry.models && entry.models[model]) || entry;
   const inp = usage.input_tokens || usage.prompt_tokens || 0;
   const cached = usage.cached_input_tokens || 0;
   const out = usage.output_tokens || usage.completion_tokens || 0;

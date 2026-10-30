@@ -19,7 +19,9 @@
     "db:init": "node scripts/init-db.mjs",
     "mcp": "node mcp/index.mjs",
     "check:jev": "node checks/jev-gate.mjs",
-    "check:planes": "node checks/two-plane.mjs"
+    "check:planes": "node checks/two-plane.mjs",
+    "check:challenge": "node checks/challenge-decisions.mjs",
+    "probe:baseten": "node checks/probe-baseten.mjs"
   },
   "type": "module",
   "version": "0.1.0"

@@ -1,5 +1,16 @@
 {
   "baseten_parked": true,
+  "baseten_probe": {
+    "also_refused": [
+      "zai-org/GLM-5.2",
+      "moonshotai/Kimi-K3"
+    ],
+    "at": "2026-10-30",
+    "catalogue_read": "HTTP 200, 21 models",
+    "model": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+    "result": "HTTP 403 — please check the api-key you provided",
+    "verdict": "FAILED — the grant key is scoped to Muse Spark Open only; it serves no non-Spark inference. Baseten lane stays closed, challenger runs deferred, triage stays on Meta Wonder medium. See docs/baseten-probe-and-challengers.md."
+  },
   "budgets_usd": {
     "baseten": {
       "classes": {
@@ -20,7 +31,13 @@
       "total": 150
     }
   },
-  "comment": "Corrected 2026-10-30 evening (Ashish): Muse Spark is not used anywhere in MemoryLoom. The only Meta model is muse-wonder-1.0 in two effort tiers. All enumerable decisions go through Jev (TypeSafe), never an LLM verdict. Baseten is PARKED: its grant key serves only Muse Spark Open, so its budget stays untouched pending Ashish's ruling. Meta prices are the published standard rates (cheat sheet); Jev is $0.042 per 1M input tokens, output free.",
+  "comment": "Corrected 2026-10-30 evening (Ashish): Muse Spark is not used anywhere in MemoryLoom. The only Meta model is muse-wonder-1.0 in two effort tiers. All enumerable decisions go through Jev (TypeSafe) by default; the decision backend is swappable per class (decision_backends) and a challenger replaces Jev only by beating it on every benchmark leg and on price. Baseten probe 2026-10-30 FAILED: the grant key refuses all non-Spark inference (HTTP 403), so the Baseten DeepSeek triage lane stays closed, its budget untouched, and challenger spot-checks are deferred; triage runs on Meta Wonder medium. Meta prices are the published standard rates (cheat sheet); Jev is $0.042 per 1M input tokens, output free; Baseten prices are the published Model API rates recorded in docs/baseten-probe-and-challengers.md.",
+  "decision_backends": {
+    "consolidation": "jev",
+    "decay": "jev",
+    "gate": "jev",
+    "promotion": "jev"
+  },
   "default_spend_class": {
     "meta": {
       "consolidate": "demo_final",
@@ -49,6 +66,32 @@
     }
   },
   "pricing_usd_per_1m": {
+    "baseten": {
+      "in": 0.3,
+      "models": {
+        "decision-models/baseten-elephant-9b-latest": {
+          "in": 0.035,
+          "out": 0
+        },
+        "decision-models/baseten-joey-2b-latest": {
+          "in": 0.01,
+          "out": 0
+        },
+        "decision-models/baseten-mammoth-27b-latest": {
+          "in": 0.1,
+          "out": 0
+        },
+        "deepseek-ai/DeepSeek-V4.1-Flash-1017": {
+          "in": 0.3,
+          "out": 1.2
+        },
+        "deepseek-ai/DeepSeek-V4.1-Flash-1017-Fast": {
+          "in": 0.6,
+          "out": 2.4
+        }
+      },
+      "out": 1.2
+    },
     "jev": {
       "in": 0.042,
       "out": 0
