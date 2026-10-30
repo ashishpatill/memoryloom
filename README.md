@@ -135,6 +135,33 @@ Working and verified locally:
   with a provenance receipt or is dropped with a reason. Deterministic
   decay and Jev-gated consolidation run against the synthetic corpus
   (`checks/two-plane.mjs` 22/22).
+- A memory graph derived from Plane 1 (memories, agents, sources,
+  decisions, supersession and contradiction links) powers the console
+  queries: provenance trail for any memory, an agent's neighbourhood,
+  supersession chains, and bi-temporal "what did the team believe on
+  this date?" An event-triggered daemon watches the store and emits
+  proposals only — consolidation candidates, decay candidates,
+  contradiction flags — into the review queue; it never writes truth,
+  its apply path routes through the Jev-gated library functions, and
+  its cycles are watermark-resumable with a run log. The synthetic
+  demo corpus wires the Grok bot and Moose as named graph agents
+  (`checks/graph-daemon.mjs` 44/44).
+- A continual learning layer: every interaction — proposals, gate
+  verdicts, human approvals, rejections and corrections, recall hits
+  and misses, eval outcomes — is captured as an append-only,
+  provenance-stamped learning event (trigger-enforced; events are
+  never edited or deleted). Learning events become standing playbook
+  lessons only through the Jev promotion gate; a direct write is
+  refused and a forged lesson is quarantined by audit. Lessons are
+  memories, so decay and recall treat them like everything else.
+  In-turn correction stores a verbal reflection with its trigger
+  evidence and returns the corrected directive for the same turn.
+  The research patterns are verified and recorded in
+  `docs/learning-research.md` (Harness², ACE, Reflexion, Voyager).
+  `checks/learning.mjs` 36/36, and `checks/learning-demo.mjs` shows
+  the same task class before vs after a promoted lesson — escalated
+  with no citations, approved first try by a second agent after
+  recalling the lesson by receipt (8/8).
 - Roundtrip and recall smoke checks pass against the synthetic corpus.
 
 Honest limits of the above: these are small-scale local checks on a
@@ -151,8 +178,8 @@ are the next blocks.
 
 ## Roadmap
 
-- Memory-layer depth: reranking, bi-temporal (as-of) recall at scale,
-  the data-ingestion and continual-learning layer.
+- Memory-layer depth: reranking and bi-temporal (as-of) recall at
+  scale.
 - Console: propose inbox, recall with receipts, provenance graph,
   as-of date slider for time travel, provider activity panel.
 - Evals published with numbers: recall quality on a labelled set, an
