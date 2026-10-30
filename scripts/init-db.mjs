@@ -24,6 +24,7 @@ const files = [
   'schema/migrations/004-blackboard-outbox.sql',
   'schema/migrations/005-daemon-presence.sql',
   'schema/migrations/006-daemon-runs.sql',
+  'schema/migrations/007-learning-events.sql',
 ];
 const client = new pg.Client({ connectionString: url });
 await client.connect();
