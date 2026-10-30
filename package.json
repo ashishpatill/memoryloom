@@ -21,6 +21,9 @@
     "check:jev": "node checks/jev-gate.mjs",
     "check:planes": "node checks/two-plane.mjs",
     "check:challenge": "node checks/challenge-decisions.mjs",
+    "check:graph": "node checks/graph-daemon.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "daemon": "node scripts/daemon.mjs",
     "probe:baseten": "node checks/probe-baseten.mjs"
   },
   "type": "module",
