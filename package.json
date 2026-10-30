@@ -26,7 +26,11 @@
     "check:learning-demo": "node checks/learning-demo.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "daemon": "node scripts/daemon.mjs",
-    "probe:baseten": "node checks/probe-baseten.mjs"
+    "probe:baseten": "node checks/probe-baseten.mjs",
+    "web": "node web/server.mjs",
+    "seed:web": "node scripts/seed-web-demo.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "check:web": "node checks/web.mjs"
   },
   "type": "module",
   "version": "0.1.0"
