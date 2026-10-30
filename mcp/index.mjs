@@ -29,6 +29,7 @@ import {
   CURATOR_IDENTITY,
 } from '../lib/curator-decide.mjs';
 import { decideGate } from '../lib/gate.mjs';
+import { recordEvent } from '../lib/learning.mjs';
 import dotenv from 'dotenv';
 import pg from 'pg';
 import { z } from 'zod';
@@ -63,6 +64,30 @@ function getPool() {
     });
   }
   return pool;
+}
+
+/**
+ * Learning capture (Block 5): every tool outcome that teaches the
+ * team something is recorded as an append-only learning event.
+ * Best-effort by design — a learning-table failure is logged to
+ * stderr and never breaks the tool that produced the outcome.
+ */
+async function learn(event) {
+  try {
+    await recordEvent(getPool(), event);
+  } catch (e) {
+    console.error('[mcp] learning capture failed:', e.message);
+  }
+}
+
+/** Namespace lookup for review outcomes, whose results carry no namespace. */
+async function namespaceOf(table, id) {
+  try {
+    const r = await getPool().query(`SELECT namespace FROM ${table} WHERE id = $1`, [id]);
+    return r.rows[0]?.namespace || null;
+  } catch {
+    return null;
+  }
 }
 
 /** Lazy MiniLM-L6-v2 embedder (384-dim, matches halfvec(384)). Loaded on
@@ -226,6 +251,12 @@ server.registerTool(
   async ({ namespace, text, metadata = {} }) => {
     const r = await insertMemory(namespace, text, metadata);
     if (!r.ok) return r.response;
+    await learn({
+      namespace, kind: 'proposal', actor: metadata.author || 'mcp',
+      subject_type: 'memory', subject_id: r.id,
+      summary: `Memory stored via store: ${String(text).slice(0, 200)}`,
+      evidence: { tool: 'store', type: metadata.type || 'semantic' },
+    });
     const payload = {
       status: 'ok',
       id: r.id,
@@ -343,6 +374,14 @@ server.registerTool(
         replicaLag: null,
       });
 
+      await learn({
+        namespace, kind: rows.length ? 'recall_hit' : 'recall_miss', actor: 'mcp',
+        subject_type: 'task', subject_id: null,
+        summary: rows.length
+          ? `Recall hit: "${String(query).slice(0, 120)}" returned ${rows.length} memories.`
+          : `Recall miss: "${String(query).slice(0, 120)}" returned nothing (status ${status}).`,
+        evidence: { tool: 'recall', query, count: rows.length, result_ids: rows.map((x) => x.id), status },
+      });
       const payload = {
         status,
         namespace,
@@ -504,6 +543,12 @@ server.registerTool(
       else errors.push({ chunk: n, error: r.response });
       if (errors.length > 5) break;
     }
+    await learn({
+      namespace, kind: 'proposal', actor: metadata.author || 'mcp',
+      subject_type: 'ingest', subject_id: null,
+      summary: `File ingested: ${filename} became ${ids.length} memories.`,
+      evidence: { tool: 'ingest_file', filename, chunks: chunks.length, stored: ids.length },
+    });
     const payload = {
       status: errors.length ? 'partial' : 'ok',
       filename,
@@ -563,11 +608,29 @@ server.registerTool(
           origin: metadata.origin || 'propose-jev',
         });
         if (!r.ok) return r.response;
+        await learn({
+          namespace, kind: 'proposal', actor: metadata.author || 'mcp',
+          subject_type: 'memory', subject_id: r.id,
+          summary: `Proposal approved by the Jev gate: ${String(text).slice(0, 200)}`,
+          evidence: { tool: 'propose' },
+        });
+        await learn({
+          namespace, kind: 'gate_verdict', actor: 'jev',
+          subject_type: 'memory', subject_id: r.id,
+          summary: `Gate verdict: approve (${d.reason}).`,
+          evidence: { decision: d },
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: d.reason, backend: 'jev', id: r.id }, null, 2) }],
         };
       }
       if (d.decision === 'reject') {
+        await learn({
+          namespace, kind: 'gate_verdict', actor: 'jev',
+          subject_type: 'proposal', subject_id: null,
+          summary: `Gate verdict: reject (${d.reason}).`,
+          evidence: { decision: d, text: String(text).slice(0, 200) },
+        });
         return {
           content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'rejected', reason: d.reason, backend: 'jev' }, null, 2) }],
         };
@@ -579,6 +642,18 @@ server.registerTool(
     if (!jevRouteReason && (type === 'episodic' || scope === 'node_local')) {
       const r = await insertMemory(namespace, text, { ...metadata, origin: metadata.origin || 'propose-auto' });
       if (!r.ok) return r.response;
+      await learn({
+        namespace, kind: 'proposal', actor: metadata.author || 'mcp',
+        subject_type: 'memory', subject_id: r.id,
+        summary: `Proposal auto-approved (episodic/node-local): ${String(text).slice(0, 200)}`,
+        evidence: { tool: 'propose' },
+      });
+      await learn({
+        namespace, kind: 'gate_verdict', actor: 'rules-gate',
+        subject_type: 'memory', subject_id: r.id,
+        summary: 'Gate verdict: approve (episodic-or-node_local rule).',
+        evidence: { decision: { decision: 'approve', backend: 'rules', reason: 'episodic-or-node_local' } },
+      });
       return {
         content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: 'episodic-or-node_local', id: r.id }, null, 2) }],
       };
@@ -596,6 +671,18 @@ server.registerTool(
     if (!route_reason) {
       const r = await insertMemory(namespace, text, { ...metadata, origin: metadata.origin || 'propose-auto' });
       if (!r.ok) return r.response;
+      await learn({
+        namespace, kind: 'proposal', actor: metadata.author || 'mcp',
+        subject_type: 'memory', subject_id: r.id,
+        summary: `Proposal auto-approved (grounding rule): ${String(text).slice(0, 200)}`,
+        evidence: { tool: 'propose' },
+      });
+      await learn({
+        namespace, kind: 'gate_verdict', actor: 'rules-gate',
+        subject_type: 'memory', subject_id: r.id,
+        summary: `Gate verdict: approve (grounding_ids>=${MIN_EVIDENCE_AUTO} rule).`,
+        evidence: { decision: { decision: 'approve', backend: 'rules', reason: `grounding_ids>=${MIN_EVIDENCE_AUTO}` } },
+      });
       return {
         content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: `grounding_ids>=${MIN_EVIDENCE_AUTO}`, id: r.id }, null, 2) }],
       };
@@ -620,6 +707,18 @@ server.registerTool(
         [id, namespace, type, scope, text, metadata.importance ?? 5, metadata.strength ?? 5.0,
          pinned, grounding_ids, JSON.stringify(provenance), route_reason]
       );
+      await learn({
+        namespace, kind: 'proposal', actor: metadata.author || 'mcp',
+        subject_type: 'proposal', subject_id: id,
+        summary: `Proposal queued for review (${route_reason}): ${String(text).slice(0, 200)}`,
+        evidence: { tool: 'propose', route_reason },
+      });
+      await learn({
+        namespace, kind: 'gate_verdict', actor: jevScore ? 'jev' : 'rules-gate',
+        subject_type: 'proposal', subject_id: id,
+        summary: `Gate verdict: escalate (${route_reason}).`,
+        evidence: { decision: jevScore || { decision: 'escalate', backend: 'rules', reason: route_reason } },
+      });
       return {
         content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'queued_for_review', reason: route_reason, proposal_id: id }, null, 2) }],
       };
@@ -678,6 +777,15 @@ server.registerTool(
       decided_by: decided_by || CURATOR_IDENTITY,
       note,
     });
+    if (result.status === 'ok') {
+      await learn({
+        namespace: (await namespaceOf('proposals', proposal_id)) || 'unknown', kind: 'human_approval',
+        actor: decided_by || CURATOR_IDENTITY,
+        subject_type: 'proposal', subject_id: proposal_id,
+        summary: `Proposal ${proposal_id} approved and promoted${note ? `: ${note}` : ''}.`,
+        evidence: { tool: 'promote', promoted_id: result.promoted_id || null, note: note || null },
+      });
+    }
     const isError = result.status === 'error';
     return {
       isError,
@@ -702,6 +810,15 @@ server.registerTool(
       decided_by: decided_by || CURATOR_IDENTITY,
       note,
     });
+    if (result.status === 'ok') {
+      await learn({
+        namespace: (await namespaceOf('proposals', proposal_id)) || 'unknown', kind: 'human_rejection',
+        actor: decided_by || CURATOR_IDENTITY,
+        subject_type: 'proposal', subject_id: proposal_id,
+        summary: `Proposal ${proposal_id} rejected${note ? `: ${note}` : ''}.`,
+        evidence: { tool: 'reject_proposal', note: note || null },
+      });
+    }
     return {
       isError: result.status === 'error',
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -730,6 +847,27 @@ server.registerTool(
       decided_by: decided_by || CURATOR_IDENTITY,
       note,
     });
+    if (result.status === 'ok') {
+      const kind =
+        decision === 'reject' ? 'human_rejection'
+        : decision === 'resolve' && note ? 'human_correction'
+        : 'human_approval';
+      const ns = target === 'proposal'
+        ? await namespaceOf('proposals', id)
+        : (await (async () => {
+            try {
+              const r = await getPool().query(`SELECT payload->>'namespace' AS ns FROM review_items WHERE id = $1`, [id]);
+              return r.rows[0]?.ns || null;
+            } catch { return null; }
+          })());
+      await learn({
+        namespace: ns || 'unknown', kind,
+        actor: decided_by || CURATOR_IDENTITY,
+        subject_type: target === 'proposal' ? 'proposal' : 'review_item', subject_id: id,
+        summary: `Review decision '${decision}' on ${target} ${id}${note ? `: ${note}` : ''}.`,
+        evidence: { tool: 'review_decide', decision, note: note || null },
+      });
+    }
     return {
       isError: result.status === 'error',
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
