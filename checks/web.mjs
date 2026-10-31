@@ -73,6 +73,19 @@ try {
   const consolePage = await getText('/console');
   assert(consolePage.status === 200 && consolePage.text.includes('console-nav'), 'console page serves');
   assert(consolePage.text.includes('data-nav="settings"') && consolePage.text.includes('#/settings'), 'console nav carries the Settings entry');
+  // Iteration 5.2: the console finished to design tokens v2.
+  assert(consolePage.text.includes('/tokens.css') && !consolePage.text.includes('/styles.css'), 'console page is on design tokens v2 only (tokens.css linked, styles.css gone)');
+  assert(!consolePage.text.includes('gradient'), 'console page carries no gradient (design law: the v1 skeleton shimmer is gone)');
+  assert(home.text.includes('/graph.js') && home.text.indexOf('/graph.js') < home.text.indexOf('/landing.js'), 'landing loads the shared graph renderer before landing.js (one renderer, 5.2)');
+  const consoleJs = await getText('/console.js');
+  assert(consoleJs.text.includes('data-state="escalated"') && consoleJs.text.includes('escalated · awaiting a human'), 'console verdicts ride the tokens badge, escalated in its full gloss form');
+  assert(!/badge (ok|bad|warn|thread|grok|moose)/.test(consoleJs.text), 'console.js carries no v1 colour badge classes');
+  assert(!consoleJs.text.includes('woven'), 'console graph figure has no woven texture class (v1 law debt closed)');
+  assert(!consoleJs.text.includes('JSON.stringify(i.payload'), 'daemon review items never dump a raw JSON payload');
+  assert(consoleJs.text.includes('There is no past to travel to yet') && consoleJs.text.includes('The graph is empty'), 'console has designed empty states for the empty graph and empty time travel');
+  const graphJs = await getText('/graph.js');
+  assert(graphJs.text.includes('MemoryLoomGraph') && graphJs.text.includes('memoryloom-learning'), 'shared graph renderer knows the third author thread (the learning promotion)');
+  assert(!/#2f5d50|#a97b12|#a62b1f/i.test(graphJs.text), 'shared graph renderer carries no v1 hues (pine, gold, bad-red all retired)');
 
   const ov = await get('/api/overview');
   assert(ov.body.namespace === 'memoryloom-demo', 'overview namespace is the demo namespace');
