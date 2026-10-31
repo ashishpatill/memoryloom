@@ -265,6 +265,24 @@
       });
   }
 
+  /* ---- Spend total, live ------------------------------------------ */
+  const spendCell = document.getElementById('spendLive');
+  if (spendCell) {
+    fetch('/api/spend')
+      .then((r) => { if (!r.ok) throw new Error('api ' + r.status); return r.json(); })
+      .then((data) => {
+        const byProvider = {};
+        let total = 0;
+        for (const row of data.router || []) {
+          byProvider[row.provider] = (byProvider[row.provider] || 0) + (row.est_cost_usd || 0);
+          total += row.est_cost_usd || 0;
+        }
+        const usd = (v) => '$' + (Math.round(v * 10000) / 10000).toFixed(4);
+        spendCell.innerHTML = 'Meta ' + usd(byProvider.meta || 0) + ' · Jev ' + usd(byProvider.jev || 0) + '<br>total ' + usd(total);
+      })
+      .catch(() => { spendCell.textContent = 'See the traced build-time figures in the source column.'; });
+  }
+
   /* ---- Reveal on scroll, once ------------------------------------ */
   const revealEls = document.querySelectorAll('.reveal');
   if (revealEls.length) {

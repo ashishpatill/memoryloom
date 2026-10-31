@@ -64,7 +64,7 @@
       <a class="btn" href="#proof">Read the proof</a>
     </div>
     <p class="small" style="margin-top:var(--space-4)">The demonstration runs on a small fictional corpus &mdash; a community demo rig called Project Lantern, tended by two agents, grok and moose. Everything on this page that shows data is rendered live from that corpus in the database, not from a picture of it.</p>
-    <figure class="fig" style="margin-top:var(--space-5)">
+    <figure class="fig reveal" style="margin-top:var(--space-5)">
       <div class="fig-head"><span>Fig. 1 &mdash; The weave, live</span><span id="heroState">loading the corpus&hellip;</span></div>
       <div class="fig-body">
         <svg id="heroGraph" class="graph-svg" role="img" aria-label="Animated graph of the demo corpus: two agents weaving memories over time"></svg>
@@ -103,7 +103,7 @@
         <p>When an agent asks a question, <strong>recall answers with receipts</strong>: each result names the record it came from, who wrote it, and what it rests on. A result that cannot produce its receipt is dropped before the agent sees it.</p>
         <p><a href="/console#/loop">Watch proposals move through the gate in the console &rarr;</a></p>
       </div>
-      <figure class="fig">
+      <figure class="fig reveal">
         <div class="fig-head"><span>Fig. 2 &mdash; The loop</span><span>diagram</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 520 268" class="graph-svg" role="img" aria-label="Diagram of the loop: an agent proposes, the gate decides approve, reject or escalate, approved memories are written once to truth, recall answers with a receipt">
@@ -172,7 +172,7 @@
       <p class="standfirst">MemoryLoom does not just store what agents know. It keeps a record of how the team worked, and turns that record into standing lessons &mdash; carefully, in the open, and only through the same gate as everything else.</p>
     </div>
     <p style="max-width:var(--measure)">Every interaction is logged as a <strong>provenance event</strong>: a proposal, a gate verdict, a correction made in the same turn, a recall that hit or missed. The log is append-only &mdash; events are never edited or deleted, so the story of an improvement can always be re-read. When an episode teaches something general, a <strong>lesson is proposed from it and gated like a memory</strong>: the Jev gate decides whether it becomes a standing playbook lesson, and a lesson written in by any other route is caught by audit and quarantined. An approved lesson is a memory, so the next agent <strong>recalls it by receipt</strong> and behaves differently; and because it is a memory, a lesson that stops being used <strong>decays</strong> on the same schedule as everything else, with the gate deciding keep or drop. Improvement here is not asserted &mdash; it is shown, event by event, below.</p>
-    <figure class="fig">
+    <figure class="fig reveal">
       <div class="fig-head"><span>Fig. 3 &mdash; One lesson, earned in the open</span><span id="learningState">reading the record&hellip;</span></div>
       <div class="fig-body">
         <div id="learningSteps"><p class="small">Loading the recorded events from the demo corpus&hellip;</p></div>
@@ -182,6 +182,64 @@
       <figcaption><b>Proves:</b> the sequence below is the recorded one &mdash; every line is an event or a verdict read live from the store, with its evidence, for the seeded task of lodging a global claim. <b>Does not prove:</b> that lessons keep helping as they accumulate; the record so far is one lesson, and it says so. Read the full stream in the <a href="/console#/learning">console&rsquo;s learning view</a>.</figcaption>
     </figure>
     <p class="small" style="margin-top:var(--space-3)">In plain terms: grok lodged a claim citing no evidence and was escalated; the correction was written down in the same turn; the episode became a lesson only after the gate approved it; and moose, a different agent, then lodged a claim of the same kind and was approved first try &mdash; because the lesson was recalled, with its receipt, before acting.</p>
+  </section>
+
+  <section class="band" id="providers">
+    <div class="section-head">
+      <span class="num">04 &mdash; Providers</span>
+      <h2>Two working parts, named honestly</h2>
+      <p class="standfirst">MemoryLoom&rsquo;s own code holds the memory, the gate logic and the record. Two outside services do the model work and the deciding, and each is named for exactly what it does &mdash; no more.</p>
+    </div>
+    <div class="card" style="padding:6px 14px">
+      <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Provider</th><th>What it does here</th><th>Without its key</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Meta Model API</strong><br><span class="small">model <span class="mono">muse-wonder-1.0</span> &mdash; the only Meta model this build uses</span></td><td>Thinking work, in two tiers of the same model: Wonder Full (high effort) writes consolidations, narrates recall answers and explains contradictions; Wonder (medium effort) handles triage and implementation passes. Every call goes through the router, is spend-logged and content-hash cached.</td><td>The local provider covers model work offline. The demo, recall, the graph and time travel all run with no key at all.</td></tr>
+          <tr><td><strong>Jev</strong><br><span class="small">TypeSafe decision API, <span class="mono">jev-1.13.0</span></span></td><td>Deciding work: every decision that has a fixed set of answers goes to Jev &mdash; the write gate (approve / reject / escalate), consolidation accept, decay keep / drop, and lesson promotion. Its scores are calibrated before thresholds go live, and its reasons are recorded.</td><td>There is no local fallback that approves. With no key, or on any Jev failure, the gate fails closed and proposals queue for a human.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <p class="small" style="margin-top:var(--space-3)">And the parts that are <em>not</em> working parts, stated plainly: a Baseten key can be stored and tested in Settings, but the Baseten lane is parked &mdash; its grant key serves only a model this build does not use &mdash; so no product path calls Baseten and its spend is $0. Fireworks and Modal have no role in this build.</p>
+  </section>
+
+  <section class="band" id="proof">
+    <div class="section-head">
+      <span class="num">05 &mdash; Proof</span>
+      <h2>Checked, not claimed</h2>
+      <p class="standfirst">Every number below is traced to a record in the repository, named beside it. Small numbers, honestly labelled: they prove the mechanics behave as designed. They do not prove quality at scale, and the table says where each one stops.</p>
+    </div>
+    <div class="card" style="padding:6px 14px">
+      <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Check</th><th>Result</th><th>Source</th><th>What it does not prove</th></tr></thead>
+        <tbody>
+          <tr><td>Write-gate calibration &mdash; a fixed golden set of 40 synthetic proposals scored through the production gate path</td><td class="num">40 / 40<br>0 unsafe approvals</td><td class="small"><span class="mono">docs/calibration-jev-gate.md</span> (run 30 Oct 2026, jev-1.13.0). Thresholds went live only after this passed.</td><td>That unseen proposal classes are safe &mdash; escalation exists for those.</td></tr>
+          <tr><td>Core-reasoning calibration &mdash; 36 synthetic items: consolidation, recall narration, contradiction explanation</td><td class="num">36 / 36<br>both tiers</td><td class="small"><span class="mono">docs/calibration-meta-core-reasoning.md</span> (Wonder Full and Wonder, muse-wonder-1.0).</td><td>Anything about public benchmarks &mdash; this is a private golden set.</td></tr>
+          <tr><td>Recall evaluation, LongMemEval-style &mdash; 42 questions over a 120-memory haystack (Project Kestrel, six dated sessions)</td><td class="num">recall@5 27/29 (93%)<br>recall@10 29/29 (100%)</td><td class="small"><span class="mono">docs/eval-longmem.md</span>, harness <span class="mono">checks/eval-longmem.mjs</span>, scored deterministically, no model judge.</td><td>Recall quality at scale. The weak spots are measured, not hidden: knowledge-update 6/10, abstention 3/8 &mdash; both are explained in the source.</td></tr>
+          <tr><td>Check suites, run fresh on new databases</td><td class="num" id="suiteCounts">surface 34/34 &middot; router 11/11 &middot; gate 15/15 &middot; two-plane 22/22 &middot; graph+daemon 44/44 &middot; learning 36/36 &middot; learning demo 8/8 &middot; settings 46/46 &middot; web 55/55</td><td class="small">The suites under <span class="mono">checks/</span> in this repository, re-run for this page&rsquo;s build; the iteration report carries the fresh counts.</td><td>Behaviour under production load.</td></tr>
+          <tr><td>Spend to date, all providers</td><td class="num" id="spendLive">reading the spend log&hellip;</td><td class="small"><span class="mono">router/spend-log.jsonl</span>, read live through the console&rsquo;s spend view. At build time: Meta $0.3752, Jev $0.0013. Baseten, Fireworks, Modal: $0.</td><td>&mdash;</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="start">
+    <div class="section-head">
+      <span class="num">06 &mdash; Get started</span>
+      <h2>Run it, then paste your keys in Settings</h2>
+      <p class="standfirst">You need Node 22+ and a Postgres 16 database with the pgvector extension. Setup is done once; after that, one command starts the whole app &mdash; this site at <span class="mono">/</span>, the console at <span class="mono">/console</span>.</p>
+    </div>
+    <pre class="code">cp .env.example .env.local   # set DATABASE_URL (Postgres 16 + pgvector)
+npm install
+npm run db:init                                  # schema + migrations
+DATABASE_URL=postgres://&hellip; npm run seed:web   # the Project Lantern demo corpus + its learning story
+DATABASE_URL=postgres://&hellip; npm run web       # the one command: site + console</pre>
+    <p style="max-width:var(--measure)"><strong>Provider keys, the standard way.</strong> MemoryLoom runs with no keys at all &mdash; the demo corpus, recall, the graph and time travel all work on your machine. To switch on the hosted providers, open the console, go to <strong>Settings</strong>, and paste your own key for each provider: a Meta Model API key from <span class="mono">dev.meta.ai</span>, a Jev key from TypeSafe, a Baseten key from the Baseten workspace settings. Use <strong>Test connection</strong> on each one before you rely on it.</p>
+    <p style="max-width:var(--measure)"><strong>Where the keys live.</strong> Keys pasted into Settings are stored in <span class="mono">.env.local</span> in the app folder, on your machine only, with file permissions 0600. The file is git-ignored and never committed; Settings shows only the last four characters of a saved key; and keys are never written to any log. An environment variable (<span class="mono">META_MODEL_API_KEY</span>, <span class="mono">TYPESAFE_API_KEY</span>, <span class="mono">BASETEN_API_KEY</span>) can be set instead and wins over Settings. Settings can only be changed from the local app &mdash; a hosted deployment cannot change them.</p>
+    <p class="small">Agents connect over MCP (<code class="inline">npm run mcp</code>) and speak the same propose / recall / review surface the console renders. The console displays decisions; it never makes or overrides one.</p>
   </section>
 
   <footer class="site-foot">
