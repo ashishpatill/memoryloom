@@ -15,6 +15,10 @@
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   const fmtTs = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  // Sub-thousandth costs must not print as $0.000 in a table whose
+  // purpose is cost evidence (5.3 re-review): a real charge rounded
+  // to "free" is a false claim.
+  const fmtUsd = (v) => (v === 0 ? '$0' : v < 0.0005 ? '<$0.001' : '$' + Number(v).toFixed(3));
 
   async function api(path, opts) {
     const r = await fetch(path, opts);
@@ -88,6 +92,25 @@
     'episodic-or-node_local': 'episodic or node-local — approved by rule',
   };
   const routePlain = (r) => ROUTE_PLAIN[r] || kindPlain(r || '—');
+  /* The propose banner speaks plain words too (5.3 re-review: it
+     printed the raw decision and route strings — "queued_for_review
+     — jev-unavailable-fail-closed" — directly over the row that
+     translated them properly). */
+  const DECISION_PLAIN = {
+    auto_approved: 'approved by the gate',
+    rejected: 'rejected by the gate',
+    queued_for_review: 'sent to a human',
+  };
+  const decisionPlain = (d) => DECISION_PLAIN[d] || kindPlain(d || '—');
+  /* Subject types on learning rows and record origins on receipts:
+     stored as machine strings, rendered as what they mean. */
+  const SUBJECT_PLAIN = { memory: 'record', learning_event: 'learning event', proposal: 'proposal' };
+  const subjectPlain = (s) => SUBJECT_PLAIN[s] || kindPlain(s || '');
+  const ORIGIN_PLAIN = {
+    propose: 'a proposal', 'propose-auto': 'an automatic proposal', 'propose-jev': 'a gated proposal',
+    ingest_file: 'a file import', consolidation: 'consolidation', 'mcp-store': 'a direct store', seed: 'the seed',
+  };
+  const originPlain = (o) => ORIGIN_PLAIN[o] || kindPlain(o || '—');
   function jevDetail(jev) {
     if (!jev) return '';
     const bits = [];
@@ -189,8 +212,8 @@
             grounding_ids: document.getElementById('pGround').value.split(',').map((s) => s.trim()).filter(Boolean),
           }),
         });
-        loopFlash = `Gate: ${r.decision} — ${r.reason || ''}`;
-        out.innerHTML = `Gate: <b>${esc(r.decision)}</b> — ${esc(r.reason || '')}. Reloading the loop…`;
+        loopFlash = `Gate: ${decisionPlain(r.decision)} — ${routePlain(r.reason)}`;
+        out.innerHTML = `Gate: <b>${esc(decisionPlain(r.decision))}</b> — ${esc(routePlain(r.reason))}. Reloading the loop…`;
         setTimeout(viewLoop, 900);
       } catch (e) {
         out.textContent = 'The gate did not answer: ' + e.message;
@@ -206,7 +229,7 @@
       <div class="meta">${agentBadge(prov.author)}<span class="badge">${esc(p.type)}</span>${verdictBadge(p.status === 'pending' ? 'pending' : p.status)}
         <span class="small">${fmtTs(p.created_at)} · route: ${esc(routePlain(p.route_reason))}</span></div>
       <div class="text">${esc(p.text)}</div>
-      ${p.grounding_ids?.length ? `<div class="detail">cites: ${p.grounding_ids.map((g) => `<code class="inline">${esc(g)}</code>`).join(' ')}</div>` : '<div class="detail">cites: nothing</div>'}
+      ${p.grounding_ids?.length ? `<div class="detail">cites: ${p.grounding_ids.map((g) => `<code class="inline">${esc(g)}</code>`).join(' ')}</div>` : (prov.unresolved_citations?.length ? `<div class="detail">cites: nothing that resolves in this store (${prov.unresolved_citations.length} cited, none found)</div>` : '<div class="detail">cites: nothing</div>')}
       ${jevDetail(prov.jev)}
       ${p.status !== 'pending' ? `<div class="detail">decided by ${esc(p.decided_by || '—')}${p.promoted_id ? ` · became memory <code class="inline">${esc(p.promoted_id)}</code>` : ''}</div>` : ''}
       ${actionable ? '<div class="actions"><button class="btn small-btn" data-act="approve" type="button">Approve into truth</button><button class="btn small-btn" data-act="reject" type="button">Reject</button><span class="small act-msg"></span></div>' : ''}
@@ -275,7 +298,7 @@
             <div class="row-item">
               <div class="meta"><span class="badge">closest record — not an answer</span><span class="badge">${esc(res.type)}</span>${res.rrf != null ? `<span class="small">fusion score ${Number(res.rrf).toFixed(3)}</span>` : ''}</div>
               <div class="text">${esc(res.text)}</div>
-              <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(res.receipt.origin)} · recorded ${fmtDate(res.receipt.record_created_at)}</div>
+              <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(originPlain(res.receipt.origin))} · recorded ${fmtDate(res.receipt.record_created_at)}</div>
             </div>`).join('') +
             (r.dropped.length ? `<h3 style="margin-top:18px">Dropped before the agent could see them (${r.dropped.length})</h3>` +
               r.dropped.map((d) => `<div class="row-item"><div class="meta"><span class="badge" data-state="rejected">dropped</span><code class="inline">${esc(d.id)}</code></div><div class="detail">${esc(d.why)}</div></div>`).join('') : '');
@@ -286,7 +309,7 @@
             <div class="row-item">
               <div class="meta"><span class="badge">receipt</span><span class="badge">${esc(res.type)}</span>${res.rrf != null ? `<span class="small">fusion score ${Number(res.rrf).toFixed(3)}</span>` : ''}</div>
               <div class="text">${esc(res.text)}</div>
-              <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(res.receipt.origin)} · recorded ${fmtDate(res.receipt.record_created_at)} · valid ${fmtDate(res.receipt.valid_from)}${res.receipt.valid_to ? ' → ' + fmtDate(res.receipt.valid_to) : ' → still held'}${res.receipt.grounding_ids?.length ? ' · rests on ' + res.receipt.grounding_ids.join(', ') : ''}${res.receipt.evidence_refs?.length ? ' · sources ' + res.receipt.evidence_refs.join(', ') : ''}</div>
+              <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(originPlain(res.receipt.origin))} · recorded ${fmtDate(res.receipt.record_created_at)} · valid ${fmtDate(res.receipt.valid_from)}${res.receipt.valid_to ? ' → ' + fmtDate(res.receipt.valid_to) : ' → still held'}${res.receipt.grounding_ids?.length ? ' · rests on ' + res.receipt.grounding_ids.join(', ') : ''}${res.receipt.evidence_refs?.length ? ' · sources ' + res.receipt.evidence_refs.join(', ') : ''}</div>
             </div>`).join('') +
           (r.dropped.length ? `<h3 style="margin-top:18px">Dropped before the agent could see them (${r.dropped.length})</h3>` +
             r.dropped.map((d) => `<div class="row-item"><div class="meta"><span class="badge" data-state="rejected">dropped</span><code class="inline">${esc(d.id)}</code></div><div class="detail">${esc(d.why)}</div></div>`).join('') : '');
@@ -320,7 +343,7 @@
       <figure class="fig">
         <div class="fig-head"><span>${graph.nodes.length} nodes · ${graph.edges.length} edges</span><span>namespace ${esc(graph.namespace || '')}</span></div>
         <div class="fig-body"><svg id="graphSvg" class="graph-svg" role="img" aria-label="The demo corpus as a graph"></svg></div>
-        <figcaption><b>Reading it:</b> threads top to bottom are grok, moose, and the learning promotion that authored the standing lesson — told apart by position and label, never by colour. Solid knots are memories; hollow dashed knots are proposals; crossed knots are superseded; ink diamonds are cited sources. This view spends no accent: nothing here is a live decision. <b>Limit:</b> a derived view — it shows only what Plane 1 holds.</figcaption>
+        <figcaption><b>Reading it:</b> threads top to bottom are grok, moose, and the learning promotion that authored the standing lesson — told apart by position and label, never by colour. Solid knots are memories; hollow dashed knots are proposals; crossed knots are superseded; ink diamonds are cited sources; the knot you clicked wears an ink ring. This view spends no accent: nothing here is a live decision. <b>Limit:</b> a derived view — it shows only what Plane 1 holds.</figcaption>
       </figure>
       <div id="trailOut" style="margin-top:16px"><div class="empty-state"><h3>No knot selected</h3><p>Click a memory in the graph to see its provenance trail and supersession chain. Proposals, sources and thread heads answer too — each says what it is and where it is acted on.</p></div></div>
     `;
@@ -361,7 +384,7 @@
       out.innerHTML = `
         <div class="card">
           <h3>Provenance trail — <code class="inline">${esc(id)}</code></h3>
-          <div class="row-item"><div class="meta">${agentBadge(trail.author)}<span class="badge">${esc(trail.memory.type)}</span><span class="small">via ${esc(trail.origin || '—')} · recorded ${fmtDate(trail.memory.recorded_at)}</span></div>
+          <div class="row-item"><div class="meta">${agentBadge(trail.author)}<span class="badge">${esc(trail.memory.type)}</span><span class="small">via ${esc(originPlain(trail.origin))} · recorded ${fmtDate(trail.memory.recorded_at)}</span></div>
           <div class="text">${esc(trail.memory.text)}</div>
           ${trail.sources?.length ? `<div class="detail">cited sources: ${trail.sources.map((s) => `<code class="inline">${esc(s)}</code>`).join(' ')}</div>` : ''}</div>
           ${trail.grounding?.length ? `<h3 style="margin-top:14px">It rests on (${trail.grounding.length})</h3>` + trail.grounding.map((g) => `<div class="row-item"><div class="meta">${agentBadge(g.author)}<code class="inline">${esc(g.id)}</code></div><div class="text">${esc(g.text)}</div></div>`).join('') : ''}
@@ -450,7 +473,7 @@
       </div>
       ${s.router.length ? `<div class="card" style="padding:6px 14px"><div class="table-wrap"><table class="data">
         <thead><tr><th>Provider · model · tier · task</th><th>Calls</th><th>Cached (free)</th><th>Tokens in / out</th><th>Est. cost</th></tr></thead>
-        <tbody>${s.router.map((r) => `<tr><td>${esc(r.key)}</td><td class="num">${r.calls}</td><td class="num">${r.cached}</td><td class="num">${r.input_tokens.toLocaleString()} / ${r.output_tokens.toLocaleString()}</td><td class="num">$${r.est_cost_usd.toFixed(3)}</td></tr>`).join('')}</tbody></table></div></div>`
+        <tbody>${s.router.map((r) => `<tr><td>${esc(r.key)}</td><td class="num">${r.calls}</td><td class="num">${r.cached}</td><td class="num">${r.input_tokens.toLocaleString()} / ${r.output_tokens.toLocaleString()}</td><td class="num">${fmtUsd(r.est_cost_usd)}</td></tr>`).join('')}</tbody></table></div></div>`
       : '<div class="empty-state"><h3>No paid calls yet</h3><p>The router has logged no spend. Calibration and evaluation runs will appear here when they happen.</p></div>'}
       <h3 style="margin-top:24px">Per-memory work</h3>
       ${s.per_memory.length ? s.per_memory.map((w) => `<div class="row-item"><div class="meta"><span class="badge">${esc(w.provider)}</span><span class="small">${esc(w.work)} · ${fmtTs(w.at)}</span></div><div class="text">memory <code class="inline">${esc(w.memory_id)}</code></div>${jevDetail(w.decision)}</div>`).join('')
@@ -464,7 +487,12 @@
     skeleton();
     let L;
     try { L = await api('/api/learning'); } catch (e) { return errorState(e, viewLearning); }
-    const kinds = [...new Set(L.events.map((e) => e.kind))];
+    // The filter offers the full kind vocabulary, not only the
+    // kinds present in this stream (5.3 re-review: options built
+    // from the stream alone made the filtered-empty state
+    // unreachable — a state the product renders but no user could
+    // ever see is a claim, not a feature).
+    const kinds = [...new Set([...Object.keys(KIND_PLAIN), ...L.events.map((e) => e.kind)])];
     const verdicts = L.before_after.verdicts;
     main.innerHTML = `
       ${head('Learning', 'Every interaction is an append-only learning event. A lesson stands only because the gate promoted it — its verdict travels with it. Forged lessons (a lesson-shaped record with no gate verdict) are flagged by audit.', 'Improvement is shown, event by event — not asserted.')}
@@ -483,7 +511,7 @@
     const render = (kind) => {
       const rows = L.events.filter((e) => !kind || e.kind === kind);
       document.getElementById('eventList').innerHTML = rows.length ? rows.map((e) => `
-        <div class="row-item"><div class="meta"><span class="badge">${esc(kindPlain(e.kind))}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(e.subject_type || '') + ' ' + esc(e.subject_id) : ''}</span></div>
+        <div class="row-item"><div class="meta"><span class="badge">${esc(kindPlain(e.kind))}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(subjectPlain(e.subject_type)) + ' ' + esc(e.subject_id) : ''}</span></div>
         <div class="text">${esc(e.summary)}</div></div>`).join('')
         // Two different empty sets, two different truths (5.3,
         // Finding G): an empty STREAM holds no kinds at all, while

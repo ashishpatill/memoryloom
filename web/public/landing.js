@@ -37,7 +37,7 @@
         // gets the designed empty state, in the landing's voice, the
         // way the console graph already had one.
         state.textContent = 'no records yet';
-        if (toggleBtn) toggleBtn.disabled = true;
+        if (toggleBtn) toggleBtn.style.display = 'none'; // no weave, no pause control (5.3 re-review nit)
         svg.outerHTML = '<div class="empty-state" style="margin:6px"><h3>The weave is empty</h3><p>This store holds no records yet, so there is nothing to weave. Seed the demo corpus (<code class="inline">npm run seed:web</code>) and this figure draws the corpus live — threads, knots and all. Nothing here is a canned picture — that is rather the point.</p></div>';
         return;
       }
@@ -51,7 +51,7 @@
     })
     .catch(() => {
       state.textContent = 'live data unavailable';
-      if (toggleBtn) toggleBtn.disabled = true;
+      if (toggleBtn) toggleBtn.style.display = 'none';
       svg.outerHTML = '<div class="empty-state" style="margin:6px"><h3>The weave needs its database</h3><p>Start the app against a seeded demo database (<code class="inline">npm run seed:web</code>, then <code class="inline">npm run web</code>) and this figure renders the corpus live. Nothing here is a canned picture — that is rather the point.</p></div>';
     });
 
@@ -88,7 +88,19 @@
         const events = [...(data.events || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         const story = events.filter((e) =>
           e.subject_id === 'lodge-global-claim' || e.kind === 'promotion_decision' || e.kind === 'lesson_applied');
-        if (!story.length) throw new Error('no story');
+        if (!story.length) {
+          // Connected but empty is a different truth from a dead
+          // database (5.3 re-review): the store answered, it simply
+          // holds no learning story — say exactly that, and name
+          // the condition under which the story gets recorded.
+          learnState.textContent = 'no story recorded yet';
+          learnSteps.innerHTML = '<div class="empty-state"><h3>No learning story recorded yet</h3><p>This store is connected and answering — it simply holds no learning story. The story is recorded when the demo is seeded with a Jev key configured (see §06, step 2); seeded without one, the corpus still lands and this figure stays honestly empty.</p></div>';
+          const auditEl = document.getElementById('learningAudit');
+          if (auditEl && data.audit) {
+            auditEl.textContent = 'Lesson audit, read live: ' + data.audit.checked + ' standing lesson(s) checked, ' + data.audit.forged_lesson_ids.length + ' forged. A lesson whose record carries no gate verdict is forged by definition and is quarantined.';
+          }
+          return;
+        }
         learnState.textContent = story.length + ' recorded events · live';
         const rows = story.map((e) => {
           let kind = e.kind, evidence = '';
