@@ -100,9 +100,9 @@
     // 9px IBM Plex Mono advances ≈5.4 units per character; the
     // estimate adds padding so measured boxes keep a real gap.
     const halfWidth = (n) => (labelTextOf(n).length * 5.4) / 2 + 3;
-    function spread(items, { left = 92, right = W - 20, gap = 7 } = {}) {
-      items.sort((a, b) => a.x - b.x);
-      for (const it of items) { it.labelHalf = halfWidth(it); it.labelX = it.x; }
+    function spread(items, { left = 92, right = W - 20, gap = 7, preserve = false } = {}) {
+      items.sort((a, b) => (a.labelX ?? a.x) - (b.labelX ?? b.x));
+      for (const it of items) { it.labelHalf = halfWidth(it); if (!preserve || it.labelX === undefined) it.labelX = it.x; }
       const forward = () => {
         for (let i = 1; i < items.length; i++) {
           const need = items[i - 1].labelX + items[i - 1].labelHalf + gap + items[i].labelHalf;
@@ -176,6 +176,32 @@
         const sameSide = group.filter((n) => n.labelDy === dy);
         if (sameSide.length) spread(sameSide);
       }
+    }
+    // Final pass, global (same finding, second review): side
+    // grouping alone still collided once — thread jitter can put
+    // one knot's above-label and a neighbour's below-label at
+    // almost the same height (g1/p1 measured 10.5 units of box
+    // overlap in the first 5.3 capture). So every label in the
+    // figure is clustered by its actual label height (within 12
+    // units = one row, the rendered box height of the 9px mono
+    // labels) and each row is spread once more, preserving the
+    // positions the earlier passes chose.
+    {
+      const all = [...nodes.values()].filter(
+        (n) => (n.kind === 'memory' || n.kind === 'proposal' || n.kind === 'source') && n.x !== undefined
+      );
+      for (const n of all) {
+        n.labelY = n.y + (n.labelDy ?? -13);
+        if (n.labelX === undefined) n.labelX = n.x;
+      }
+      all.sort((a, b) => a.labelY - b.labelY);
+      let row = [];
+      const rows = [row];
+      for (const n of all) {
+        if (row.length && n.labelY - row[row.length - 1].labelY > 12) { row = []; rows.push(row); }
+        row.push(n);
+      }
+      for (const r of rows) if (r.length > 1) spread(r, { preserve: true });
     }
     return { nodes, tMin, tMax, xFor };
   }
