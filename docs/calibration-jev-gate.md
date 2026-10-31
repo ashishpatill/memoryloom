@@ -2,7 +2,7 @@
 
 Run 2026-10-30T14:01:37.926Z. Fixed golden set of 40 synthetic proposals
 with expected write-gate decisions, scored through the production
-path (lib/gate.mjs evaluateGate) with the ProofDesk piecewise
+path (lib/gate.mjs evaluateGate) with the piecewise
 calibration of raw Jev probabilities (anchors raw 0.05 -> 0.30 and
 raw 0.30 -> 0.80).
 

@@ -25,25 +25,28 @@ our own client code:
   PERMISSION_DENIED — the key is permission-scoped, exactly as a
   model-restricted grant key would be.
 
-**Verdict: the probe FAILED.** The grant key serves Muse Spark Open
-and nothing else we can use — Spark is banned in MemoryLoom, so the
-key has no usable inference for this project. This matches the grant
-mail's wording; the catalogue listing DeepSeek never implied the key
-could call it. No charge was made: refused calls return no usage and
-cost nothing (Baseten spend for the whole project remains $0).
+**Verdict (inferred from the measured facts above): the probe
+FAILED.** Three chat completions returned 403 while the catalogue
+read on the same key returned 200, so the grant key appears scoped
+to Muse Spark Open only — an inference from those measured facts,
+not a statement Baseten made directly. Spark is not used in
+MemoryLoom, so on that inference the key has no usable inference
+for this project. This matches the grant mail's wording; the
+catalogue listing DeepSeek never implied the key could call it.
+No charge was made: refused calls return no usage and cost
+nothing (Baseten spend for the whole project remains $0).
 
 Consequences, per the staging rules:
 
 - The DeepSeek triage lane is **not built**. Bulk triage stays on the
   Meta Wonder medium tier, its current owner. The router keeps
   Baseten as a closed provider whose reason string records the probe.
-- The Baseten budget ($100: 15 calibration / 60 triage / 25 reserve)
-  is **untouched**.
+- No Baseten spend has occurred, and none is planned while the
+  lane stays closed: no product path calls Baseten in this build.
 - What would reopen the lane: a Baseten key whose scope covers
-  DeepSeek (a workspace Settings key would spend the workspace's own
-  credit, not the grant — that trade-off is the owner's call), or a
-  grant reissue. If either happens, re-run the probe, record CLEARED
-  in `router/config.json` (`baseten_probe.verdict`), and the lane +
+  DeepSeek, or a grant reissue. If either happens, re-run the
+  probe, record CLEARED in `router/config.json`
+  (`baseten_probe.verdict`), and the lane +
   challenger harness below unlock.
 
 ## Decision challengers — DEFERRED, Jev stands alone
@@ -67,10 +70,11 @@ no per-decision price was measured.
 Standings: **all three challengers DEFERRED at leg 0** — the staging
 rule makes every challenger run conditional on the probe, and the
 probe failed. No leg was run: not the gate golden set (Jev baseline
-40/40, 0 unsafe, ~$0.0000164/decision), not the ProofDesk sample
-re-gate (Jev 14/15), not ContractNLI (Jev 0.8207 accuracy, 36 false
-approvals). **No decision class has a challenger. Jev is the decision
-layer for gate, consolidation, decay and promotion, unchanged.**
+40/40, 0 unsafe, ~$0.0000164/decision), not the 15-item decision
+sample re-gate (Jev 14/15), not the ContractNLI benchmark set (Jev
+0.8207 accuracy, 36 false approvals). **No decision class has a
+challenger. Jev is the decision layer for gate, consolidation,
+decay and promotion, unchanged.**
 
 What is built and waiting:
 
