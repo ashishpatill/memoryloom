@@ -18,6 +18,7 @@
  * CLI: DATABASE_URL=postgres://… node scripts/seed-web-demo.mjs [namespace]
  */
 import pg from 'pg';
+import { resolveDatabaseUrl } from '../lib/load-env.mjs';
 import { seedDemo, DEMO_NAMESPACE } from './seed-demo.mjs';
 import { decideGate } from '../lib/gate.mjs';
 import { correctInTurn, listEvents, promoteEvent, recordEvent } from '../lib/learning.mjs';
@@ -32,7 +33,7 @@ async function runDaemonOnce(pool, namespace) {
   console.log('daemon cycle:', JSON.stringify(run.emitted || run));
 }
 
-const url = process.env.DATABASE_URL;
+const url = resolveDatabaseUrl();
 if (!url) { console.error('DATABASE_URL missing'); process.exit(1); }
 const namespace = process.argv[2] || DEMO_NAMESPACE;
 const pool = new pg.Pool({ connectionString: url, max: 3 });

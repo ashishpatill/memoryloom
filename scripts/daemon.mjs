@@ -5,9 +5,10 @@
  * Usage: DATABASE_URL=postgres://... node scripts/daemon.mjs [namespace]
  */
 import pg from 'pg';
+import { resolveDatabaseUrl } from '../lib/load-env.mjs';
 import { runDaemonCycle } from '../lib/daemon.mjs';
 
-const url = process.env.DATABASE_URL;
+const url = resolveDatabaseUrl();
 if (!url) {
   console.error('DATABASE_URL missing');
   process.exit(1);

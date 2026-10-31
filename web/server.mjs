@@ -15,11 +15,12 @@ import { extname, join, normalize } from 'node:path';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { resolveDatabaseUrl } from '../lib/load-env.mjs';
 import { createHandler } from './api.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = join(__dir, 'public');
-const url = process.env.DATABASE_URL;
+const url = resolveDatabaseUrl();
 if (!url) {
   console.error('DATABASE_URL missing — the console reads the demo database. See README "Run the site + console".');
   process.exit(1);

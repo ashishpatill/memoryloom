@@ -14,6 +14,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { embedStaged } from '../lib/planes.mjs';
+import { resolveDatabaseUrl } from '../lib/load-env.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 export const DEMO_NAMESPACE = 'memoryloom-demo';
@@ -94,7 +95,7 @@ export async function seedDemo(pool, { namespace = DEMO_NAMESPACE } = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const url = process.env.DATABASE_URL;
+  const url = resolveDatabaseUrl();
   if (!url) {
     console.error('DATABASE_URL missing');
     process.exit(1);

@@ -3,16 +3,18 @@
  * schema/v1.sql, then schema/migrations/002..005. Idempotent enough for
  * a fresh database; run once per database.
  *
- * Usage: DATABASE_URL=postgres://... node scripts/init-db.mjs
+ * Usage: node scripts/init-db.mjs — DATABASE_URL from the environment
+ * or from .env.local (see lib/load-env.mjs).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { resolveDatabaseUrl } from '../lib/load-env.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const root = join(__dir, '..');
-const url = process.env.DATABASE_URL;
+const url = resolveDatabaseUrl();
 if (!url) {
   console.error('DATABASE_URL missing');
   process.exit(1);

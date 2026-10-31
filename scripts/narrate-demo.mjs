@@ -11,10 +11,11 @@
  * Usage: DATABASE_URL=postgres://… [MEMORYLOOM_ROUTER_MODE=live] node scripts/narrate-demo.mjs
  */
 import pg from 'pg';
+import { resolveDatabaseUrl } from '../lib/load-env.mjs';
 import { recallWithReceipts } from '../lib/planes.mjs';
 import { route } from '../router/router.mjs';
 
-const url = process.env.DATABASE_URL;
+const url = resolveDatabaseUrl();
 if (!url) { console.error('DATABASE_URL missing'); process.exit(1); }
 const namespace = process.env.WEB_NAMESPACE || 'memoryloom-demo';
 const query = 'which firmware does the bench unit run';
