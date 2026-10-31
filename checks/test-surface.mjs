@@ -180,7 +180,11 @@ const pAuto1 = await callTool('propose', { namespace: NS, text: 'episodic auto t
 assert(pAuto1.json.decision === 'auto_approved' && pAuto1.json.id, 'propose episodic → auto_approved');
 const pAuto2 = await callTool('propose', {
   namespace: NS, text: 'semantic with evidence auto test',
-  metadata: { type: 'semantic', grounding_ids: ['seed-x1', 'seed-x2'] },
+  // Honest citations only (5.3, Finding A): this test used to cite
+  // 'seed-x1'/'seed-x2' — ids that were never seeded — and passed
+  // only because the gate counted id strings. The seeded records
+  // below actually resolve in the store.
+  metadata: { type: 'semantic', grounding_ids: ['seed-s01', 'seed-s02'] },
 });
 assert(pAuto2.json.decision === 'auto_approved', 'propose semantic+2 grounding → auto_approved');
 const pQ1 = await callTool('propose', { namespace: NS, text: 'procedural queued test', metadata: { type: 'procedural' } });
