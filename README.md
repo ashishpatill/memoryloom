@@ -84,9 +84,40 @@ You need Node 22+ and a Postgres 16 database with the pgvector extension.
 ```bash
 cp .env.example .env.local   # set DATABASE_URL
 npm install
-npm run db:init              # schema v1 + migrations 002–005
+npm run db:init              # apply the schema and its migrations
 npm run mcp                  # stdio MCP server
 ```
+
+## Provider keys — Settings
+
+MemoryLoom runs locally with no provider keys at all: the demo
+corpus, recall, the graph and time travel all work on this machine.
+Hosted providers are configured the standard way, inside the app:
+
+1. Run the app and open the console (see *Site + console* below).
+2. Open **Settings**.
+3. Paste your own keys, one per provider, and use **Test
+   connection** to check each one before you rely on it:
+   - **Meta Model API** — a key from dev.meta.ai. Unlocks live
+     model calls: consolidation, narration and explanation on
+     `muse-wonder-1.0`.
+   - **Jev (TypeSafe)** — a TypeSafe API key. Unlocks the decision
+     gate: every approve / reject / escalate verdict.
+   - **Baseten** — a key from the Baseten workspace settings. The
+     key is stored and can be tested here; the Baseten lane itself
+     is currently parked (see *Status*), so no product path calls
+     it yet.
+
+**Security note.** Keys pasted into Settings are stored in
+`.env.local` in the app folder, on your own machine only, with
+file permissions 0600. They are never committed (`.env.local` is
+git-ignored), never shown back in full (Settings displays only
+the last four characters), and never written to any log. If you
+prefer, set a key's environment variable instead
+(`META_MODEL_API_KEY`, `BASETEN_API_KEY`, `TYPESAFE_API_KEY`) —
+an environment variable wins over the value in Settings. Settings
+can only be changed from the local app; a hosted deployment
+cannot change them.
 
 ## Site + console
 
@@ -99,7 +130,7 @@ DATABASE_URL=postgres://… npm run seed:web   # Project Lantern corpus + learni
 DATABASE_URL=postgres://… npm run web        # site at / · console at /console
 ```
 
-The console has six views, each designed in three states (loading,
+The console has seven views, each designed in three states (loading,
 empty, populated):
 
 - **Live loop** — the propose inbox with the gate's verdicts and
@@ -116,6 +147,9 @@ empty, populated):
   actually did work appear.
 - **Learning** — the learning-event stream, standing playbook lessons
   with their promotion provenance, and the before/after evidence.
+- **Settings** — one section per provider (Meta Model API, Baseten,
+  Jev): paste a key, test the connection, or remove the key. Only
+  the masked tail of a saved key is ever shown.
 
 Deploying: `vercel.json` + `api/index.mjs` make the repo a one-step
 Vercel import — set `DATABASE_URL` (and optionally `WEB_NAMESPACE`)
@@ -260,7 +294,7 @@ untouched (`docs/baseten-probe-and-challengers.md`). Fireworks and
 Modal have no role in this build.
 - The console UI and product site are built (Block 6): one buildless
   Node web app (`web/`) serving an animated product site whose hero
-  graph renders live from the seeded demo corpus, and the six-view
+  graph renders live from the seeded demo corpus, and the seven-view
   console described above. The site's scroll story — problem, live
   loop, two planes, forgetting and time travel, the learning layer,
   checked numbers — is diagram-led, and every figure is captioned
