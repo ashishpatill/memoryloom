@@ -149,7 +149,10 @@ if (!DATABASE_URL) {
   assert(jevFake.decision === 'queued_for_review', 'fabricated citations escalate through MCP propose (jev backend)', JSON.stringify(jevFake).slice(0, 160));
   const fakeStored = await pool.query(`SELECT count(*)::int n FROM memories WHERE namespace = $1 AND text LIKE 'The Lantern demo rig runs firmware%'`, [NS]);
   assert(fakeStored.rows[0].n === 0, 'fabricated-citation proposal is not in the truth store');
-  const prov = await pool.query(`SELECT provenance FROM proposals WHERE namespace = $1 AND route_reason = 'jev-escalate'`, [NS]);
+  // Scoped to the moon-base proposal: since 5.3 the fabricated-
+  // citation propose below is a second jev-escalate row in this
+  // namespace, so a bare count of escalate rows is no longer 1.
+  const prov = await pool.query(`SELECT provenance FROM proposals WHERE namespace = $1 AND route_reason = 'jev-escalate' AND text LIKE 'The moon base%'`, [NS]);
   assert(prov.rows.length === 1 && prov.rows[0].provenance.jev?.backend === 'jev', 'jev score persisted in proposal provenance');
 
   const [deadOut] = await runMcp({ MEMORYLOOM_GATE_BACKEND: 'jev', JEV_BASE_URL: 'https://api.typesafe.ai.invalid', JEV_TIMEOUT_MS: '8000' }, [
