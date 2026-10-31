@@ -104,6 +104,10 @@
 
   /* graph figure (tokens frame; svg voices) */
   .graph-svg { width: 100%; height: auto; display: block; }
+  /* Narrow widths (5.3, Finding E): the graph keeps a legible
+     minimum size and its frame scrolls sideways at 360px. */
+  figure.fig .fig-body { overflow-x: auto; }
+  #graphSvg { min-width: 680px; }
   .graph-svg .node-label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink); }
   .graph-svg .node-sub { font-family: var(--font-mono); font-size: 9px; fill: var(--ink-2); }
   .graph-svg .edge { fill: none; stroke-width: 1.4; }

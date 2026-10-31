@@ -78,22 +78,86 @@
         if (s && m) { s.x = m.x; s.y = H - 26; }
       }
     }
-    // Source labels alternate above/below the diamond when sources
-    // cluster (5.2 console capture: two source labels printed over
-    // each other at the foot of the graph). Same discipline as the
-    // knot labels below — layout only, no data moves.
-    const sources = [...nodes.values()].filter((n) => n.kind === 'source' && n.x !== undefined).sort((a, b) => a.x - b.x);
-    {
-      let prevX = -Infinity, side = 0;
-      for (const s of sources) {
-        side = s.x - prevX < 60 ? 1 - side : 0;
-        s.labelDy = side ? -14 : 16;
-        prevX = s.x;
+    // ---- Collision-aware label placement (Iteration 5.3, Finding E)
+    // Alternating labels above/below (the 5.2 discipline) is not
+    // enough in the October cluster: knots one day apart sit ~3
+    // units apart on the axis, so every second label on the same
+    // side printed over its neighbour (g1/g4/p1 garbled), and the
+    // source labels at the foot are each far wider than the gap
+    // between their diamonds. The rule now is a minimum separation,
+    // enforced geometrically: labels on the same side of the same
+    // thread (or foot level) are spread along the axis until no two
+    // label boxes touch, and a thin leader line ties a displaced
+    // label back to its knot's true position. The knots themselves
+    // never move — only labels do — except source diamonds, which
+    // carry no drawn edges and are spread to a 14-unit minimum so
+    // the diamonds themselves cannot overlap either.
+    const labelTextOf = (n) => {
+      if (n.kind === 'source') return n.id.length > 22 ? n.id.slice(0, 21) + '…' : n.id;
+      const short = n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson';
+      return short.length > 14 ? short.slice(0, 13) + '…' : short;
+    };
+    // 9px IBM Plex Mono advances ≈5.4 units per character; the
+    // estimate adds padding so measured boxes keep a real gap.
+    const halfWidth = (n) => (labelTextOf(n).length * 5.4) / 2 + 3;
+    function spread(items, { left = 92, right = W - 20, gap = 7 } = {}) {
+      items.sort((a, b) => a.x - b.x);
+      for (const it of items) { it.labelHalf = halfWidth(it); it.labelX = it.x; }
+      const forward = () => {
+        for (let i = 1; i < items.length; i++) {
+          const need = items[i - 1].labelX + items[i - 1].labelHalf + gap + items[i].labelHalf;
+          if (items[i].labelX < need) items[i].labelX = need;
+        }
+      };
+      forward();
+      const last = items[items.length - 1];
+      if (last && last.labelX + last.labelHalf > right) {
+        const shift = last.labelX + last.labelHalf - right;
+        for (const it of items) it.labelX -= shift;
+        forward(); // re-assert separation after the pull-back
+      }
+      const first = items[0];
+      if (first && first.labelX - first.labelHalf < left) {
+        const shift = left - (first.labelX - first.labelHalf);
+        for (const it of items) it.labelX += shift;
+        forward();
       }
     }
-    // Label placement: the corpus clusters in time, so knots that sit
-    // close together alternate their labels above and below the knot
-    // instead of printing over each other. Layout only — no data moves.
+    // Source diamonds first (they are positions, not labels), then
+    // source labels on up to four foot levels so a tight cluster
+    // stacks instead of colliding.
+    const sources = [...nodes.values()].filter((n) => n.kind === 'source' && n.x !== undefined).sort((a, b) => a.x - b.x);
+    {
+      let prev = null;
+      for (const s of sources) {
+        if (prev && s.x < prev.x + 14) s.x = prev.x + 14;
+        prev = s;
+      }
+      const lastS = sources[sources.length - 1];
+      if (lastS && lastS.x > W - 30) {
+        let overflow = lastS.x - (W - 30);
+        for (let i = sources.length - 1; i >= 0 && overflow > 0; i--) {
+          const room = i === 0 ? sources[0].x - 100 : sources[i].x - (sources[i - 1].x + 14);
+          const take = Math.min(room, overflow);
+          sources[i].x -= take; overflow -= take;
+        }
+      }
+      const LEVELS = [-14, 16, -32, 34];
+      let prevX = -Infinity, chain = 0;
+      for (const s of sources) {
+        chain = s.x - prevX < 90 ? chain + 1 : 0;
+        s.labelDy = LEVELS[chain % LEVELS.length];
+        prevX = s.x;
+      }
+      const byLevel = new Map();
+      for (const s of sources) {
+        if (!byLevel.has(s.labelDy)) byLevel.set(s.labelDy, []);
+        byLevel.get(s.labelDy).push(s);
+      }
+      for (const group of byLevel.values()) spread(group);
+    }
+    // Knot labels: alternate sides as before, then spread each
+    // (thread, side) group to the minimum separation.
     const byAuthor = new Map();
     for (const n of nodes.values()) {
       if (n.kind !== 'memory' && n.kind !== 'proposal') continue;
@@ -107,6 +171,10 @@
         side = n.x - prevX < 34 ? 1 - side : 0;
         n.labelDy = side ? 24 : -13;
         prevX = n.x;
+      }
+      for (const dy of [-13, 24]) {
+        const sameSide = group.filter((n) => n.labelDy === dy);
+        if (sameSide.length) spread(sameSide);
       }
     }
     return { nodes, tMin, tMax, xFor };
@@ -179,7 +247,11 @@
         lbl.textContent = label;
       } else if (n.kind === 'source') {
         el('rect', { x: n.x - 5, y: n.y - 5, width: 10, height: 10, fill: SURFACE, stroke: INK, transform: `rotate(45 ${n.x} ${n.y})` }, g);
-        const lbl = el('text', { x: n.x, y: n.y + (n.labelDy ?? 16), 'text-anchor': 'middle', class: 'node-sub' }, g);
+        const lx = n.labelX ?? n.x, ly = n.y + (n.labelDy ?? 16);
+        if (Math.abs(lx - n.x) > 3) {
+          el('line', { x1: n.x, y1: n.y + ((n.labelDy ?? 16) < 0 ? -6 : 6), x2: lx, y2: ly + ((n.labelDy ?? 16) < 0 ? 4 : -10), stroke: INK2, 'stroke-width': 0.8, opacity: 0.55 }, g);
+        }
+        const lbl = el('text', { x: lx, y: ly, 'text-anchor': 'middle', class: 'node-sub' }, g);
         lbl.textContent = n.id.length > 22 ? n.id.slice(0, 21) + '…' : n.id;
       } else {
         const superseded = n.valid_to && new Date(n.valid_to).getTime() <= tMax;
@@ -189,7 +261,11 @@
           el('circle', { cx: n.x, cy: n.y, r: 7.5, fill: INK, 'fill-opacity': superseded ? 0.35 : 0.92, stroke: INK, 'stroke-width': 1 }, g);
           if (superseded) el('line', { x1: n.x - 6, y1: n.y + 6, x2: n.x + 6, y2: n.y - 6, stroke: INK, 'stroke-width': 1.6 }, g);
         }
-        const lbl = el('text', { x: n.x, y: n.y + (n.labelDy ?? -13), 'text-anchor': 'middle', class: 'node-sub' }, g);
+        const lx = n.labelX ?? n.x, ldy = n.labelDy ?? -13;
+        if (Math.abs(lx - n.x) > 3) {
+          el('line', { x1: n.x, y1: n.y + (ldy < 0 ? -8 : 8), x2: lx, y2: n.y + ldy + (ldy < 0 ? 4 : -10), stroke: INK2, 'stroke-width': 0.8, opacity: 0.55 }, g);
+        }
+        const lbl = el('text', { x: lx, y: n.y + ldy, 'text-anchor': 'middle', class: 'node-sub' }, g);
         const short = n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson';
         lbl.textContent = short.length > 14 ? short.slice(0, 13) + '…' : short;
       }
@@ -220,23 +296,48 @@
     }
     if (!animated) { setTime(tMax); return { setTime, toggle: () => true, settle() { setTime(tMax); }, stop() {} }; }
 
+    // The sweep plays ONCE and settles (Iteration 5.3, Finding J4):
+    // the tokens' motion law is "nothing loops for decoration", and
+    // the old modulo loop swept the corpus forever. One pass over
+    // the timeline, a hold at the end, then the settled figure —
+    // the end state is the truth, fully drawn. The caller's toggle
+    // still pauses/resumes mid-sweep, and after the settle it
+    // replays the sweep from the start (opts.onFinish lets the
+    // caller relabel the control "Replay").
     let start = performance.now();
     const SPAN = 15000, HOLD = 2600;
-    let raf = 0, paused = false;
+    let raf = 0, paused = false, finished = false, running = false, pausedElapsed = 0;
     function frame(now) {
-      if (!paused) {
-        const elapsed = (now - start) % (SPAN + HOLD);
+      if (!paused && !finished) {
+        const elapsed = now - start;
+        if (elapsed >= SPAN + HOLD) {
+          finished = true; paused = true; running = false;
+          setTime(tMax);
+          if (opts.onFinish) opts.onFinish();
+          return; // settled: no further frames are scheduled
+        }
         const t = elapsed >= SPAN ? tMax : tMin + (elapsed / SPAN) * (tMax - tMin);
         setTime(t);
       }
       raf = requestAnimationFrame(frame);
     }
-    raf = requestAnimationFrame(frame);
+    raf = requestAnimationFrame(frame); running = true;
     return {
       setTime,
-      toggle() { paused = !paused; if (!paused) start = performance.now(); return paused; },
-      settle() { paused = true; setTime(tMax); },
-      stop() { cancelAnimationFrame(raf); },
+      toggle() {
+        if (finished) {
+          finished = false; paused = false;
+          start = performance.now();
+          if (!running) { raf = requestAnimationFrame(frame); running = true; }
+          return paused;
+        }
+        paused = !paused;
+        if (paused) pausedElapsed = performance.now() - start;
+        else start = performance.now() - pausedElapsed;
+        return paused;
+      },
+      settle() { finished = true; paused = true; running = false; cancelAnimationFrame(raf); setTime(tMax); },
+      stop() { running = false; cancelAnimationFrame(raf); },
     };
   }
 

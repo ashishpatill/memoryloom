@@ -31,8 +31,21 @@
     .then((r) => { if (!r.ok) throw new Error('api ' + r.status); return r.json(); })
     .then((graph) => {
       const mem = graph.nodes.filter((n) => n.kind === 'memory' || n.kind === 'proposal').length;
+      if (!mem) {
+        // Honest empty state (Iteration 5.3, Finding I): an unseeded
+        // store is not "0 records · live" over a blank figure — it
+        // gets the designed empty state, in the landing's voice, the
+        // way the console graph already had one.
+        state.textContent = 'no records yet';
+        if (toggleBtn) toggleBtn.disabled = true;
+        svg.outerHTML = '<div class="empty-state" style="margin:6px"><h3>The weave is empty</h3><p>This store holds no records yet, so there is nothing to weave. Seed the demo corpus (<code class="inline">npm run seed:web</code>) and this figure draws the corpus live — threads, knots and all. Nothing here is a canned picture — that is rather the point.</p></div>';
+        return;
+      }
       state.textContent = mem + ' records · live';
-      const ctl = MemoryLoomGraph.renderGraph(svg, graph, { animated: !reduced });
+      const ctl = MemoryLoomGraph.renderGraph(svg, graph, {
+        animated: !reduced,
+        onFinish: () => { if (toggleBtn) toggleBtn.textContent = 'Replay'; },
+      });
       window.__weaveCtl = ctl;
       if (toggleBtn) toggleBtn.addEventListener('click', () => { toggleBtn.textContent = ctl.toggle() ? 'Play' : 'Pause'; });
     })
