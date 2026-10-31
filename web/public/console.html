@@ -85,7 +85,24 @@
     background: var(--surface); color: var(--ink); font-family: var(--font-text); font-size: 0.95rem;
   }
   textarea { min-height: 64px; }
-  input[type="range"] { width: 100%; accent-color: var(--ink); }
+  /* Time-travel slider, styled within the tokens (5.3, Finding
+     J3): an ink track and a square ink thumb — the UA internals
+     were the one unstyled element left in the console. */
+  input[type="range"] {
+    width: 100%; appearance: none; -webkit-appearance: none; background: transparent;
+    height: 24px; margin: var(--space-2) 0; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; margin-top: -7px;
+    background: var(--ink); border: 2px solid var(--paper); border-radius: var(--radius);
+  }
+  input[type="range"]::-moz-range-track { height: 2px; background: var(--ink); }
+  input[type="range"]::-moz-range-thumb {
+    width: 12px; height: 12px; background: var(--ink);
+    border: 2px solid var(--paper); border-radius: var(--radius);
+  }
+  input[type="range"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   .toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: end; margin-bottom: var(--space-4); }
   .toolbar > div { flex: 1; min-width: 180px; }
   .toolbar .btn { flex: none; }

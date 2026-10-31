@@ -106,7 +106,33 @@
             evidence = 'corrected directive — ' + esc(e.evidence?.correction || '');
           } else if (e.kind === 'eval_outcome') {
             kind = 'Lesson proposed';
-            evidence = 'verified against the recorded verdicts — 0 citations escalated, 2 citations approved';
+            // Derived, not hardcoded (Iteration 5.3, Finding H):
+            // pair each recorded proposal for this task with the
+            // gate verdict that followed it and count the verdicts
+            // by how many records the claim cited. The old line was
+            // a literal string that omitted the 1-citation
+            // escalation — on a figure captioned "every line is an
+            // event or a verdict read live from the store".
+            const tally = new Map();
+            let cited = null;
+            for (const ev of events) {
+              if (ev.subject_id !== 'lodge-global-claim') continue;
+              if (ev.kind === 'proposal') cited = (ev.evidence?.grounding_ids || []).length;
+              else if (ev.kind === 'gate_verdict' && cited !== null) {
+                const dec = ev.evidence?.decision?.decision || 'recorded';
+                const key = cited + '|' + dec;
+                tally.set(key, (tally.get(key) || 0) + 1);
+                cited = null;
+              }
+            }
+            const parts = [...tally.entries()]
+              .sort((a, b) => Number(a[0].split('|')[0]) - Number(b[0].split('|')[0]))
+              .map(([key, n]) => {
+                const [g, dec] = key.split('|');
+                const word = dec === 'approve' ? 'approved' : dec === 'escalate' ? 'escalated' : dec;
+                return g + ' citation' + (g === '1' ? '' : 's') + ' ' + word + (n > 1 ? ' ×' + n : '');
+              });
+            evidence = 'verified against the recorded verdicts — ' + (parts.length ? parts.join(' · ') : 'no verdicts recorded for this task');
           } else if (e.kind === 'promotion_decision') {
             kind = 'Gate decides the lesson';
             const d = e.evidence?.decision;
@@ -153,10 +179,14 @@
   }
 
   /* ---- Reveal on scroll, once ------------------------------------ */
+  // Progressive (5.3, Finding J5): figures are visible by default;
+  // only this running script arms the hidden start, so a script
+  // failure can never leave a figure invisible.
   const revealEls = document.querySelectorAll('.reveal');
   if (revealEls.length) {
     if (!('IntersectionObserver' in window) || reduced) revealEls.forEach((n) => n.classList.add('seen'));
     else {
+      revealEls.forEach((n) => n.classList.add('armed'));
       const io = new IntersectionObserver((entries) => {
         entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); io.unobserve(e.target); } });
       }, { threshold: 0.15 });

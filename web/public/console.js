@@ -53,6 +53,41 @@
     // Agents carry no hue in v2: the name is the badge.
     return a ? `<span class="badge">${esc(a)}</span>` : '';
   }
+  /* Plain words for machine vocabulary (Iteration 5.3, Finding J):
+     event kinds, daemon kinds and gate route reasons are stored as
+     snake_case / machine strings; the console renders what they
+     mean. The grounding glosses use resolved-records semantics
+     (Finding A): a citation counts only when it resolves in the
+     store. */
+  const KIND_PLAIN = {
+    proposal: 'proposal', gate_verdict: 'gate verdict',
+    human_approval: 'human approval', human_rejection: 'human rejection', human_correction: 'human correction',
+    recall_hit: 'recall hit', recall_miss: 'recall miss', eval_outcome: 'eval outcome',
+    in_turn_correction: 'in-turn correction', promotion_decision: 'promotion decision', lesson_applied: 'lesson applied',
+  };
+  const kindPlain = (k) => KIND_PLAIN[k] || String(k || '').replace(/_/g, ' ');
+  const DAEMON_KIND_PLAIN = {
+    import_contradiction: 'imported contradiction',
+    contradiction_flag: 'contradiction flagged',
+    consolidation_candidate: 'consolidation candidate',
+    decay_candidate: 'decay candidate',
+    resolution: 'daemon proposal',
+  };
+  function daemonBadge(item) {
+    const p = item.payload || {};
+    const key = p.daemon_kind || item.kind || '';
+    return DAEMON_KIND_PLAIN[key] || kindPlain(key);
+  }
+  const ROUTE_PLAIN = {
+    'grounding_ids>=2': 'grounding rule — at least two cited records resolved in the store',
+    'low-evidence': 'low evidence — fewer than two cited records resolved in the store',
+    'procedural-human-always': 'procedural — always decided by a human',
+    'pinned-human-always': 'pinned — always decided by a human',
+    'jev-escalate': 'the gate escalated this to a human',
+    'jev-unavailable-fail-closed': 'the gate was unavailable — failed closed to a human',
+    'episodic-or-node_local': 'episodic or node-local — approved by rule',
+  };
+  const routePlain = (r) => ROUTE_PLAIN[r] || kindPlain(r || '—');
   function jevDetail(jev) {
     if (!jev) return '';
     const bits = [];
@@ -134,7 +169,7 @@
       <div id="decidedList">${decided.length ? '' : '<div class="empty-state"><h3>No decisions yet</h3><p>Decided proposals will appear here with who decided them and why.</p></div>'}</div>
       ${props.daemon_review_items.length ? `<h3 style="margin-top:22px">Daemon proposals (${props.daemon_review_items.length})</h3>
         <p class="small">The background daemon may only propose. These items wait for the same human decision as everything else.</p>
-        <div>${props.daemon_review_items.map((i) => `<div class="row-item"><div class="meta"><span class="badge">${esc(i.kind || 'daemon')}</span><span class="small">${fmtTs(i.created_at)}</span></div><div class="text">${esc(daemonSummary(i))}</div></div>`).join('')}</div>` : ''}
+        <div>${props.daemon_review_items.map((i) => `<div class="row-item"><div class="meta"><span class="badge">${esc(daemonBadge(i))}</span><span class="small">${fmtTs(i.created_at)}</span></div><div class="text">${esc(daemonSummary(i))}</div></div>`).join('')}</div>` : ''}
     `;
     const pendingList = document.getElementById('pendingList');
     for (const p of pending) pendingList.appendChild(proposalRow(p, true));
@@ -169,7 +204,7 @@
     const prov = p.provenance || {};
     div.innerHTML = `
       <div class="meta">${agentBadge(prov.author)}<span class="badge">${esc(p.type)}</span>${verdictBadge(p.status === 'pending' ? 'pending' : p.status)}
-        <span class="small">${fmtTs(p.created_at)} · route: ${esc(p.route_reason || '—')}</span></div>
+        <span class="small">${fmtTs(p.created_at)} · route: ${esc(routePlain(p.route_reason))}</span></div>
       <div class="text">${esc(p.text)}</div>
       ${p.grounding_ids?.length ? `<div class="detail">cites: ${p.grounding_ids.map((g) => `<code class="inline">${esc(g)}</code>`).join(' ')}</div>` : '<div class="detail">cites: nothing</div>'}
       ${jevDetail(prov.jev)}
@@ -330,7 +365,7 @@
           <div class="text">${esc(trail.memory.text)}</div>
           ${trail.sources?.length ? `<div class="detail">cited sources: ${trail.sources.map((s) => `<code class="inline">${esc(s)}</code>`).join(' ')}</div>` : ''}</div>
           ${trail.grounding?.length ? `<h3 style="margin-top:14px">It rests on (${trail.grounding.length})</h3>` + trail.grounding.map((g) => `<div class="row-item"><div class="meta">${agentBadge(g.author)}<code class="inline">${esc(g.id)}</code></div><div class="text">${esc(g.text)}</div></div>`).join('') : ''}
-          ${trail.decisions?.length ? `<h3 style="margin-top:14px">Decisions on its path (${trail.decisions.length})</h3>` + trail.decisions.map((d) => `<div class="row-item"><div class="meta"><span class="badge">${esc(d.kind)}</span><span class="small">${esc(d.status || '')} ${d.decided_by ? '· by ' + esc(d.decided_by) : ''} ${d.route_reason ? '· ' + esc(d.route_reason) : ''}</span></div>${d.proposal_id ? `<div class="detail">proposal <code class="inline">${esc(d.proposal_id)}</code></div>` : ''}${jevDetail(d.kind === 'consolidation' ? d : null)}</div>`).join('') : ''}
+          ${trail.decisions?.length ? `<h3 style="margin-top:14px">Decisions on its path (${trail.decisions.length})</h3>` + trail.decisions.map((d) => `<div class="row-item"><div class="meta"><span class="badge">${esc(kindPlain(d.kind))}</span><span class="small">${esc(d.status || '')} ${d.decided_by ? '· by ' + esc(d.decided_by) : ''} ${d.route_reason ? '· ' + esc(routePlain(d.route_reason)) : ''}</span></div>${d.proposal_id ? `<div class="detail">proposal <code class="inline">${esc(d.proposal_id)}</code></div>` : ''}${jevDetail(d.kind === 'consolidation' ? d : null)}</div>`).join('') : ''}
           ${trail.superseded_by ? `<div class="detail" style="margin-top:10px">Superseded by <code class="inline">${esc(trail.superseded_by.id)}</code> — ${esc(trail.superseded_by.text)}</div>` : ''}
           <h3 style="margin-top:16px">Supersession chain</h3>
           ${chainRows.length > 1 ? `<div class="timeline-strip">${chainRows.map((c, i) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step"><b>${esc(c.id)}</b><br>${esc(c.text || '')}<br><span class="small">${fmtDate(c.valid_from)}${c.valid_to ? ' → ' + fmtDate(c.valid_to) : ' → held now'}</span></div>`).join('')}</div>` : '<p class="small">This belief has never been superseded.</p>'}
@@ -442,15 +477,20 @@
       : '<div class="empty-state"><h3>No lessons standing</h3><p>No event has been promoted yet. Promotion is the gate&rsquo;s decision, not a button here.</p></div>'}
       <h3 style="margin-top:22px">Event stream (${L.events.length})</h3>
       <div class="toolbar"><div><label class="f" for="kindFilter">Filter by kind</label>
-        <select id="kindFilter"><option value="">all kinds</option>${kinds.map((k) => `<option>${esc(k)}</option>`).join('')}</select></div></div>
+        <select id="kindFilter"><option value="">all kinds</option>${kinds.map((k) => `<option value="${esc(k)}">${esc(kindPlain(k))}</option>`).join('')}</select></div></div>
       <div id="eventList"></div>
     `;
     const render = (kind) => {
       const rows = L.events.filter((e) => !kind || e.kind === kind);
       document.getElementById('eventList').innerHTML = rows.length ? rows.map((e) => `
-        <div class="row-item"><div class="meta"><span class="badge">${esc(e.kind)}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(e.subject_type || '') + ' ' + esc(e.subject_id) : ''}</span></div>
+        <div class="row-item"><div class="meta"><span class="badge">${esc(kindPlain(e.kind))}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(e.subject_type || '') + ' ' + esc(e.subject_id) : ''}</span></div>
         <div class="text">${esc(e.summary)}</div></div>`).join('')
-        : '<div class="empty-state"><h3>No events of this kind</h3><p>The stream holds other kinds. An honest filter shows an empty set rather than padding it.</p></div>';
+        // Two different empty sets, two different truths (5.3,
+        // Finding G): an empty STREAM holds no kinds at all, while
+        // a filtered-empty set on a live stream does.
+        : L.events.length === 0
+          ? '<div class="empty-state"><h3>No events recorded yet</h3><p>The stream is empty — nothing has been logged in this namespace yet. Seed the demo corpus (<code class="inline">npm run seed:web</code>) or use the app, and every interaction will be recorded here.</p></div>'
+          : '<div class="empty-state"><h3>No events of this kind</h3><p>The stream holds other kinds. An honest filter shows an empty set rather than padding it.</p></div>';
     };
     render('');
     document.getElementById('kindFilter').addEventListener('change', (e) => render(e.target.value));

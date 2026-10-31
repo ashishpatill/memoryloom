@@ -83,7 +83,21 @@ try {
   assert(!consoleJs.text.includes('woven'), 'console graph figure has no woven texture class (v1 law debt closed)');
   assert(!consoleJs.text.includes('JSON.stringify(i.payload'), 'daemon review items never dump a raw JSON payload');
   assert(consoleJs.text.includes('There is no past to travel to yet') && consoleJs.text.includes('The graph is empty'), 'console has designed empty states for the empty graph and empty time travel');
+  // Iteration 5.3 minors (Findings G, H, J): plain-word badges and
+  // route glosses, the empty-stream learning state, the derived
+  // Fig. 3 evidence line, the styled slider, progressive reveal.
+  assert(consoleJs.text.includes('No events recorded yet') && consoleJs.text.includes('The stream is empty'), 'learning view: an empty stream gets its own true empty state (5.3, Finding G)');
+  assert(consoleJs.text.includes("'gate verdict'") && consoleJs.text.includes("'in-turn correction'") && consoleJs.text.includes("'eval outcome'"), 'learning view: event-kind badges render in plain words, not snake_case (5.3, Finding J1)');
+  assert(consoleJs.text.includes('imported contradiction') && consoleJs.text.includes('at least two cited records resolved'), 'console: daemon kinds and gate route reasons render with plain-word glosses (5.3, Finding J2)');
+  const consoleHtml = await getText('/console.html');
+  assert(consoleHtml.text.includes('::-webkit-slider-thumb') && consoleHtml.text.includes('::-moz-range-thumb'), 'time-travel slider is styled within the tokens, track and thumb (5.3, Finding J3)');
+  const landingJs = await getText('/landing.js');
+  assert(!landingJs.text.includes('0 citations escalated, 2 citations approved') && landingJs.text.includes('tally'), 'landing Fig. 3 evidence line is derived from the recorded verdicts, not hardcoded (5.3, Finding H)');
+  assert(landingJs.text.includes('The weave is empty'), 'landing hero has an honest empty-corpus state (5.3, Finding I)');
+  const tokensCss = await getText('/tokens.css');
+  assert(tokensCss.text.includes('.reveal.armed') && !tokensCss.text.includes('.reveal { opacity: 0'), 'reveal is progressive: figures are visible by default, JS arms the hidden start (5.3, Finding J5)');
   const graphJs = await getText('/graph.js');
+  assert(!graphJs.text.includes('% (SPAN + HOLD)') && graphJs.text.includes('onFinish'), 'graph sweep plays once and settles — no modulo loop (5.3, Finding J4)');
   assert(graphJs.text.includes('MemoryLoomGraph') && graphJs.text.includes('memoryloom-learning'), 'shared graph renderer knows the third author thread (the learning promotion)');
   assert(!/#2f5d50|#a97b12|#a62b1f/i.test(graphJs.text), 'shared graph renderer carries no v1 hues (pine, gold, bad-red all retired)');
 

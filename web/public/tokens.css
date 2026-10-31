@@ -225,10 +225,16 @@ footer.site-foot { border-top: var(--rule-ink); margin-top: var(--space-8); padd
 footer.site-foot p { color: var(--ink-2); font-size: var(--text-sm); }
 
 /* ---- Motion discipline ---- */
-.reveal { opacity: 0; transform: translateY(8px); }
-.reveal.seen { opacity: 1; transform: none; transition: opacity var(--motion-slow) var(--ease), transform var(--motion-slow) var(--ease); }
+/* Reveal is progressive (Iteration 5.3, Finding J5): content is
+   visible by default. JavaScript that is actually running adds
+   .armed (the hidden start) and then .seen as each figure enters
+   view; if the script fails or never runs, no figure is ever
+   hidden. The old rule started every .reveal at opacity 0, so one
+   script failure blanked three figures. */
+.reveal.armed { opacity: 0; transform: translateY(8px); }
+.reveal.armed.seen { opacity: 1; transform: none; transition: opacity var(--motion-slow) var(--ease), transform var(--motion-slow) var(--ease); }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-  .reveal { opacity: 1; transform: none; }
+  .reveal, .reveal.armed { opacity: 1; transform: none; }
 }
