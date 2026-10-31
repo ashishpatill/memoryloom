@@ -31,7 +31,8 @@
     "seed:web": "node scripts/seed-web-demo.mjs",
     "rehearse": "node checks/rehearse.mjs",
     "build:web": "node scripts/build-web.mjs",
-    "check:web": "node checks/web.mjs"
+    "check:web": "node checks/web.mjs",
+    "check:settings": "node checks/settings.mjs"
   },
   "type": "module",
   "version": "0.1.0"
