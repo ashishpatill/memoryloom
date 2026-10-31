@@ -37,6 +37,9 @@
   @media (max-width: 700px) { .asked { grid-template-columns: 1fr; } }
   .asked .card p { margin: 0; }
   .asked .when { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2); display: block; margin-bottom: var(--space-2); }
+  .site-head nav { flex-wrap: wrap; row-gap: var(--space-2); }
+  @media (max-width: 700px) { .site-head nav { gap: var(--space-2) var(--space-4); } .site-head nav a { white-space: nowrap; } }
+  table.data td.wrap-num { font-family: var(--font-mono); white-space: normal; }
   .empty-state { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-5); text-align: center; color: var(--ink-2); background: var(--surface); }
   .empty-state h3 { color: var(--ink); }
 </style>
@@ -70,7 +73,7 @@
         <svg id="heroGraph" class="graph-svg" role="img" aria-label="Animated graph of the demo corpus: two agents weaving memories over time"></svg>
         <div class="graph-ctl">
           <button class="btn small-btn" id="heroToggle" type="button">Pause</button>
-          <span class="small">Each thread is one agent &mdash; grok on the upper thread, moose on the lower, told apart by position and label. A knot is a memory, placed at the moment it was recorded; hollow knots are proposals still waiting for a decision, crossed knots have been superseded. The rust line is the playhead: it sweeps the corpus timeline, and it is the one use of the accent on this page, because it marks the moment a memory moved.</span>
+          <span class="small">Each thread is one author &mdash; grok on the upper thread, moose on the middle thread, and the standing lesson on the lower thread, recorded under the learning promotion&rsquo;s name and labelled &ldquo;learning&rdquo;. Threads are told apart by position and label. A knot is a memory, placed at the moment it was recorded; hollow knots are proposals still waiting for a decision, crossed knots have been superseded. The rust line is the playhead: it sweeps the corpus timeline, and it is the one use of the accent on this page, because it marks the moment a memory moved.</span>
         </div>
       </div>
       <figcaption><b>Proves:</b> the graph on this page is rendered from the same records the console queries &mdash; dates, authors, grounding and supersession all come from the store. <b>Does not prove:</b> anything about scale; this corpus is small by design.</figcaption>
@@ -124,12 +127,12 @@
               <rect x="410" y="52" width="102" height="44" rx="4" fill="#fdfbf6" stroke="#1d1a15"/>
               <text x="461" y="70" text-anchor="middle">recall</text>
               <text x="461" y="88" text-anchor="middle" fill="#5f584a" font-size="10">with receipt</text>
-              <path d="M186,104 L186,150" stroke="#1d1a15" fill="none" marker-end="url(#arr)"/>
-              <rect x="122" y="154" width="128" height="44" rx="4" fill="#fdfbf6" stroke="#1d1a15"/>
-              <text x="186" y="172" text-anchor="middle">escalated</text>
-              <text x="186" y="190" text-anchor="middle" fill="#5f584a" font-size="10">a human decides</text>
-              <path d="M461,96 C420,190 160,232 60,100" stroke="#5f584a" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)"/>
-              <text x="300" y="252" text-anchor="middle" fill="#5f584a" font-size="10">the agent acts on evidence</text>
+              <path d="M186,104 L186,152" stroke="#1d1a15" fill="none" marker-end="url(#arr)"/>
+              <rect x="122" y="156" width="128" height="48" rx="4" fill="#fdfbf6" stroke="#1d1a15"/>
+              <text x="186" y="178" text-anchor="middle">escalated</text>
+              <text x="186" y="196" text-anchor="middle" fill="#5f584a" font-size="10">a human decides</text>
+              <path d="M461,96 C420,205 160,238 60,100" stroke="#5f584a" fill="none" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+              <text x="300" y="258" text-anchor="middle" fill="#5f584a" font-size="10">the agent acts on evidence</text>
             </g>
           </svg>
         </div>
@@ -218,7 +221,7 @@
           <tr><td>Write-gate calibration &mdash; a fixed golden set of 40 synthetic proposals scored through the production gate path</td><td class="num">40 / 40<br>0 unsafe approvals</td><td class="small"><span class="mono">docs/calibration-jev-gate.md</span> (run 30 Oct 2026, jev-1.13.0). Thresholds went live only after this passed.</td><td>That unseen proposal classes are safe &mdash; escalation exists for those.</td></tr>
           <tr><td>Core-reasoning calibration &mdash; 36 synthetic items: consolidation, recall narration, contradiction explanation</td><td class="num">36 / 36<br>both tiers</td><td class="small"><span class="mono">docs/calibration-meta-core-reasoning.md</span> (Wonder Full and Wonder, muse-wonder-1.0).</td><td>Anything about public benchmarks &mdash; this is a private golden set.</td></tr>
           <tr><td>Recall evaluation, LongMemEval-style &mdash; 42 questions over a 120-memory haystack (Project Kestrel, six dated sessions)</td><td class="num">recall@5 27/29 (93%)<br>recall@10 29/29 (100%)</td><td class="small"><span class="mono">docs/eval-longmem.md</span>, harness <span class="mono">checks/eval-longmem.mjs</span>, scored deterministically, no model judge.</td><td>Recall quality at scale. The weak spots are measured, not hidden: knowledge-update 6/10, abstention 3/8 &mdash; both are explained in the source.</td></tr>
-          <tr><td>Check suites, run fresh on new databases</td><td class="num" id="suiteCounts">surface 34/34 &middot; router 11/11 &middot; gate 15/15 &middot; two-plane 22/22 &middot; graph+daemon 44/44 &middot; learning 36/36 &middot; learning demo 8/8 &middot; settings 46/46 &middot; web 55/55</td><td class="small">The suites under <span class="mono">checks/</span> in this repository, re-run for this page&rsquo;s build; the iteration report carries the fresh counts.</td><td>Behaviour under production load.</td></tr>
+          <tr><td>Check suites, run fresh on new databases</td><td class="wrap-num" id="suiteCounts">surface 34/34 &middot; router 11/11 &middot; gate 15/15 &middot; two-plane 22/22 &middot; graph+daemon 44/44 &middot; learning 36/36 &middot; learning demo 8/8 &middot; settings 46/46 &middot; web 55/55</td><td class="small">The suites under <span class="mono">checks/</span> in this repository, re-run for this page&rsquo;s build; the iteration report carries the fresh counts.</td><td>Behaviour under production load.</td></tr>
           <tr><td>Spend to date, all providers</td><td class="num" id="spendLive">reading the spend log&hellip;</td><td class="small"><span class="mono">router/spend-log.jsonl</span>, read live through the console&rsquo;s spend view. At build time: Meta $0.3752, Jev $0.0013. Baseten, Fireworks, Modal: $0.</td><td>&mdash;</td></tr>
         </tbody>
       </table>

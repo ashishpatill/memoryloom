@@ -19,7 +19,8 @@
   const INK = '#1d1a15';
   const INK2 = '#5f584a';
   const SURFACE = '#fdfbf6';
-  const AGENT_Y = { grok: 74, moose: 196 };
+  const AGENT_Y = { grok: 70, moose: 182, 'memoryloom-learning': 262 };
+  const AGENT_LABEL = { grok: 'grok', moose: 'moose', 'memoryloom-learning': 'learning' };
 
   function el(name, attrs, parent) {
     const n = document.createElementNS(NS, name);
@@ -53,7 +54,7 @@
       else if (n.kind === 'memory' || n.kind === 'proposal') {
         const a = authorOf.get(n.node_id);
         n.x = xFor(tOf(n));
-        n.y = (AGENT_Y[a] ?? 130) + hashJitter(n.id, 30);
+        n.y = (AGENT_Y[a] ?? 130) + hashJitter(n.id, 52);
         n.author = a || null;
       }
     }
@@ -63,11 +64,29 @@
         if (s && m) { s.x = m.x; s.y = H - 26; }
       }
     }
+    // Label placement: the corpus clusters in time, so knots that sit
+    // close together alternate their labels above and below the knot
+    // instead of printing over each other. Layout only — no data moves.
+    const byAuthor = new Map();
+    for (const n of nodes.values()) {
+      if (n.kind !== 'memory' && n.kind !== 'proposal') continue;
+      if (!byAuthor.has(n.author)) byAuthor.set(n.author, []);
+      byAuthor.get(n.author).push(n);
+    }
+    for (const group of byAuthor.values()) {
+      group.sort((a, b) => a.x - b.x);
+      let prevX = -Infinity, side = 0;
+      for (const n of group) {
+        side = n.x - prevX < 34 ? 1 - side : 0;
+        n.labelDy = side ? 24 : -13;
+        prevX = n.x;
+      }
+    }
     return { nodes, tMin, tMax, xFor };
   }
 
   function renderWeave(svg, graph, { animated }) {
-    const W = 720, H = 300;
+    const W = 720, H = 330;
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = '';
     const { nodes, tMin, tMax, xFor } = layout(graph, W, H);
@@ -108,11 +127,12 @@
       if (!shown.has(n.kind) || n.x === undefined) continue;
       const g = el('g', {}, nodeG);
       if (n.kind === 'agent') {
+        const label = AGENT_LABEL[n.id] || n.id;
         el('circle', { cx: n.x, cy: n.y, r: 17, fill: SURFACE, stroke: INK, 'stroke-width': 1.5 }, g);
         const t = el('text', { x: n.x, y: n.y + 4, 'text-anchor': 'middle', fill: INK, 'font-size': 11, 'font-weight': 700 }, g);
-        t.textContent = n.id[0].toUpperCase();
+        t.textContent = label[0].toUpperCase();
         const lbl = el('text', { x: n.x, y: n.y + 32, 'text-anchor': 'middle', class: 'node-label' }, g);
-        lbl.textContent = n.id;
+        lbl.textContent = label;
       } else if (n.kind === 'source') {
         el('rect', { x: n.x - 5, y: n.y - 5, width: 10, height: 10, fill: SURFACE, stroke: INK, transform: `rotate(45 ${n.x} ${n.y})` }, g);
         const lbl = el('text', { x: n.x, y: n.y + 16, 'text-anchor': 'middle', class: 'node-sub' }, g);
@@ -125,8 +145,9 @@
           el('circle', { cx: n.x, cy: n.y, r: 7.5, fill: INK, 'fill-opacity': superseded ? 0.35 : 0.92, stroke: INK, 'stroke-width': 1 }, g);
           if (superseded) el('line', { x1: n.x - 6, y1: n.y + 6, x2: n.x + 6, y2: n.y - 6, stroke: INK, 'stroke-width': 1.6 }, g);
         }
-        const lbl = el('text', { x: n.x, y: n.y - 13, 'text-anchor': 'middle', class: 'node-sub' }, g);
-        lbl.textContent = n.id.replace('demo-', '');
+        const lbl = el('text', { x: n.x, y: n.y + (n.labelDy ?? -13), 'text-anchor': 'middle', class: 'node-sub' }, g);
+        const short = n.id.replace('demo-', '');
+        lbl.textContent = short.length > 14 ? short.slice(0, 13) + '…' : short;
       }
       nodeEls.push({ g, at: tOf(n) || tMin, kind: n.kind });
     }
@@ -150,7 +171,7 @@
         playLabel.textContent = new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
       }
     }
-    if (!animated) { setTime(tMax); return { toggle: () => true }; }
+    if (!animated) { setTime(tMax); return { toggle: () => true, settle() { setTime(tMax); } }; }
 
     let start = performance.now();
     const SPAN = 15000, HOLD = 2600;
@@ -164,7 +185,10 @@
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
-    return { toggle() { paused = !paused; if (!paused) start = performance.now(); return paused; } };
+    return {
+      toggle() { paused = !paused; if (!paused) start = performance.now(); return paused; },
+      settle() { paused = true; setTime(tMax); },
+    };
   }
 
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -178,6 +202,7 @@
       const mem = graph.nodes.filter((n) => n.kind === 'memory' || n.kind === 'proposal').length;
       state.textContent = mem + ' records · live';
       const ctl = renderWeave(svg, graph, { animated: !reduced });
+      window.__weaveCtl = ctl;
       if (toggleBtn) toggleBtn.addEventListener('click', () => { toggleBtn.textContent = ctl.toggle() ? 'Play' : 'Pause'; });
     })
     .catch(() => {
@@ -195,7 +220,7 @@
       .then((rows) => {
         const hit = rows.find((r) => r.id === wantId);
         target.innerHTML = hit
-          ? esc(hit.text) + '<br><span class="small">record <span class="mono">' + esc(hit.id) + '</span> · by ' + esc(hit.provenance?.author || '—') + ' · believed from ' + fmtDate(hit.valid_from) + (hit.valid_to ? ' to ' + fmtDate(hit.valid_to) : ' · still held') + '</span>'
+          ? esc(hit.text) + '<br><span class="small">record <span class="mono">' + esc(hit.id) + '</span> · by ' + esc(hit.author || '—') + ' · believed from ' + fmtDate(hit.valid_from) + (hit.valid_to ? ' to ' + fmtDate(hit.valid_to) : ' · still held') + '</span>'
           : 'The store holds no venue belief on this date.';
       })
       .catch(() => { target.textContent = 'Live data unavailable — start the app against the seeded demo database.'; });
