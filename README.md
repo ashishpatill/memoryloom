@@ -274,7 +274,7 @@ Working and verified locally:
 - Final clean-room pass (Block 7): every check suite re-run on fresh
   databases — surface 34/34, router 11/11, Jev gate 15/15, two-plane
   22/22, graph + daemon 44/44, learning 36/36, learning demo 8/8,
-  web 29/29 — and the documented run path (db:init, seed:web, web,
+  web 55/55 — and the documented run path (db:init, seed:web, web,
   MCP over stdio) verified from a clean shell.
 - Spend, cumulative in the router log: Meta $0.3749 of the $150
   credit (calibration $0.3595 of $22.50, evals $0 of $52.50 — the
@@ -287,8 +287,9 @@ small fictional corpus. They prove the surface, the routing, the
 decision gate and the two-plane mechanics behave as designed; the
 recall eval is a first measurement at small scale (its own doc states
 the caveats), not evidence of recall quality or latency at scale. **Baseten is closed**:
-the ordered probe (2026-10-30) proved the grant key refuses all
-non-Spark inference (HTTP 403 on DeepSeek, GLM and Kimi alike), so
+the ordered probe (2026-10-30) found the grant key refused every
+non-Spark call tried (HTTP 403 on DeepSeek, GLM and Kimi alike,
+while the model catalogue read returned 200), so
 the DeepSeek triage lane was not built, the challenger runs are
 deferred with Jev standing alone, and the Baseten budget is
 untouched (`docs/baseten-probe-and-challengers.md`). Fireworks and
@@ -300,7 +301,7 @@ Modal have no role in this build.
   loop, two planes, forgetting and time travel, the learning layer,
   checked numbers — is diagram-led, and every figure is captioned
   with what it proves and what it does not prove. The web check
-  (`checks/web.mjs`, 29 assertions) exercises the whole API on a
+  (`checks/web.mjs`, 55 assertions) exercises the whole API on a
   fresh database, including a live propose through the gate, a human
   decision, recall receipts, both sides of the Hall A → Hall B
   supersession, and the API-level empty states. Deployment is
