@@ -1,4 +1,4 @@
-/* MemoryLoom console — six views over the real backend.
+/* MemoryLoom console — seven views over the real backend.
    Three states everywhere: a skeleton while loading, a designed
    empty state when there is nothing to show, and the populated view.
    The console displays decisions; it never makes or overrides one. */
@@ -335,8 +335,135 @@
     document.getElementById('kindFilter').addEventListener('change', (e) => render(e.target.value));
   }
 
+  /* ---------------- Settings ----------------
+     One section per provider, all rendered by the same component
+     from the masked settings view (GET /api/settings). The view
+     decides nothing and calls no provider directly: testing goes
+     through the settings test endpoint, and a typed key is tested
+     as an unsaved candidate — it is only stored when the user
+     presses Save. No full key is ever rendered: the API returns
+     masked tails only, and the input is a password field. */
+  const SETTINGS_PROVIDERS = [
+    { id: 'meta', name: 'Meta Model API', getKey: 'Get a key at dev.meta.ai — open API keys and create a key for MemoryLoom.', unlocks: 'narration and reasoning calls' },
+    { id: 'baseten', name: 'Baseten', getKey: 'Get a key in the Baseten workspace settings, under API keys.', unlocks: 'hosted model calls through Baseten' },
+    { id: 'jev', name: 'Jev (TypeSafe)', getKey: 'Get a key from TypeSafe — Jev is served by the TypeSafe API, so its key comes from TypeSafe.', unlocks: 'the decision gate that approves, rejects or escalates proposals' },
+  ];
+  let settingsFlash = {};
+  function settingsStatus(entry) {
+    if (!entry.configured) return { cls: '', label: 'Not configured', source: 'Source: not configured yet' };
+    if (entry.source === 'env') return { cls: 'ok', label: 'Configured by environment', source: 'Source: the environment variable on this machine' };
+    if (entry.source === 'store') return { cls: 'ok', label: 'Configured in Settings', source: 'Source: saved in Settings on this machine' };
+    return { cls: 'ok', label: 'Configured', source: 'Source: configured' };
+  }
+  function settingsSection(def, entry) {
+    const st = settingsStatus(entry);
+    const flash = settingsFlash[def.id] || '';
+    return `<section class="card settings-card">
+      <div class="provider-head"><h3>${esc(def.name)}</h3><span class="badge ${st.cls}">${esc(st.label)}</span></div>
+      <div class="settings-meta">
+        ${entry.configured
+          ? (entry.last4
+            ? `<span>Key ending <span class="masked-tail">•••• ${esc(entry.last4)}</span></span>`
+            : '<span>Configured — the key tail is unavailable for a key this short.</span>')
+          : '<span>No key saved.</span>'}
+        <span class="small">${esc(st.source)}</span>
+      </div>
+      ${!entry.configured ? `<p class="small settings-hint">${esc(def.getKey)} Adding it unlocks ${esc(def.unlocks)}.</p>` : ''}
+      ${entry.source === 'env' ? '<p class="small settings-hint">This key comes from the environment, so it wins over anything saved here and Settings cannot remove it. A key you save is kept for when the environment variable is not set.</p>' : ''}
+      <label class="f" for="set-${def.id}-key">${entry.configured ? 'Replace the key' : 'API key'}</label>
+      <input type="password" id="set-${def.id}-key" autocomplete="off" spellcheck="false" placeholder="Paste a key">
+      <div class="provider-actions">
+        <button class="btn primary small-btn" id="set-${def.id}-save" type="button">Save</button>
+        <button class="btn small-btn" id="set-${def.id}-test" type="button">Test connection</button>
+        <button class="btn small-btn" id="set-${def.id}-remove" type="button" ${entry.source === 'store' ? '' : 'disabled'}>Remove</button>
+      </div>
+      <div class="settings-result" id="set-${def.id}-result" aria-live="polite">${esc(flash)}</div>
+    </section>`;
+  }
+  async function viewSettings() {
+    skeleton();
+    let data;
+    try { data = await api('/api/settings'); } catch (e) { return errorState(e, viewSettings); }
+    const providers = data.providers || {};
+    const entries = SETTINGS_PROVIDERS.map((d) => [d, providers[d.id] || { configured: false, last4: null, source: null }]);
+    const anyConfigured = entries.some(([, e]) => e.configured);
+    main.innerHTML = `
+      ${head('Settings — provider keys', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.')}
+      ${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h3>No provider keys configured</h3><p>MemoryLoom runs locally without keys — the demo corpus, recall, the graph and time travel all work on this machine. Add a key below to unlock that provider&rsquo;s live calls: Meta Model API for narration and reasoning, Baseten for hosted model calls, and Jev for the decision gate.</p></div>`}
+      <div class="settings-grid">${entries.map(([d, e]) => settingsSection(d, e)).join('')}</div>
+    `;
+    settingsFlash = {};
+    for (const [def] of entries) wireSettingsSection(def);
+  }
+  function wireSettingsSection(def) {
+    const input = document.getElementById(`set-${def.id}-key`);
+    const saveBtn = document.getElementById(`set-${def.id}-save`);
+    const testBtn = document.getElementById(`set-${def.id}-test`);
+    const removeBtn = document.getElementById(`set-${def.id}-remove`);
+    const result = document.getElementById(`set-${def.id}-result`);
+    if (!input || !saveBtn || !testBtn || !removeBtn || !result) return;
+    const removeLocked = removeBtn.disabled;
+    const setBusy = (busy) => {
+      saveBtn.disabled = busy;
+      testBtn.disabled = busy;
+      removeBtn.disabled = busy || removeLocked;
+    };
+    const show = (msg, cls) => {
+      result.textContent = msg;
+      result.className = 'settings-result' + (cls ? ' ' + cls : '');
+    };
+    saveBtn.addEventListener('click', async () => {
+      const key = input.value.trim();
+      if (!key) { show('Paste a key first — there is nothing to save yet.', 'bad'); return; }
+      setBusy(true);
+      show('Saving…');
+      try {
+        const saved = await api(`/api/settings/${def.id}`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ api_key: key }),
+        });
+        settingsFlash = { [def.id]: saved.last4 ? `Saved — this provider's key now ends •••• ${saved.last4}.` : 'Saved.' };
+        await viewSettings(); // a successful save re-reads the masked view
+      } catch (e) {
+        show('Save failed: ' + e.message, 'bad');
+        setBusy(false);
+      }
+    });
+    testBtn.addEventListener('click', async () => {
+      const key = input.value.trim();
+      setBusy(true);
+      show('Testing the connection…');
+      try {
+        // A typed key is tested as an unsaved candidate: testing
+        // never saves first, and the typed key stays in the field
+        // whatever the result, so a failed test loses nothing.
+        const r = await api(`/api/settings/${def.id}/test`, {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(key ? { api_key: key } : {}),
+        });
+        if (r.ok) show(`Connected — ${def.name} answered${r.latency_ms != null ? ` in ${r.latency_ms} ms` : ''}.`, 'ok');
+        else show(r.error || `${def.name} did not answer.`, 'bad');
+      } catch (e) {
+        show(e.message, 'bad');
+      }
+      setBusy(false);
+    });
+    removeBtn.addEventListener('click', async () => {
+      setBusy(true);
+      show('Removing…');
+      try {
+        await api(`/api/settings/${def.id}`, { method: 'DELETE' });
+        settingsFlash = { [def.id]: 'Key removed.' };
+        await viewSettings(); // re-read the masked view after removal
+      } catch (e) {
+        show('Remove failed: ' + e.message, 'bad');
+        setBusy(false);
+      }
+    });
+  }
+
   /* ---------------- Router ---------------- */
-  const routes = { loop: viewLoop, recall: () => viewRecall(), graph: viewGraph, time: viewTime, providers: viewProviders, learning: viewLearning };
+  const routes = { loop: viewLoop, recall: () => viewRecall(), graph: viewGraph, time: viewTime, providers: viewProviders, learning: viewLearning, settings: viewSettings };
   function route() {
     const name = (location.hash.replace('#/', '') || 'loop').split('?')[0];
     const fn = routes[name] || viewLoop;

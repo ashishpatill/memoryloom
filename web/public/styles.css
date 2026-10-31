@@ -176,7 +176,7 @@ table.data td.num { font-family: var(--font-mono); white-space: nowrap; }
 .row-item .detail { font-size: .88rem; color: var(--ink-2); margin-top: 6px; }
 .row-item .actions { display: flex; gap: 8px; margin-top: 10px; }
 label.f { display: block; font-size: .85rem; font-weight: 600; margin: 12px 0 4px; }
-input[type="text"], input[type="date"], select, textarea {
+input[type="text"], input[type="password"], input[type="date"], select, textarea {
   width: 100%; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px;
   background: var(--card); color: var(--ink); font-family: var(--font-body); font-size: .95rem;
 }
@@ -185,6 +185,17 @@ input[type="range"] { width: 100%; accent-color: var(--thread); }
 .toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 16px; }
 .toolbar > div { flex: 1; min-width: 180px; }
 .toolbar .btn { flex: none; }
+/* settings */
+.settings-grid { display: grid; gap: 14px; }
+.settings-card h3 { margin: 0; }
+.provider-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.settings-meta { display: flex; gap: 4px 14px; flex-wrap: wrap; align-items: baseline; }
+.masked-tail { font-family: var(--font-mono); white-space: nowrap; }
+.settings-hint { margin: 8px 0 0; }
+.provider-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.settings-result { margin-top: 10px; font-size: .9rem; min-height: 1.2em; }
+.settings-result.ok { color: var(--ok); }
+.settings-result.bad { color: var(--bad); }
 .receipt {
   font-family: var(--font-mono); font-size: .8rem; background: var(--paper-2);
   border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; margin-top: 8px;
