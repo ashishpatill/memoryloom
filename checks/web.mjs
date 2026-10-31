@@ -13,8 +13,10 @@
  * (run scripts/init-db.mjs against the same URL first)
  */
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -64,6 +66,7 @@ try {
   assert(home.status === 200 && home.text.includes('MemoryLoom'), 'site home serves');
   const consolePage = await getText('/console');
   assert(consolePage.status === 200 && consolePage.text.includes('console-nav'), 'console page serves');
+  assert(consolePage.text.includes('data-nav="settings"') && consolePage.text.includes('#/settings'), 'console nav carries the Settings entry');
 
   const ov = await get('/api/overview');
   assert(ov.body.namespace === 'memoryloom-demo', 'overview namespace is the demo namespace');
@@ -123,6 +126,160 @@ try {
 
   const missing = await fetch(base + '/api/nope');
   assert(missing.status === 404, 'unknown API route returns 404');
+
+  // ---- Settings view: the real console.js against a stubbed settings
+  // API. A minimal DOM stands in for the browser and fetch is stubbed,
+  // so no provider is ever called and every key below is a dummy.
+  console.log('settings view (stubbed API):');
+  const UI_GOOD = 'stub-ui-good-key-13579bdf';
+  const UI_ENV = 'stub-ui-env-key-24680ace';
+  const NONE = { configured: false, last4: null, source: null };
+  const noneProviders = () => ({ meta: { ...NONE }, baseten: { ...NONE }, jev: { ...NONE } });
+  let uiState; let uiCalls; let uiTestResponder; let uiGate;
+  function resetUi(providers) {
+    uiState = { providers };
+    uiCalls = [];
+    uiGate = null;
+    uiTestResponder = () => ({ ok: true, http_status: 200, latency_ms: 7, source: 'candidate' });
+  }
+  const uiRespond = (body) => ({ ok: true, status: 200, json: async () => body });
+  const uiFetch = async (path, opts = {}) => {
+    const method = opts.method || 'GET';
+    let parsedBody = {};
+    try { parsedBody = opts.body ? JSON.parse(opts.body) : {}; } catch { /* keep {} */ }
+    uiCalls.push({ path, method, body: parsedBody });
+    if (uiGate && path === '/api/settings' && method === 'GET') await uiGate;
+    if (path === '/api/settings' && method === 'GET') return uiRespond({ providers: JSON.parse(JSON.stringify(uiState.providers)) });
+    let m;
+    if ((m = path.match(/^\/api\/settings\/([a-z]+)$/)) && method === 'POST') {
+      const key = String(parsedBody.api_key || '');
+      uiState.providers[m[1]] = { configured: true, last4: key.length < 8 ? null : key.slice(-4), source: 'store' };
+      return uiRespond({ provider: m[1], ...uiState.providers[m[1]] });
+    }
+    if ((m = path.match(/^\/api\/settings\/([a-z]+)$/)) && method === 'DELETE') {
+      uiState.providers[m[1]] = { configured: false, last4: null, source: null };
+      return uiRespond({ provider: m[1], ...uiState.providers[m[1]] });
+    }
+    if ((m = path.match(/^\/api\/settings\/([a-z]+)\/test$/)) && method === 'POST') return uiRespond(uiTestResponder(m[1], parsedBody));
+    return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
+  };
+  const flushUi = async () => { for (let i = 0; i < 25; i++) await new Promise((r) => setTimeout(r, 0)); };
+  class FakeEl {
+    constructor(id = '') {
+      this.id = id; this.listeners = {}; this.value = ''; this.disabled = false;
+      this.textContent = ''; this.className = ''; this.dataset = {}; this.style = {}; this._innerHTML = '';
+    }
+    set innerHTML(v) {
+      this._innerHTML = String(v);
+      if (this._isMain) {
+        for (const key of [...uiRegistry.keys()]) if (key !== 'main') uiRegistry.delete(key);
+        for (const mm of this._innerHTML.matchAll(/id="([^"]+)"/g)) uiRegistry.set(mm[1], new FakeEl(mm[1]));
+      }
+    }
+    get innerHTML() { return this._innerHTML; }
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+    async click() { for (const fn of this.listeners.click || []) await fn({ target: this }); }
+    querySelectorAll() { return []; }
+    querySelector() { return null; }
+    appendChild() {}
+  }
+  const uiRegistry = new Map();
+  const uiMain = new FakeEl('main');
+  uiMain._isMain = true;
+  uiRegistry.set('main', uiMain);
+  const uiWindowListeners = {};
+  const uiLocation = { hash: '#/settings' };
+  const uiSandbox = {
+    document: {
+      getElementById: (id) => uiRegistry.get(id) || null,
+      querySelectorAll: () => [],
+      createElement: () => new FakeEl(),
+    },
+    window: { addEventListener: (t, fn) => { (uiWindowListeners[t] ||= []).push(fn); } },
+    location: uiLocation,
+    fetch: uiFetch,
+    MemoryLoomGraph: {},
+    setTimeout,
+    clearTimeout,
+  };
+  const dispatchRoute = () => { for (const fn of uiWindowListeners.hashchange || []) fn(); };
+  const showSettings = async () => { uiLocation.hash = '#/settings'; dispatchRoute(); await flushUi(); };
+
+  resetUi(noneProviders());
+  vm.runInNewContext(readFileSync(join(root, 'web/public/console.js'), 'utf8'), uiSandbox, { filename: 'console.js' });
+  await flushUi();
+
+  // Loading: hold the settings GET open and read the skeleton.
+  let releaseGate;
+  uiGate = new Promise((r) => { releaseGate = r; });
+  dispatchRoute();
+  assert(uiMain.innerHTML.includes('skeleton'), 'settings view: loading state renders the skeleton while the API is in flight');
+  releaseGate();
+  uiGate = null;
+  await flushUi();
+
+  // Empty: nothing configured.
+  const emptyHtml = uiMain.innerHTML;
+  assert(emptyHtml.includes('No provider keys configured') && emptyHtml.includes('runs locally without keys'), 'settings empty state: explains that MemoryLoom runs locally without keys');
+  assert(emptyHtml.includes('Meta Model API') && emptyHtml.includes('Baseten') && emptyHtml.includes('Jev (TypeSafe)'), 'settings empty state: all three provider sections render');
+  assert(emptyHtml.includes('dev.meta.ai') && emptyHtml.includes('Baseten workspace settings') && emptyHtml.includes('from TypeSafe'), 'settings empty state: where to get each key, in plain words');
+  assert((emptyHtml.match(/Not configured/g) || []).length >= 3, 'settings empty state: every provider is marked not configured');
+  assert(emptyHtml.includes('type="password"'), 'settings view: key inputs are password fields');
+
+  // Save flow: type a dummy key for Baseten and save it.
+  uiRegistry.get('set-baseten-key').value = UI_GOOD;
+  await uiRegistry.get('set-baseten-save').click();
+  await flushUi();
+  const saveCall = uiCalls.find((c) => c.path === '/api/settings/baseten' && c.method === 'POST');
+  assert(Boolean(saveCall) && saveCall.body.api_key === UI_GOOD, 'settings save: posts the typed key to the settings API');
+  assert(uiMain.innerHTML.includes('Configured in Settings') && uiMain.innerHTML.includes(UI_GOOD.slice(-4)), 'settings save: the re-read masked view shows the store source and the tail');
+  assert(!uiMain.innerHTML.includes(UI_GOOD), 'settings save: the full key is never rendered');
+  assert(uiMain.innerHTML.includes('Saved'), 'settings save: an in-place confirmation is shown after the re-read');
+
+  // Test success with an unsaved candidate (Meta): no save may happen.
+  uiCalls = [];
+  uiRegistry.get('set-meta-key').value = UI_GOOD;
+  await uiRegistry.get('set-meta-test').click();
+  await flushUi();
+  const testCall = uiCalls.find((c) => c.path === '/api/settings/meta/test');
+  assert(Boolean(testCall) && testCall.body.api_key === UI_GOOD, 'settings test: a typed key is sent as an unsaved candidate');
+  assert(!uiCalls.some((c) => c.path === '/api/settings/meta' && c.method === 'POST'), 'settings test: testing does not save the key first');
+  assert(uiRegistry.get('set-meta-result').textContent.includes('Connected'), 'settings test: success is shown in place as connected');
+  assert(uiRegistry.get('set-meta-key').value === UI_GOOD, 'settings test: the typed key stays in the field');
+
+  // Test failure (Jev): the real error text, verbatim, key kept.
+  uiTestResponder = () => ({ ok: false, http_status: 401, latency_ms: 5, source: 'candidate', error: 'Jev (TypeSafe) returned HTTP 401 — the provider rejected this key' });
+  uiRegistry.get('set-jev-key').value = UI_GOOD;
+  await uiRegistry.get('set-jev-test').click();
+  await flushUi();
+  assert(uiRegistry.get('set-jev-result').textContent.includes('Jev (TypeSafe) returned HTTP 401 — the provider rejected this key'), "settings test: the provider's real error is shown verbatim in place");
+  assert(uiRegistry.get('set-jev-key').value === UI_GOOD, 'settings test: a failed test keeps the typed key in the field');
+
+  // Populated: one env provider, one short stored key, one unset.
+  resetUi({
+    meta: { configured: true, last4: UI_ENV.slice(-4), source: 'env' },
+    baseten: { configured: true, last4: null, source: 'store' },
+    jev: { ...NONE },
+  });
+  await showSettings();
+  const popHtml = uiMain.innerHTML;
+  assert(popHtml.includes('Configured by environment') && popHtml.includes(UI_ENV.slice(-4)), 'settings populated: the env provider shows its source and masked tail');
+  assert(!popHtml.includes(UI_ENV), 'settings populated: the full env key is never rendered');
+  assert(popHtml.includes('Configured in Settings') && popHtml.includes('tail is unavailable'), 'settings populated: a short stored key reports configured with no tail shown');
+  assert(!popHtml.includes('No provider keys configured'), 'settings populated: the empty-state explanation is gone once any key exists');
+
+  // Remove flow: Baseten is store-configured, so Remove is live.
+  await uiRegistry.get('set-baseten-remove').click();
+  await flushUi();
+  assert(uiCalls.some((c) => c.path === '/api/settings/baseten' && c.method === 'DELETE'), 'settings remove: issues the DELETE to the settings API');
+  assert(uiState.providers.baseten.configured === false && uiMain.innerHTML.includes('Key removed.'), 'settings remove: in-place confirmation and the re-read view shows it gone');
+
+  // Test with the field empty: the configured key is tested, no candidate.
+  uiCalls = [];
+  await uiRegistry.get('set-meta-test').click();
+  await flushUi();
+  const savedTest = uiCalls.find((c) => c.path === '/api/settings/meta/test');
+  assert(Boolean(savedTest) && !('api_key' in savedTest.body), 'settings test: with the field empty, the configured key is tested (no candidate sent)');
 } finally {
   server.kill('SIGTERM');
 }
