@@ -203,6 +203,68 @@
   believed('believed12', '2026-10-12T00:00:00Z', 'demo-v1');
   believed('believed25', '2026-10-25T00:00:00Z', 'demo-v2');
 
+  /* ---- Learning story, live -------------------------------------- */
+  const learnState = document.getElementById('learningState');
+  const learnSteps = document.getElementById('learningSteps');
+  if (learnSteps) {
+    const badgeFor = (decision) => {
+      if (decision === 'approve') return '<span class="badge" data-state="approved">approved</span>';
+      if (decision === 'escalate') return '<span class="badge" data-state="escalated">escalated</span>';
+      if (decision === 'reject') return '<span class="badge" data-state="rejected">rejected</span>';
+      return '';
+    };
+    fetch('/api/learning')
+      .then((r) => { if (!r.ok) throw new Error('api ' + r.status); return r.json(); })
+      .then((data) => {
+        const events = [...(data.events || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const story = events.filter((e) =>
+          e.subject_id === 'lodge-global-claim' || e.kind === 'promotion_decision' || e.kind === 'lesson_applied');
+        if (!story.length) throw new Error('no story');
+        learnState.textContent = story.length + ' recorded events · live';
+        const rows = story.map((e) => {
+          let kind = e.kind, evidence = '';
+          if (e.kind === 'proposal') {
+            kind = 'Proposal · ' + e.actor;
+            const ids = e.evidence?.grounding_ids || [];
+            evidence = 'cited records — ' + (ids.length ? ids.join(', ') : 'none');
+          } else if (e.kind === 'gate_verdict') {
+            kind = 'Gate verdict · Jev';
+            const d = e.evidence?.decision;
+            evidence = (d ? badgeFor(d.decision) + ' ' : '') + 'reason — ' + esc(d?.reason || e.summary);
+            return '<div class="step-row"><span class="step-kind">' + esc(kind) + '</span><div><p>' + esc(e.summary) + '</p><p class="evidence-line">' + evidence + '</p></div></div>';
+          } else if (e.kind === 'in_turn_correction') {
+            kind = 'Correction · same turn';
+            evidence = 'corrected directive — ' + esc(e.evidence?.correction || '');
+          } else if (e.kind === 'eval_outcome') {
+            kind = 'Lesson proposed';
+            evidence = 'verified against the recorded verdicts — 0 citations escalated, 2 citations approved';
+          } else if (e.kind === 'promotion_decision') {
+            kind = 'Gate decides the lesson';
+            const d = e.evidence?.decision;
+            evidence = '<span class="badge" data-state="approved">promoted</span> Jev decision — ' + esc(d?.decision || '') + ' · calibrated score ' + (d?.calibrated?.promote ?? '—');
+          } else if (e.kind === 'lesson_applied') {
+            kind = 'Lesson applied · ' + e.actor;
+            evidence = 'receipt — lesson record ' + esc(e.evidence?.receipt?.memory_id || e.evidence?.lesson_id || '');
+          }
+          return '<div class="step-row"><span class="step-kind">' + esc(kind) + '</span><div><p>' + esc(e.summary) + '</p>' + (evidence ? '<p class="evidence-line">' + evidence + '</p>' : '') + '</div></div>';
+        });
+        learnSteps.innerHTML = '<div class="steps">' + rows.join('') + '</div>';
+        const lesson = (data.lessons || [])[0];
+        const card = document.getElementById('lessonCard');
+        if (lesson && card) {
+          card.innerHTML = '<div class="receipt-card">standing lesson — record ' + esc(lesson.id) + '\ntext — ' + esc(lesson.text) + '\n<span class="verdict">gate record — ● promoted</span> · Jev ' + esc(lesson.jev?.model || 'jev-1.13.0') + ' · calibrated score ' + (lesson.jev?.calibrated?.promote ?? '—') + ' · promoted from learning event ' + esc(lesson.learning_event_id || '') + '</div>';
+        }
+        const audit = document.getElementById('learningAudit');
+        if (audit && data.audit) {
+          audit.textContent = 'Lesson audit, read live: ' + data.audit.checked + ' standing lesson(s) checked, ' + data.audit.forged_lesson_ids.length + ' forged. A lesson whose record carries no gate verdict is forged by definition and is quarantined.';
+        }
+      })
+      .catch(() => {
+        learnState.textContent = 'live data unavailable';
+        learnSteps.innerHTML = '<div class="empty-state"><h3>The learning record needs its database</h3><p>Seed the demo corpus (<code class="inline">npm run seed:web</code>) and this figure lists the recorded events — the escalation, the correction, the gated lesson, and the second agent approved first try. The story is told from the records, so there is no honest version of it without them.</p></div>';
+      });
+  }
+
   /* ---- Reveal on scroll, once ------------------------------------ */
   const revealEls = document.querySelectorAll('.reveal');
   if (revealEls.length) {

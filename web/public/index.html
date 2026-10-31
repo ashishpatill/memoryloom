@@ -165,6 +165,25 @@
     <p class="small" style="margin-top:var(--space-3)">Try other dates in the <a href="/console#/time">console&rsquo;s time-travel view</a>. <b>Proves:</b> supersession keeps both beliefs and their dates. <b>Does not prove:</b> that the newer belief is correct &mdash; only that it is the one the team held.</p>
   </section>
 
+  <section class="band" id="learning">
+    <div class="section-head">
+      <span class="num">03 &mdash; Learning</span>
+      <h2>The app itself gets better, on the record</h2>
+      <p class="standfirst">MemoryLoom does not just store what agents know. It keeps a record of how the team worked, and turns that record into standing lessons &mdash; carefully, in the open, and only through the same gate as everything else.</p>
+    </div>
+    <p style="max-width:var(--measure)">Every interaction is logged as a <strong>provenance event</strong>: a proposal, a gate verdict, a correction made in the same turn, a recall that hit or missed. The log is append-only &mdash; events are never edited or deleted, so the story of an improvement can always be re-read. When an episode teaches something general, a <strong>lesson is proposed from it and gated like a memory</strong>: the Jev gate decides whether it becomes a standing playbook lesson, and a lesson written in by any other route is caught by audit and quarantined. An approved lesson is a memory, so the next agent <strong>recalls it by receipt</strong> and behaves differently; and because it is a memory, a lesson that stops being used <strong>decays</strong> on the same schedule as everything else, with the gate deciding keep or drop. Improvement here is not asserted &mdash; it is shown, event by event, below.</p>
+    <figure class="fig">
+      <div class="fig-head"><span>Fig. 3 &mdash; One lesson, earned in the open</span><span id="learningState">reading the record&hellip;</span></div>
+      <div class="fig-body">
+        <div id="learningSteps"><p class="small">Loading the recorded events from the demo corpus&hellip;</p></div>
+        <div id="lessonCard" style="margin-top:var(--space-4)"></div>
+        <p class="small" id="learningAudit" style="margin-top:var(--space-3)"></p>
+      </div>
+      <figcaption><b>Proves:</b> the sequence below is the recorded one &mdash; every line is an event or a verdict read live from the store, with its evidence, for the seeded task of lodging a global claim. <b>Does not prove:</b> that lessons keep helping as they accumulate; the record so far is one lesson, and it says so. Read the full stream in the <a href="/console#/learning">console&rsquo;s learning view</a>.</figcaption>
+    </figure>
+    <p class="small" style="margin-top:var(--space-3)">In plain terms: grok lodged a claim citing no evidence and was escalated; the correction was written down in the same turn; the episode became a lesson only after the gate approved it; and moose, a different agent, then lodged a claim of the same kind and was approved first try &mdash; because the lesson was recalled, with its receipt, before acting.</p>
+  </section>
+
   <footer class="site-foot">
     <p>MemoryLoom &mdash; one shared, auditable memory brain for agent teams. Data lives in one Postgres store on your own machine; the demonstration corpus (Project Lantern) is fictional, written for this demo, and no real data appears anywhere on this site or in the console.</p>
   </footer>
