@@ -578,6 +578,13 @@ async function paidCall(provider, task, payload, opts) {
   if (opts.synthetic !== true) {
     return { ok: false, reason: `${provider.id}: paid calls require synthetic:true (privacy rule)`, model: spec.id, tier: spec.tier };
   }
+  // Fail before the cache when the provider is not configured: a
+  // cached result served to an unconfigured caller would impersonate
+  // a live provider (same rule as lib/jev.mjs, Iteration 5.3
+  // re-review, Finding D).
+  if (!resolveProviderKey(provider.id).key) {
+    return { ok: false, reason: `${provider.id}: no API key configured (set the provider's key environment variable or add one in Settings)`, model: spec.id, tier: spec.tier };
+  }
   const spendClass = spendClassFor(provider.id, task, opts);
   const pf = typeof provider.promptFingerprint === 'function' ? provider.promptFingerprint(task, payload) : null;
   const key = pf ? cacheKey(provider.id, spec, task, { payload, pf }) : cacheKey(provider.id, spec, task, payload);

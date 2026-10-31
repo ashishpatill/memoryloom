@@ -7,6 +7,10 @@
  * every decision function returns its safe branch (escalate / keep /
  * do not promote) with failed=true, and the MCP write gate queues the
  * proposal instead of storing it.
+ * Part 2b — FAIL CLOSED, NO KEY, WARM CACHE (5.3 re-review, Finding
+ * D): a payload whose verdict already sits in the content-hash cache
+ * must STILL fail closed once no key is configured anywhere — the
+ * cache is never consulted before the key check.
  * Part 3 — MCP wiring: with MEMORYLOOM_GATE_BACKEND=jev, propose is
  * decided by Jev (needs DATABASE_URL, throwaway DB).
  *
@@ -14,7 +18,8 @@
  */
 process.env.JEV_TIMEOUT_MS = process.env.JEV_TIMEOUT_MS || '8000';
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -87,6 +92,26 @@ assert(decDead.failed === true && decDead.drop === false, 'decay keeps the memor
 const promDead = await decidePromotion({ event: { summary: `lesson ${nonce}`, verified: true, times_applied: 5 } });
 assert(promDead.failed === true && promDead.promote === false, 'promotion does not promote on backend failure');
 delete process.env.JEV_BASE_URL;
+
+// ---- Part 2b: no key + warm cache still fails closed -------------------------
+console.log('part 2b: unconfigured with a warm cache (5.3 regression):');
+const warmProposal = {
+  proposal: { text: `On Tuesday the field team tested the prototype in a community hall. (${nonce})`, type: 'episodic' },
+  evidence: [],
+};
+const gWarm = await decideGate(warmProposal);
+assert(gWarm.failed === false && gWarm.cached === true, 'repeat decision is served from cache while configured, and says so', JSON.stringify({ failed: gWarm.failed, cached: gWarm.cached }));
+const prevSettingsFile = process.env.MEMORYLOOM_SETTINGS_FILE;
+const prevTypesafeKey = process.env.TYPESAFE_API_KEY;
+const emptyStore = join(tmpdir(), `ml-jev-empty-store-${nonce}.env`);
+writeFileSync(emptyStore, '', { mode: 0o600 });
+process.env.MEMORYLOOM_SETTINGS_FILE = emptyStore;
+delete process.env.TYPESAFE_API_KEY;
+const gNoKey = await decideGate(warmProposal);
+assert(gNoKey.failed === true && gNoKey.fail_closed === true && gNoKey.decision === 'escalate', 'same payload fails closed with no key configured, cache notwithstanding', JSON.stringify(gNoKey).slice(0, 200));
+if (prevSettingsFile === undefined) delete process.env.MEMORYLOOM_SETTINGS_FILE;
+else process.env.MEMORYLOOM_SETTINGS_FILE = prevSettingsFile;
+if (prevTypesafeKey !== undefined) process.env.TYPESAFE_API_KEY = prevTypesafeKey;
 
 // ---- Part 3: MCP wiring --------------------------------------------------------
 const DATABASE_URL = process.env.DATABASE_URL;
