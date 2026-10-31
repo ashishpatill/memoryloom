@@ -208,6 +208,22 @@ assert(dec.json.status === 'ok' && dec.json.decision === 'approved', 'review_dec
 const rl2 = await callTool('review_list', {});
 assert(rl2.json.counts.proposals === 0, 'review queue drained after decisions');
 
+// ---- 8b. fabricated citations (Iteration 5.3, Finding A regression) -----------
+// Two invented grounding ids must behave exactly like no evidence on
+// the rules path too: the proposal queues as low-evidence, and a
+// later human promotion stores a record whose grounding is empty —
+// the receipt can never claim it rests on records that do not exist.
+console.log('fabricated citations:');
+const pFake = await callTool('propose', {
+  namespace: NS, text: 'fabricated citations test',
+  metadata: { type: 'semantic', grounding_ids: ['demo-does-not-exist', 'demo-also-fake-99'] },
+});
+assert(pFake.json.decision === 'queued_for_review' && pFake.json.reason === 'low-evidence', 'propose semantic+2 fabricated ids → queued as low-evidence', JSON.stringify(pFake.json).slice(0, 160));
+const promFake = await callTool('promote', { proposal_id: pFake.json.proposal_id });
+assert(promFake.json.status === 'ok' && promFake.json.promoted_id, 'human promotion of the fabricated-citation proposal succeeds');
+const gFake = await callTool('get', { id: promFake.json.promoted_id });
+assert(Array.isArray(gFake.json.memory.grounding_ids) && gFake.json.memory.grounding_ids.length === 0, 'promoted record stores no unresolved grounding ids', JSON.stringify(gFake.json.memory.grounding_ids));
+
 // ---- 9. list_namespaces ---------------------------------------------------------------
 console.log('list_namespaces:');
 const ln = await callTool('list_namespaces', {});

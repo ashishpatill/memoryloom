@@ -190,7 +190,16 @@ async function insertMemory(namespace, text, metadata = {}) {
   if (typeof importance !== 'number' || importance < 1 || importance > 10) {
     return { ok: false, response: validationError('importance must be 1..10') };
   }
-  const grounding_ids = Array.isArray(metadata.grounding_ids) ? metadata.grounding_ids : [];
+  // Resolved citations only (Iteration 5.3, Finding A): ids that do
+  // not dereference to a stored record are dropped before the row is
+  // written, so no record's grounding — and therefore no recall
+  // receipt — ever lists a citation that does not exist.
+  let grounding_ids = Array.isArray(metadata.grounding_ids) ? metadata.grounding_ids : [];
+  if (grounding_ids.length) {
+    const er = await getPool().query('SELECT id FROM memories WHERE id = ANY($1)', [grounding_ids]);
+    const found = new Set(er.rows.map((r) => r.id));
+    grounding_ids = grounding_ids.filter((id) => found.has(id));
+  }
 
   const client = await getPool().connect();
   try {
@@ -581,9 +590,26 @@ server.registerTool(
     const type = metadata.type || 'semantic';
     const scope = metadata.scope || 'global';
     const pinned = Boolean(metadata.pinned);
-    const grounding_ids = Array.isArray(metadata.grounding_ids) ? metadata.grounding_ids : [];
+    const cited_ids = Array.isArray(metadata.grounding_ids) ? metadata.grounding_ids : [];
     if (!MEMORY_TYPES.has(type)) return validationError(`type must be one of ${[...MEMORY_TYPES].join(',')}`);
     if (!MEMORY_SCOPES.has(scope)) return validationError(`scope must be one of ${[...MEMORY_SCOPES].join(',')}`);
+
+    // Resolved citations only (Iteration 5.3, Finding A): every
+    // routing rule below — the Jev gate and the rules gate alike —
+    // counts records that actually resolve in the store. Two
+    // invented id strings are, structurally, no evidence at all.
+    let grounding_ids = cited_ids;
+    let evidence = [];
+    if (cited_ids.length) {
+      const ec = await getPool().connect();
+      try {
+        const er = await ec.query('SELECT id, text FROM memories WHERE id = ANY($1)', [cited_ids]);
+        evidence = er.rows;
+      } finally { ec.release(); }
+      const found = new Set(evidence.map((r) => r.id));
+      grounding_ids = cited_ids.filter((id) => found.has(id));
+    }
+    const unresolved_ids = cited_ids.filter((id) => !grounding_ids.includes(id));
 
     // Gate 0 (optional Jev backend, MEMORYLOOM_GATE_BACKEND=jev): the
     // Jev decision layer decides approve | reject | escalate with the
@@ -592,14 +618,6 @@ server.registerTool(
     let jevRouteReason = null;
     let jevScore = null;
     if (process.env.MEMORYLOOM_GATE_BACKEND === 'jev') {
-      let evidence = [];
-      if (grounding_ids.length) {
-        const ec = await getPool().connect();
-        try {
-          const er = await ec.query('SELECT id, text FROM memories WHERE id = ANY($1)', [grounding_ids]);
-          evidence = er.rows;
-        } finally { ec.release(); }
-      }
       const d = await decideGate({ proposal: { text, type, scope, pinned, grounding_ids }, evidence });
       jevScore = d;
       if (d.decision === 'approve') {
@@ -698,6 +716,7 @@ server.registerTool(
       embedding_model: null,
     };
     if (jevScore) provenance.jev = jevScore;
+    if (unresolved_ids.length) provenance.unresolved_citations = unresolved_ids;
     const client = await getPool().connect();
     try {
       await client.query(

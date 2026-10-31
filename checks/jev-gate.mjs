@@ -59,6 +59,19 @@ const prom = await decidePromotion({
 });
 assert(prom.backend === 'jev' && prom.failed === false && typeof prom.promote === 'boolean', 'promotion hook returns a Jev record');
 
+// ---- Part 1b: fabricated citations never satisfy the evidence rule ----------
+// Iteration 5.3, Finding A: the structural min-evidence rule counts
+// records that resolve, not id strings. Two invented ids with no
+// evidence records behind them must escalate on structure alone,
+// whatever the scorer says.
+console.log('part 1b: fabricated citations (5.3 regression):');
+const gFake = await decideGate({
+  proposal: { text: `The Lantern demo rig runs firmware 2.4.1 on the bench unit. (${nonce}-fake)`, type: 'semantic', scope: 'global', grounding_ids: ['demo-does-not-exist', 'demo-also-fake-99'] },
+  evidence: [],
+});
+assert(gFake.decision === 'escalate', 'fabricated citations escalate through the gate', JSON.stringify(gFake).slice(0, 200));
+assert(gFake.grounding_resolved === 0 && gFake.grounding_cited === 2, 'gate records cited=2, resolved=0 for fabricated citations', JSON.stringify({ cited: gFake.grounding_cited, resolved: gFake.grounding_resolved }));
+
 // ---- Part 2: fail closed on a dead backend -----------------------------------
 console.log('part 2: fail-closed with a dead Jev backend:');
 process.env.JEV_BASE_URL = 'https://api.typesafe.ai.invalid';
@@ -130,6 +143,12 @@ if (!DATABASE_URL) {
     assert(jevApprove.decision === 'queued_for_review', 'shadow mode queues even approve-class proposals', JSON.stringify(jevApprove).slice(0, 160));
   }
   assert(jevQueue.decision === 'queued_for_review' && jevQueue.reason === 'jev-escalate', 'ungrounded claim escalates to the queue', JSON.stringify(jevQueue).slice(0, 160));
+  const [jevFake] = await runMcp({ MEMORYLOOM_GATE_BACKEND: 'jev' }, [
+    ['propose', { namespace: NS, text: 'The Lantern demo rig runs firmware 2.4.1 on the bench unit.', metadata: { type: 'semantic', author: 'jev-check', grounding_ids: ['demo-does-not-exist', 'demo-also-fake-99'] } }],
+  ]);
+  assert(jevFake.decision === 'queued_for_review', 'fabricated citations escalate through MCP propose (jev backend)', JSON.stringify(jevFake).slice(0, 160));
+  const fakeStored = await pool.query(`SELECT count(*)::int n FROM memories WHERE namespace = $1 AND text LIKE 'The Lantern demo rig runs firmware%'`, [NS]);
+  assert(fakeStored.rows[0].n === 0, 'fabricated-citation proposal is not in the truth store');
   const prov = await pool.query(`SELECT provenance FROM proposals WHERE namespace = $1 AND route_reason = 'jev-escalate'`, [NS]);
   assert(prov.rows.length === 1 && prov.rows[0].provenance.jev?.backend === 'jev', 'jev score persisted in proposal provenance');
 

@@ -152,19 +152,28 @@ export function createHandler({ pool, namespace }) {
       const er = await pool.query('SELECT id, text FROM memories WHERE id = ANY($1)', [grounding_ids]);
       evidence = er.rows;
     }
+    // Resolved citations only (Iteration 5.3, Finding A): a cited id
+    // that does not dereference to a stored record is not evidence.
+    // The gate counts the resolved set, and only the resolved set is
+    // ever stored as a record's grounding — an unresolved citation
+    // must never appear as what a record "rests on". Unresolved ids
+    // are kept in provenance as a transparency note, nothing more.
+    const resolvedIds = grounding_ids.filter((id) => evidence.some((e) => e.id === id));
+    const unresolvedIds = grounding_ids.filter((id) => !resolvedIds.includes(id));
     // The Jev gate decides. Fail closed: a backend failure escalates.
-    const d = await decideGate({ proposal: { text, type, scope: 'global', grounding_ids }, evidence });
+    const d = await decideGate({ proposal: { text, type, scope: 'global', grounding_ids: resolvedIds }, evidence });
     if (d.decision === 'approve') {
       const id = randomUUID();
       const provenance = {
         source_session: `console-${Date.now()}`,
         author, origin: 'propose-jev', created_at: new Date().toISOString(), embedding_model: null,
       };
+      if (unresolvedIds.length) provenance.unresolved_citations = unresolvedIds;
       await pool.query(
         `INSERT INTO memories (id, namespace, type, scope, text, importance, strength, pinned,
                                index_status, approval, grounding_ids, provenance)
          VALUES ($1,$2,$3,'global',$4,5,5.0,false,'staged','live',$5,$6::jsonb)`,
-        [id, namespace, type, text, grounding_ids, JSON.stringify(provenance)]
+        [id, namespace, type, text, resolvedIds, JSON.stringify(provenance)]
       );
       await embedStaged(pool, namespace);
       await recordEvent(pool, {
@@ -190,11 +199,12 @@ export function createHandler({ pool, namespace }) {
       source_session: `console-${Date.now()}`,
       author, origin: 'propose', created_at: new Date().toISOString(), embedding_model: null, jev: d,
     };
+    if (unresolvedIds.length) provenance.unresolved_citations = unresolvedIds;
     await pool.query(
       `INSERT INTO proposals (id, namespace, type, scope, text, importance, strength, pinned,
                               grounding_ids, provenance, route_reason)
        VALUES ($1,$2,$3,'global',$4,5,5.0,false,$5,$6::jsonb,$7)`,
-      [id, namespace, type, text, grounding_ids, JSON.stringify(provenance), route_reason]
+      [id, namespace, type, text, resolvedIds, JSON.stringify(provenance), route_reason]
     );
     await recordEvent(pool, {
       namespace, kind: 'proposal', actor: author, subject_type: 'proposal', subject_id: id,
