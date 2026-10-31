@@ -166,13 +166,68 @@ in the project environment to a Postgres 16 + pgvector database
 seeded with `npm run seed:web`; the build command is
 `npm run build:web`, a verification pass over the web sources.
 
-Console captures (placeholders — replace with real captures from a
-running instance; nothing here is a fabricated visual):
+## Captures
 
-- `[capture: site home — the living graph hero over the demo corpus]`
-- `[capture: console live loop — an escalation waiting, with its gate record]`
-- `[capture: console recall — a receipt under the firmware answer]`
-- `[capture: console time travel — beliefs on 12 Oct vs 25 Oct]`
+Real captures from a running instance, taken 31 Oct 2026 at the
+final build — nothing here is a fabricated or mocked visual. The
+instance runs the synthetic Project Lantern corpus in the
+`memoryloom-demo` namespace. On the build machine no real provider
+key is configured, so gate verdicts shown were produced by the
+decision path exercised against a local test double; the captures
+prove the paths, the states and the rendering. Live provider
+judgement is proven by the calibration records in `docs/`, and the
+spend figures by the router spend log — which the Providers
+capture below reads directly.
+
+![Site home — the living graph hero over the demo corpus](docs/captures/site-home.png)
+
+*Site home.* Proves: the hero graph is rendered live from the
+records in the store (16 records, labels measured at zero
+overlaps), not drawn as an illustration. Does not prove: hosted
+performance — this instance is local.
+
+![Console live loop — an escalation waiting, with its gate record](docs/captures/console-live-loop.png)
+
+*Live loop.* Proves: the seeded demo state end to end — 14
+memories in truth, one procedural proposal escalated and waiting
+for a human with its route shown, one playbook lesson standing,
+12 learning events on record. Does not prove: the verdict came
+from the live decision provider on this machine (see above).
+
+![Console recall — a receipt under the firmware answer](docs/captures/console-recall-receipt.png)
+
+*Recall + receipts.* Proves: the firmware question is answered by
+the record that rests on two cited sources, and every result
+carries its receipt — record id, author, how it entered, the
+dates it was believed between, and what it rests on. Does not
+prove: ranking quality at scale; that is the eval's job
+(`docs/eval-longmem.md`).
+
+![Time travel — beliefs on 12 Oct 2026](docs/captures/console-time-travel-12oct.png)
+![Time travel — beliefs on 25 Oct 2026](docs/captures/console-time-travel-25oct.png)
+
+*Time travel, 12 Oct vs 25 Oct.* Proves: the as-of answer is read
+from the bi-temporal record — on 12 Oct the team believed the
+demo would be held in Hall A (3 beliefs held); by 25 Oct that
+belief had been superseded by Hall B (10 beliefs held), and both
+states stay readable. Does not prove: anything about dates
+outside the recorded corpus.
+
+![Console providers — who did the work, and what it cost](docs/captures/console-providers.png)
+
+*Providers.* Proves: the panel is the router spend log rendered —
+every paid call of the build, by provider, model, tier and task,
+with cached (free) calls counted separately and the $150 budget
+and its stop-loss stated. Does not prove: the prices a different
+account would pay; rates are the router's recorded estimates.
+
+![Console settings — keys stay on this machine](docs/captures/console-settings.png)
+
+*Settings.* Proves: each provider is configured from the console,
+and only the masked tail of a saved key is ever shown (the tails
+visible here belong to dummy keys in a throwaway local store).
+Does not prove: a real key works — that is what the Test
+connection button is for, on the machine that holds the key.
 
 ## Checks
 
@@ -330,7 +385,9 @@ Modal have no role in this build.
   recency-aware tie-break for near-identical supersession pairs, and
   abstention handling in the narration layer for unanswerable
   questions.
-- Deploy the site + console to Vercel against a hosted demo database,
-  and replace the capture placeholders with real screenshots.
+- Deploy the site + console to Vercel against a hosted demo database
+  (prepared — see `docs/hosted-demo.md`; the import itself is the
+  project owner's step). The capture placeholders are replaced: see
+  Captures above.
 - Grow the eval: more questions per family, larger haystacks, and
   latency numbers at demo scale.
