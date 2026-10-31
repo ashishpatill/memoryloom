@@ -24,7 +24,7 @@ const check = (ok, label) => {
 
 const jsFiles = [
   'web/api.mjs', 'web/server.mjs', 'api/index.mjs',
-  'web/public/console.js', 'web/public/graph.js',
+  'web/public/console.js', 'web/public/graph.js', 'web/public/landing.js',
   'scripts/seed-web-demo.mjs', 'checks/web.mjs',
 ];
 for (const f of jsFiles) {

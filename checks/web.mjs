@@ -64,6 +64,12 @@ try {
 
   const home = await getText('/');
   assert(home.status === 200 && home.text.includes('MemoryLoom'), 'site home serves');
+  assert(home.text.includes('/tokens.css') && !home.text.includes('/styles.css'), 'landing page is on design tokens v2 only (tokens.css linked, styles.css gone)');
+  assert(!home.text.includes('gradient'), 'landing page carries no gradient (design law)');
+  for (const id of ['helps', 'loop', 'learning', 'providers', 'proof', 'start']) {
+    assert(home.text.includes(`id="${id}"`), `landing section present: #${id}`);
+  }
+  assert(home.text.includes('/landing.js') && home.text.includes('id="learningSteps"') && home.text.includes('id="spendLive"'), 'landing live regions present: learning steps + spend cell render from the backend');
   const consolePage = await getText('/console');
   assert(consolePage.status === 200 && consolePage.text.includes('console-nav'), 'console page serves');
   assert(consolePage.text.includes('data-nav="settings"') && consolePage.text.includes('#/settings'), 'console nav carries the Settings entry');
