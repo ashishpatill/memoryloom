@@ -223,6 +223,8 @@ try {
   assert(emptyHtml.includes('No provider keys configured') && emptyHtml.includes('runs locally without keys'), 'settings empty state: explains that MemoryLoom runs locally without keys');
   assert(emptyHtml.includes('Meta Model API') && emptyHtml.includes('Baseten') && emptyHtml.includes('Jev (TypeSafe)'), 'settings empty state: all three provider sections render');
   assert(emptyHtml.includes('dev.meta.ai') && emptyHtml.includes('Baseten workspace settings') && emptyHtml.includes('from TypeSafe'), 'settings empty state: where to get each key, in plain words');
+  assert(emptyHtml.includes('Baseten lane is parked'), 'settings empty state: Baseten unlocks copy states the lane is parked (no product path)');
+  assert(!emptyHtml.includes('hosted model calls through Baseten') && !emptyHtml.includes('Baseten for hosted model calls'), 'settings empty state: Baseten copy does NOT promise hosted model calls');
   assert((emptyHtml.match(/Not configured/g) || []).length >= 3, 'settings empty state: every provider is marked not configured');
   assert(emptyHtml.includes('type="password"'), 'settings view: key inputs are password fields');
 

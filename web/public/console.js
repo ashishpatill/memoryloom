@@ -345,7 +345,7 @@
      masked tails only, and the input is a password field. */
   const SETTINGS_PROVIDERS = [
     { id: 'meta', name: 'Meta Model API', getKey: 'Get a key at dev.meta.ai — open API keys and create a key for MemoryLoom.', unlocks: 'narration and reasoning calls' },
-    { id: 'baseten', name: 'Baseten', getKey: 'Get a key in the Baseten workspace settings, under API keys.', unlocks: 'hosted model calls through Baseten' },
+    { id: 'baseten', name: 'Baseten', getKey: 'Get a key in the Baseten workspace settings, under API keys.', unlocks: 'nothing yet — the Baseten lane is parked; the key is stored and can be tested here' },
     { id: 'jev', name: 'Jev (TypeSafe)', getKey: 'Get a key from TypeSafe — Jev is served by the TypeSafe API, so its key comes from TypeSafe.', unlocks: 'the decision gate that approves, rejects or escalates proposals' },
   ];
   let settingsFlash = {};
@@ -389,7 +389,7 @@
     const anyConfigured = entries.some(([, e]) => e.configured);
     main.innerHTML = `
       ${head('Settings — provider keys', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.')}
-      ${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h3>No provider keys configured</h3><p>MemoryLoom runs locally without keys — the demo corpus, recall, the graph and time travel all work on this machine. Add a key below to unlock that provider&rsquo;s live calls: Meta Model API for narration and reasoning, Baseten for hosted model calls, and Jev for the decision gate.</p></div>`}
+      ${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h3>No provider keys configured</h3><p>MemoryLoom runs locally without keys — the demo corpus, recall, the graph and time travel all work on this machine. Add a key below to unlock that provider&rsquo;s live calls: Meta Model API for narration and reasoning, and Jev for the decision gate. A Baseten key unlocks nothing yet — the Baseten lane is parked; the key is stored and can be tested here.</p></div>`}
       <div class="settings-grid">${entries.map(([d, e]) => settingsSection(d, e)).join('')}</div>
     `;
     settingsFlash = {};
