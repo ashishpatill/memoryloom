@@ -78,6 +78,19 @@
         if (s && m) { s.x = m.x; s.y = H - 26; }
       }
     }
+    // Source labels alternate above/below the diamond when sources
+    // cluster (5.2 console capture: two source labels printed over
+    // each other at the foot of the graph). Same discipline as the
+    // knot labels below — layout only, no data moves.
+    const sources = [...nodes.values()].filter((n) => n.kind === 'source' && n.x !== undefined).sort((a, b) => a.x - b.x);
+    {
+      let prevX = -Infinity, side = 0;
+      for (const s of sources) {
+        side = s.x - prevX < 60 ? 1 - side : 0;
+        s.labelDy = side ? -14 : 16;
+        prevX = s.x;
+      }
+    }
     // Label placement: the corpus clusters in time, so knots that sit
     // close together alternate their labels above and below the knot
     // instead of printing over each other. Layout only — no data moves.
@@ -154,7 +167,11 @@
       if (!shown.has(n.kind) || n.x === undefined) continue;
       const g = el('g', { 'data-t': tOf(n) || tMin, 'data-kind': n.kind, style: opts.onSelect ? 'cursor:pointer' : '' }, nodeG);
       if (n.kind === 'agent') {
-        const label = AGENT_LABEL[n.id] || n.id;
+        // Unknown actors appear once a human decides in the console
+        // (the graph gains a "human (console)" agent node): label
+        // them by their first word — the full id printed at x=44
+        // clipped off the left edge in the 5.2 walk captures.
+        const label = AGENT_LABEL[n.id] || n.id.split(' ')[0];
         el('circle', { cx: n.x, cy: n.y, r: 17, fill: SURFACE, stroke: INK, 'stroke-width': 1.5 }, g);
         const t = el('text', { x: n.x, y: n.y + 4, 'text-anchor': 'middle', fill: INK, 'font-size': 11, 'font-weight': 700 }, g);
         t.textContent = label[0].toUpperCase();
@@ -162,7 +179,7 @@
         lbl.textContent = label;
       } else if (n.kind === 'source') {
         el('rect', { x: n.x - 5, y: n.y - 5, width: 10, height: 10, fill: SURFACE, stroke: INK, transform: `rotate(45 ${n.x} ${n.y})` }, g);
-        const lbl = el('text', { x: n.x, y: n.y + 16, 'text-anchor': 'middle', class: 'node-sub' }, g);
+        const lbl = el('text', { x: n.x, y: n.y + (n.labelDy ?? 16), 'text-anchor': 'middle', class: 'node-sub' }, g);
         lbl.textContent = n.id.length > 22 ? n.id.slice(0, 21) + '…' : n.id;
       } else {
         const superseded = n.valid_to && new Date(n.valid_to).getTime() <= tMax;

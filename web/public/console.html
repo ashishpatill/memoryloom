@@ -32,7 +32,12 @@
     .console-nav { flex-direction: row; flex-wrap: wrap; align-items: baseline; border-right: none; border-bottom: var(--rule-strong); }
     .console-nav .nav-note { margin-top: var(--space-3); flex-basis: 100%; }
   }
-  .console-main { padding: var(--space-6) var(--space-5) var(--space-8); max-width: 1060px; }
+  .console-main { padding: var(--space-6) var(--space-5) var(--space-8); max-width: 1060px; min-width: 0; }
+  /* min-width: 0 is load-bearing: as a grid item, the main column's
+     automatic minimum size is its widest min-content (a ruled
+     table's nowrap columns), which blew the column out to 608px on
+     a 360px screen in 5.2's first pass. With it, .table-wrap does
+     its job and scrolls the table sideways instead. */
   .console-main h2 { margin-bottom: var(--space-1); }
   .pull-line {
     font-family: var(--font-display); font-style: italic; font-weight: 400;

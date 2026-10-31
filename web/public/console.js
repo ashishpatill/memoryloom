@@ -79,7 +79,11 @@
     if (p.text) return String(p.text);
     const ids = [...(Array.isArray(p.memory_ids) ? p.memory_ids : []), ...(p.memory_id ? [p.memory_id] : [])];
     const about = ids.length ? ids.join(', ') : 'the corpus';
-    const kind = item.kind || p.daemon_kind || '';
+    // The specific daemon_kind in the payload outranks the generic
+    // review-item kind ("resolution" covers decay candidates too —
+    // the first 5.2 capture summarised a decay candidate as a
+    // generic resolution, which is why the order below matters).
+    const kind = `${p.daemon_kind || ''} ${item.kind || ''}`;
     if (kind.includes('contradiction') || p.detector) return `Contradiction flagged between ${about}${p.detector ? ` (detector: ${p.detector})` : ''}. A human settles which belief stands.`;
     if (kind.includes('decay')) return `Decay candidate: ${about} — recorded, not recently used. The gate decides keep or drop.`;
     if (kind.includes('consolidation')) return `Consolidation candidate: ${about} may say the same thing more than once.`;
@@ -281,7 +285,7 @@
     } else if (n.kind === 'source') {
       out.innerHTML = `<div class="card"><h3>A cited source — <code class="inline">${esc(n.id)}</code></h3><p style="margin:0">Sources are the evidence records memories rest on. A source appears in the receipt of every memory that cites it — ask in <a href="#/recall">Recall + receipts</a> and read it there.</p></div>`;
     } else if (n.kind === 'agent') {
-      const label = n.id === 'memoryloom-learning' ? 'learning' : n.id;
+      const label = n.id === 'memoryloom-learning' ? 'learning' : n.id.split(' ')[0];
       // Raw graph nodes carry no author field — authorship lives in
       // the authored_by / proposed_by edges (the same source the
       // renderer lays out from).
