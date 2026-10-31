@@ -4,7 +4,118 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MemoryLoom Console — the live loop, recall, graph, time travel, providers, learning, settings</title>
-<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/tokens.css">
+<style>
+  /* Console layout helpers only. Every colour, face, size and rule
+     comes from tokens.css (design tokens v2); these rules only
+     arrange the console's own components — the sidebar shell, rows,
+     receipts, forms and state blocks — in the tokens' language.
+     No gradients, no shadows, no pills: the v1 skeleton shimmer is
+     replaced by a still ruled block, and standing is carried by
+     word + marker shape via the tokens' badges. */
+  .console-shell { display: grid; grid-template-columns: 208px 1fr; min-height: 100vh; }
+  .console-nav {
+    border-right: var(--rule-strong); padding: var(--space-5) var(--space-4);
+    background: var(--paper-sunken); display: flex; flex-direction: column; gap: var(--space-1);
+  }
+  .console-nav .wordmark { font-size: 1.25rem; margin-bottom: var(--space-1); }
+  .console-nav a {
+    color: var(--ink); text-decoration: none; padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius); font-size: 0.96rem;
+    transition: background-color var(--motion-fast) var(--ease);
+  }
+  .console-nav a:hover { background: var(--surface); }
+  .console-nav a.active { background: var(--ink); color: var(--paper); }
+  .console-nav .nav-note { margin-top: auto; }
+  @media (max-width: 880px) {
+    .console-shell { grid-template-columns: 1fr; }
+    .console-nav { flex-direction: row; flex-wrap: wrap; align-items: baseline; border-right: none; border-bottom: var(--rule-strong); }
+    .console-nav .nav-note { margin-top: var(--space-3); flex-basis: 100%; }
+  }
+  .console-main { padding: var(--space-6) var(--space-5) var(--space-8); max-width: 1060px; }
+  .console-main h2 { margin-bottom: var(--space-1); }
+  .pull-line {
+    font-family: var(--font-display); font-style: italic; font-weight: 400;
+    font-size: var(--text-lg); line-height: var(--leading-body); margin: 0 0 var(--space-2);
+  }
+  .view-sub { color: var(--ink-2); margin-bottom: var(--space-5); max-width: var(--measure); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* states: still skeleton, designed empty, honest error */
+  .skeleton { display: grid; gap: var(--space-3); }
+  .skeleton .sk { height: 58px; border-radius: var(--radius); border: var(--rule); background: var(--surface); }
+  .empty-state {
+    border: 1px dashed var(--line-strong); border-radius: var(--radius);
+    padding: var(--space-6) var(--space-5); text-align: center; color: var(--ink-2); background: var(--surface);
+  }
+  .empty-state h3 { color: var(--ink); }
+  .error-state { border: 1px solid var(--ink); }
+  .flash {
+    border: var(--rule-strong); border-radius: var(--radius); background: var(--surface);
+    padding: var(--space-3) var(--space-4); margin-bottom: var(--space-5); font-size: var(--text-sm);
+  }
+  .flash .flash-label {
+    font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label);
+    text-transform: uppercase; color: var(--ink-2); display: block; margin-bottom: var(--space-1);
+  }
+
+  /* rows, receipts, forms */
+  .row-item {
+    background: var(--surface); border: var(--rule); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3);
+  }
+  .row-item .meta { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-1); }
+  .row-item .text { font-size: 1rem; overflow-wrap: anywhere; }
+  .row-item .detail { font-size: var(--text-sm); color: var(--ink-2); margin-top: var(--space-2); overflow-wrap: anywhere; }
+  .row-item .actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); align-items: center; flex-wrap: wrap; }
+  .receipt {
+    font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-data);
+    background: var(--paper-sunken); border: var(--rule); border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3); margin-top: var(--space-2);
+    white-space: pre-wrap; word-break: break-word;
+  }
+  label.f { display: block; font-size: var(--text-sm); font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
+  input[type="text"], input[type="password"], input[type="date"], select, textarea {
+    width: 100%; padding: var(--space-2) var(--space-3); border: var(--rule-strong); border-radius: var(--radius);
+    background: var(--surface); color: var(--ink); font-family: var(--font-text); font-size: 0.95rem;
+  }
+  textarea { min-height: 64px; }
+  input[type="range"] { width: 100%; accent-color: var(--ink); }
+  .toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: end; margin-bottom: var(--space-4); }
+  .toolbar > div { flex: 1; min-width: 180px; }
+  .toolbar .btn { flex: none; }
+  @media (max-width: 560px) { .toolbar > div { min-width: 100%; } }
+  code.inline { font-family: var(--font-mono); font-size: 0.86em; background: var(--paper-sunken); padding: 1px 5px; border-radius: 2px; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+  .kv .big { font-family: var(--font-display); font-weight: 600; font-size: var(--display-sm); line-height: var(--leading-tight); }
+  .timeline-strip { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: stretch; margin: var(--space-3) 0; }
+  .timeline-strip .step {
+    flex: 1; min-width: 120px; border: var(--rule); border-radius: var(--radius);
+    background: var(--surface); padding: var(--space-2) var(--space-3); font-size: var(--text-sm);
+    overflow-wrap: anywhere;
+  }
+  .timeline-strip .badge { white-space: normal; }
+  .timeline-strip .arrow { align-self: center; color: var(--ink); font-weight: 700; }
+
+  /* graph figure (tokens frame; svg voices) */
+  .graph-svg { width: 100%; height: auto; display: block; }
+  .graph-svg .node-label { font-family: var(--font-mono); font-size: 10.5px; fill: var(--ink); }
+  .graph-svg .node-sub { font-family: var(--font-mono); font-size: 9px; fill: var(--ink-2); }
+  .graph-svg .edge { fill: none; stroke-width: 1.4; }
+
+  /* settings */
+  .settings-grid { display: grid; gap: var(--space-4); }
+  .settings-card h3 { margin: 0; }
+  .provider-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+  .settings-meta { display: flex; gap: var(--space-1) var(--space-4); flex-wrap: wrap; align-items: baseline; }
+  .masked-tail { font-family: var(--font-mono); white-space: nowrap; }
+  .settings-hint { margin: var(--space-2) 0 0; }
+  .provider-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+  .settings-result { margin-top: var(--space-3); font-size: var(--text-sm); min-height: 1.2em; }
+  .settings-result.ok { font-weight: 600; }
+  .settings-result.ok::before { content: "● "; }
+  .settings-result.bad::before { content: "✕ "; font-weight: 600; }
+</style>
 </head>
 <body>
 <div class="console-shell">
@@ -22,7 +133,7 @@
     <div class="nav-note small">Every screen reads the real store. Decisions are made by the gate and shown here — the console never makes or overrides one.</div>
   </nav>
   <main class="console-main" id="main">
-    <div class="skeleton"><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
+    <div class="skeleton" role="status"><span class="sr-only">Loading…</span><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
   </main>
 </div>
 <script src="/graph.js"></script>

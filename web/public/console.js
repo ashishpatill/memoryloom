@@ -1,7 +1,15 @@
 /* MemoryLoom console — seven views over the real backend.
-   Three states everywhere: a skeleton while loading, a designed
-   empty state when there is nothing to show, and the populated view.
-   The console displays decisions; it never makes or overrides one. */
+   Three states everywhere: a still skeleton while loading, a
+   designed empty state when there is nothing to show, and the
+   populated view. The console displays decisions; it never makes
+   or overrides one.
+   Design tokens v2 (Iteration 5.2): the console wears the same
+   type, spacing, rules and motion as the landing page. Standing
+   is carried by word + marker shape in ink (the tokens' badges,
+   via data-state) — never by colour; agents are told apart by
+   their name, never by a hue; the accent is spent nowhere in the
+   console, because no console view marks a live decision with it
+   — the gate's verdicts here are records, and records are ink. */
 (function () {
   const main = document.getElementById('main');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -15,7 +23,7 @@
     return body;
   }
   function skeleton() {
-    main.innerHTML = '<div class="skeleton"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>';
+    main.innerHTML = '<div class="skeleton" role="status"><span class="sr-only">Loading…</span><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>';
   }
   function errorState(err, retry) {
     main.innerHTML = `<div class="empty-state error-state"><h3>The store did not answer</h3>
@@ -24,17 +32,26 @@
       <button class="btn" id="retryBtn" type="button">Try again</button></div>`;
     document.getElementById('retryBtn').addEventListener('click', retry);
   }
-  function head(title, sub) {
-    return `<h2>${esc(title)}</h2><p class="view-sub">${sub}</p>`;
+  function head(title, sub, pull) {
+    // View titles match the nav labels word for word (5.2 friction
+    // fix: the two used to differ on five of seven views). The
+    // italic pull line is the view's one-sentence promise, set in
+    // Newsreader italic — the console is where that face is used.
+    return `<h2>${esc(title)}</h2>${pull ? `<p class="pull-line">${pull}</p>` : ''}<p class="view-sub">${sub}</p>`;
   }
   function verdictBadge(d) {
-    if (d === 'approve' || d === 'approved' || d === 'auto_approved') return '<span class="badge ok">approved</span>';
-    if (d === 'reject' || d === 'rejected') return '<span class="badge bad">rejected</span>';
-    if (d === 'escalate' || d === 'queued_for_review' || d === 'pending') return '<span class="badge warn">escalated · awaiting a human</span>';
+    // Standing by word + marker shape, in ink (tokens v2). The
+    // escalated badge keeps its full form — "escalated · awaiting
+    // a human" — wherever a status first appears: it is the
+    // in-place gloss for the word (5.1 stranger-read lesson).
+    if (d === 'approve' || d === 'approved' || d === 'auto_approved') return '<span class="badge" data-state="approved">approved</span>';
+    if (d === 'reject' || d === 'rejected') return '<span class="badge" data-state="rejected">rejected</span>';
+    if (d === 'escalate' || d === 'queued_for_review' || d === 'pending') return '<span class="badge" data-state="escalated">escalated · awaiting a human</span>';
     return `<span class="badge">${esc(d || '—')}</span>`;
   }
   function agentBadge(a) {
-    return a ? `<span class="badge ${a === 'grok' || a === 'moose' ? a : ''}">${esc(a)}</span>` : '';
+    // Agents carry no hue in v2: the name is the badge.
+    return a ? `<span class="badge">${esc(a)}</span>` : '';
   }
   function jevDetail(jev) {
     if (!jev) return '';
@@ -47,6 +64,29 @@
     return `<div class="receipt">gate record — ${esc(bits.join(' · '))}</div>`;
   }
 
+  /* The gate's last answer, kept across the loop's auto-reload
+     (5.2 friction fix: the answer used to be wiped by the reload
+     after 900ms, leaving the reader to hunt the Decided list to
+     learn what the gate said). */
+  let loopFlash = '';
+  function daemonSummary(item) {
+    // Daemon review items used to render their raw JSON payload —
+    // unreadable, and the worst 360px overflow in the console.
+    // The summary is built only from fields the payload actually
+    // carries; anything unrecognised is described, never dumped.
+    const p = item.payload || {};
+    if (p.summary) return String(p.summary);
+    if (p.text) return String(p.text);
+    const ids = [...(Array.isArray(p.memory_ids) ? p.memory_ids : []), ...(p.memory_id ? [p.memory_id] : [])];
+    const about = ids.length ? ids.join(', ') : 'the corpus';
+    const kind = item.kind || p.daemon_kind || '';
+    if (kind.includes('contradiction') || p.detector) return `Contradiction flagged between ${about}${p.detector ? ` (detector: ${p.detector})` : ''}. A human settles which belief stands.`;
+    if (kind.includes('decay')) return `Decay candidate: ${about} — recorded, not recently used. The gate decides keep or drop.`;
+    if (kind.includes('consolidation')) return `Consolidation candidate: ${about} may say the same thing more than once.`;
+    if (kind.includes('resolution')) return `Resolution proposed for ${about}.`;
+    return `Daemon proposal about ${about}.`;
+  }
+
   /* ---------------- Live loop ---------------- */
   async function viewLoop() {
     skeleton();
@@ -57,8 +97,10 @@
     const pending = props.proposals.filter((p) => p.status === 'pending');
     const decided = props.proposals.filter((p) => p.status !== 'pending');
     const memCount = ov.memories_by_type.reduce((a, r) => a + r.n, 0);
+    const flash = loopFlash; loopFlash = '';
     main.innerHTML = `
-      ${head('The live loop', 'Agents propose; the gate decides; humans settle what the gate escalates. Propose something yourself and watch the real gate answer.')}
+      ${head('Live loop', 'Agents propose; the gate decides; humans settle what the gate escalates. Propose something yourself and watch the real gate answer.', 'Nothing enters memory unexamined.')}
+      ${flash ? `<div class="flash" role="status"><span class="flash-label">Last gate answer</span>${esc(flash)}</div>` : ''}
       <div class="kv">
         <div class="card"><div class="big">${memCount}</div><div class="small">memories in truth</div></div>
         <div class="card"><div class="big">${pending.length}</div><div class="small">proposals awaiting a human</div></div>
@@ -88,7 +130,7 @@
       <div id="decidedList">${decided.length ? '' : '<div class="empty-state"><h3>No decisions yet</h3><p>Decided proposals will appear here with who decided them and why.</p></div>'}</div>
       ${props.daemon_review_items.length ? `<h3 style="margin-top:22px">Daemon proposals (${props.daemon_review_items.length})</h3>
         <p class="small">The background daemon may only propose. These items wait for the same human decision as everything else.</p>
-        <div>${props.daemon_review_items.map((i) => `<div class="row-item"><div class="meta"><span class="badge thread">${esc(i.kind || 'daemon')}</span><span class="small">${fmtTs(i.created_at)}</span></div><div class="text">${esc(i.payload?.summary || i.payload?.text || JSON.stringify(i.payload).slice(0, 200))}</div></div>`).join('')}</div>` : ''}
+        <div>${props.daemon_review_items.map((i) => `<div class="row-item"><div class="meta"><span class="badge">${esc(i.kind || 'daemon')}</span><span class="small">${fmtTs(i.created_at)}</span></div><div class="text">${esc(daemonSummary(i))}</div></div>`).join('')}</div>` : ''}
     `;
     const pendingList = document.getElementById('pendingList');
     for (const p of pending) pendingList.appendChild(proposalRow(p, true));
@@ -108,6 +150,7 @@
             grounding_ids: document.getElementById('pGround').value.split(',').map((s) => s.trim()).filter(Boolean),
           }),
         });
+        loopFlash = `Gate: ${r.decision} — ${r.reason || ''}`;
         out.innerHTML = `Gate: <b>${esc(r.decision)}</b> — ${esc(r.reason || '')}. Reloading the loop…`;
         setTimeout(viewLoop, 900);
       } catch (e) {
@@ -139,6 +182,7 @@
             method: 'POST', headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ decision: b.dataset.act }),
           });
+          loopFlash = `Your decision was recorded: ${b.dataset.act === 'approve' ? 'approved into truth' : 'rejected'}.`;
           msg.textContent = 'Decided. Reloading…';
           setTimeout(viewLoop, 700);
         } catch (e) {
@@ -153,7 +197,7 @@
   /* ---------------- Recall ---------------- */
   async function viewRecall(prefill) {
     main.innerHTML = `
-      ${head('Recall, with receipts', 'Ask the store a question. Every answer carries its receipt — the record it came from, who wrote it, what it rests on. Anything that cannot produce a receipt is dropped, and the drop is shown too.')}
+      ${head('Recall + receipts', 'Ask the store a question. Every answer carries its receipt — the record it came from, who wrote it, what it rests on. Anything that cannot produce a receipt is dropped, and the drop is shown too.', 'No receipt, no answer.')}
       <div class="toolbar">
         <div><label class="f" for="q">Question</label>
           <input type="text" id="q" placeholder="e.g. what firmware does the rig run?"></div>
@@ -178,12 +222,12 @@
         out.innerHTML =
           r.results.map((res) => `
             <div class="row-item">
-              <div class="meta"><span class="badge ok">receipt ✓</span><span class="badge">${esc(res.type)}</span>${res.rrf != null ? `<span class="small">fusion score ${Number(res.rrf).toFixed(3)}</span>` : ''}</div>
+              <div class="meta"><span class="badge">receipt</span><span class="badge">${esc(res.type)}</span>${res.rrf != null ? `<span class="small">fusion score ${Number(res.rrf).toFixed(3)}</span>` : ''}</div>
               <div class="text">${esc(res.text)}</div>
               <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(res.receipt.origin)} · recorded ${fmtDate(res.receipt.record_created_at)} · valid ${fmtDate(res.receipt.valid_from)}${res.receipt.valid_to ? ' → ' + fmtDate(res.receipt.valid_to) : ' → still held'}${res.receipt.grounding_ids?.length ? ' · rests on ' + res.receipt.grounding_ids.join(', ') : ''}${res.receipt.evidence_refs?.length ? ' · sources ' + res.receipt.evidence_refs.join(', ') : ''}</div>
             </div>`).join('') +
           (r.dropped.length ? `<h3 style="margin-top:18px">Dropped before the agent could see them (${r.dropped.length})</h3>` +
-            r.dropped.map((d) => `<div class="row-item"><div class="meta"><span class="badge bad">dropped</span><code class="inline">${esc(d.id)}</code></div><div class="detail">${esc(d.why)}</div></div>`).join('') : '');
+            r.dropped.map((d) => `<div class="row-item"><div class="meta"><span class="badge" data-state="rejected">dropped</span><code class="inline">${esc(d.id)}</code></div><div class="detail">${esc(d.why)}</div></div>`).join('') : '');
       } catch (e) {
         out.innerHTML = `<div class="empty-state error-state"><h3>Recall failed</h3><p>${esc(e.message)}</p></div>`;
       }
@@ -199,18 +243,51 @@
     skeleton();
     let graph;
     try { graph = await api('/api/graph'); } catch (e) { return errorState(e, viewGraph); }
+    const records = graph.nodes.filter((n) => n.kind === 'memory' || n.kind === 'proposal');
+    if (!records.length) {
+      // Designed empty state (5.2 fix: an empty corpus used to draw
+      // a blank figure captioned "0 nodes · 0 edges" and nothing else).
+      main.innerHTML = `
+        ${head('Memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”', 'Every belief, drawn from the record.')}
+        <div class="empty-state"><h3>The graph is empty</h3><p>This namespace holds no records yet, so there is nothing to draw. Seed the demo corpus (<code class="inline">npm run seed:web</code>) or approve a proposal in the Live loop, and the weave appears here.</p></div>
+      `;
+      return;
+    }
     main.innerHTML = `
-      ${head('The memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”')}
-      <figure class="fig woven">
+      ${head('Memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”', 'Every belief, drawn from the record.')}
+      <figure class="fig">
         <div class="fig-head"><span>${graph.nodes.length} nodes · ${graph.edges.length} edges</span><span>namespace ${esc(graph.namespace || '')}</span></div>
         <div class="fig-body"><svg id="graphSvg" class="graph-svg" role="img" aria-label="The demo corpus as a graph"></svg></div>
-        <figcaption><b>Reading it:</b> solid knots are memories on their author&rsquo;s thread; hollow dashed knots are proposals; crossed knots are superseded; gold diamonds are cited sources. <b>Limit:</b> a derived view — it shows only what Plane 1 holds.</figcaption>
+        <figcaption><b>Reading it:</b> threads top to bottom are grok, moose, and the learning promotion that authored the standing lesson — told apart by position and label, never by colour. Solid knots are memories; hollow dashed knots are proposals; crossed knots are superseded; ink diamonds are cited sources. This view spends no accent: nothing here is a live decision. <b>Limit:</b> a derived view — it shows only what Plane 1 holds.</figcaption>
       </figure>
-      <div id="trailOut" style="margin-top:16px"><div class="empty-state"><h3>No knot selected</h3><p>Click a memory in the graph to see its provenance trail and supersession chain.</p></div></div>
+      <div id="trailOut" style="margin-top:16px"><div class="empty-state"><h3>No knot selected</h3><p>Click a memory in the graph to see its provenance trail and supersession chain. Proposals, sources and thread heads answer too — each says what it is and where it is acted on.</p></div></div>
     `;
     MemoryLoomGraph.renderGraph(document.getElementById('graphSvg'), graph, {
-      onSelect: (n) => { if (n.kind === 'memory') showTrail(n.id); },
+      onSelect: (n) => {
+        if (n.kind === 'memory') return showTrail(n.id);
+        showKnotNote(n, graph);
+      },
     });
+  }
+  function showKnotNote(n, graph) {
+    // Every knot answers a click (5.2 fix: proposals, sources and
+    // agent heads used to be silent dead ends — only memories
+    // responded). Each note says what the knot is and where the
+    // reader acts on it.
+    const out = document.getElementById('trailOut');
+    if (!out) return;
+    if (n.kind === 'proposal') {
+      out.innerHTML = `<div class="card"><h3>A proposal, still waiting</h3><p style="margin:0">This hollow knot is a proposal that has not entered truth. Proposals are decided in the <a href="#/loop">Live loop</a> — approved by the gate or settled by a human there, never from the graph.</p></div>`;
+    } else if (n.kind === 'source') {
+      out.innerHTML = `<div class="card"><h3>A cited source — <code class="inline">${esc(n.id)}</code></h3><p style="margin:0">Sources are the evidence records memories rest on. A source appears in the receipt of every memory that cites it — ask in <a href="#/recall">Recall + receipts</a> and read it there.</p></div>`;
+    } else if (n.kind === 'agent') {
+      const label = n.id === 'memoryloom-learning' ? 'learning' : n.id;
+      // Raw graph nodes carry no author field — authorship lives in
+      // the authored_by / proposed_by edges (the same source the
+      // renderer lays out from).
+      const mine = graph.edges.filter((e) => (e.type === 'authored_by' || e.type === 'proposed_by') && e.to === 'agent:' + n.id).length;
+      out.innerHTML = `<div class="card"><h3>The ${esc(label)} thread</h3><p style="margin:0">Every knot on this thread was authored by ${esc(label)}${n.id === 'memoryloom-learning' ? ' — the name the standing lesson was promoted under' : ''}. ${mine} record${mine === 1 ? '' : 's'} sit${mine === 1 ? 's' : ''} on it. Click any knot on the thread for its trail.</p></div>`;
+    }
   }
   async function showTrail(id) {
     const out = document.getElementById('trailOut');
@@ -226,7 +303,7 @@
           <div class="text">${esc(trail.memory.text)}</div>
           ${trail.sources?.length ? `<div class="detail">cited sources: ${trail.sources.map((s) => `<code class="inline">${esc(s)}</code>`).join(' ')}</div>` : ''}</div>
           ${trail.grounding?.length ? `<h3 style="margin-top:14px">It rests on (${trail.grounding.length})</h3>` + trail.grounding.map((g) => `<div class="row-item"><div class="meta">${agentBadge(g.author)}<code class="inline">${esc(g.id)}</code></div><div class="text">${esc(g.text)}</div></div>`).join('') : ''}
-          ${trail.decisions?.length ? `<h3 style="margin-top:14px">Decisions on its path (${trail.decisions.length})</h3>` + trail.decisions.map((d) => `<div class="row-item"><div class="meta"><span class="badge thread">${esc(d.kind)}</span><span class="small">${esc(d.status || '')} ${d.decided_by ? '· by ' + esc(d.decided_by) : ''} ${d.route_reason ? '· ' + esc(d.route_reason) : ''}</span></div>${d.proposal_id ? `<div class="detail">proposal <code class="inline">${esc(d.proposal_id)}</code></div>` : ''}${jevDetail(d.kind === 'consolidation' ? d : null)}</div>`).join('') : ''}
+          ${trail.decisions?.length ? `<h3 style="margin-top:14px">Decisions on its path (${trail.decisions.length})</h3>` + trail.decisions.map((d) => `<div class="row-item"><div class="meta"><span class="badge">${esc(d.kind)}</span><span class="small">${esc(d.status || '')} ${d.decided_by ? '· by ' + esc(d.decided_by) : ''} ${d.route_reason ? '· ' + esc(d.route_reason) : ''}</span></div>${d.proposal_id ? `<div class="detail">proposal <code class="inline">${esc(d.proposal_id)}</code></div>` : ''}${jevDetail(d.kind === 'consolidation' ? d : null)}</div>`).join('') : ''}
           ${trail.superseded_by ? `<div class="detail" style="margin-top:10px">Superseded by <code class="inline">${esc(trail.superseded_by.id)}</code> — ${esc(trail.superseded_by.text)}</div>` : ''}
           <h3 style="margin-top:16px">Supersession chain</h3>
           ${chainRows.length > 1 ? `<div class="timeline-strip">${chainRows.map((c, i) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step"><b>${esc(c.id)}</b><br>${esc(c.text || '')}<br><span class="small">${fmtDate(c.valid_from)}${c.valid_to ? ' → ' + fmtDate(c.valid_to) : ' → held now'}</span></div>`).join('')}</div>` : '<p class="small">This belief has never been superseded.</p>'}
@@ -241,9 +318,19 @@
     skeleton();
     let ov;
     try { ov = await api('/api/overview'); } catch (e) { return errorState(e, viewTime); }
+    if (!ov.first_recorded_at || !ov.last_recorded_at) {
+      // Designed empty state (5.2 fix: an empty store used to bind
+      // the slider to 1 Jan 1970 — new Date(null) — and sit on a
+      // permanent skeleton while it queried beliefs at the epoch).
+      main.innerHTML = `
+        ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then — answered from the record, not from what is true now.', 'What did the team believe on this date — and on what evidence?')}
+        <div class="empty-state"><h3>There is no past to travel to yet</h3><p>Nothing has been recorded in this namespace, so no date has beliefs attached to it. Seed the demo corpus (<code class="inline">npm run seed:web</code>) and the slider covers the recorded dates.</p></div>
+      `;
+      return;
+    }
     const min = new Date(ov.first_recorded_at), max = new Date(ov.last_recorded_at);
     main.innerHTML = `
-      ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then — answered from the record, not from what is true now.')}
+      ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then — answered from the record, not from what is true now.', 'What did the team believe on this date — and on what evidence?')}
       <div class="card">
         <label class="f" for="asof">Believed on: <span id="asofLabel" class="mono"></span></label>
         <input type="range" id="asof" min="${min.getTime()}" max="${max.getTime() + 86400000}" step="86400000" value="${max.getTime() + 86400000}">
@@ -272,7 +359,14 @@
         out.innerHTML = `<div class="empty-state error-state"><h3>Query failed</h3><p>${esc(e.message)}</p></div>`;
       }
     };
-    slider.addEventListener('input', load);
+    // Debounced (5.2): a drag fires input continuously; the view
+    // used to flash its skeleton and re-query on every tick.
+    let loadTimer = null;
+    slider.addEventListener('input', () => {
+      label.textContent = fmtDate(new Date(Number(slider.value)));
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(load, 140);
+    });
     load();
   }
 
@@ -285,19 +379,19 @@
     const totalCalls = s.router.reduce((a, r) => a + r.calls, 0);
     const metaBudget = s.budgets_usd?.meta?.total || 150;
     main.innerHTML = `
-      ${head('Providers — who did what', 'Only providers that actually did work appear here. Every paid model call went through the router: spend-logged, content-hash cached, and refused past the 80% stop-loss. Decisions are not model calls — they belong to the decision gate, and its record is below.')}
+      ${head('Providers', 'Only providers that actually did work appear here. Every paid call went through the router — spend-logged, cached, refused past the 80% stop-loss. Decisions are not model calls; the gate&rsquo;s record is below.', 'Who did the work, and what did it cost?')}
       <div class="kv">
         <div class="card"><div class="big">${totalCalls}</div><div class="small">paid router calls (uncached)</div></div>
         <div class="card"><div class="big">$${totalCost.toFixed(2)}</div><div class="small">estimated router spend, all time</div></div>
         <div class="card"><div class="big">$${metaBudget}</div><div class="small">Meta credit budget · stop-loss at 80%</div></div>
         <div class="card"><div class="big">${s.jev_decisions_in_namespace}</div><div class="small">gate verdicts recorded in this namespace</div></div>
       </div>
-      ${s.router.length ? `<div class="card" style="padding:6px 14px"><table class="data">
+      ${s.router.length ? `<div class="card" style="padding:6px 14px"><div class="table-wrap"><table class="data">
         <thead><tr><th>Provider · model · tier · task</th><th>Calls</th><th>Cached (free)</th><th>Tokens in / out</th><th>Est. cost</th></tr></thead>
-        <tbody>${s.router.map((r) => `<tr><td>${esc(r.key)}</td><td class="num">${r.calls}</td><td class="num">${r.cached}</td><td class="num">${r.input_tokens.toLocaleString()} / ${r.output_tokens.toLocaleString()}</td><td class="num">$${r.est_cost_usd.toFixed(3)}</td></tr>`).join('')}</tbody></table></div>`
+        <tbody>${s.router.map((r) => `<tr><td>${esc(r.key)}</td><td class="num">${r.calls}</td><td class="num">${r.cached}</td><td class="num">${r.input_tokens.toLocaleString()} / ${r.output_tokens.toLocaleString()}</td><td class="num">$${r.est_cost_usd.toFixed(3)}</td></tr>`).join('')}</tbody></table></div></div>`
       : '<div class="empty-state"><h3>No paid calls yet</h3><p>The router has logged no spend. Calibration and evaluation runs will appear here when they happen.</p></div>'}
       <h3 style="margin-top:24px">Per-memory work</h3>
-      ${s.per_memory.length ? s.per_memory.map((w) => `<div class="row-item"><div class="meta"><span class="badge thread">${esc(w.provider)}</span><span class="small">${esc(w.work)} · ${fmtTs(w.at)}</span></div><div class="text">memory <code class="inline">${esc(w.memory_id)}</code></div>${jevDetail(w.decision)}</div>`).join('')
+      ${s.per_memory.length ? s.per_memory.map((w) => `<div class="row-item"><div class="meta"><span class="badge">${esc(w.provider)}</span><span class="small">${esc(w.work)} · ${fmtTs(w.at)}</span></div><div class="text">memory <code class="inline">${esc(w.memory_id)}</code></div>${jevDetail(w.decision)}</div>`).join('')
       : '<div class="empty-state"><h3>No per-memory provider work recorded</h3><p>When the gate decides a proposal from this console, its verdict lands here against the memory it created.</p></div>'}
       <p class="small" style="margin-top:14px">A note on absence: two further sponsor providers were evaluated for this build and did no work — one grant key proved scoped to a model this product does not use, the other never confirmed a balance. They are not listed, because a provider panel that credits work nobody did would be decoration, not evidence.</p>
     `;
@@ -311,13 +405,13 @@
     const kinds = [...new Set(L.events.map((e) => e.kind))];
     const verdicts = L.before_after.verdicts;
     main.innerHTML = `
-      ${head('Learning, on the record', 'Every interaction is an append-only learning event. A lesson stands only because the gate promoted it — its verdict travels with it. Forged lessons (a lesson-shaped record with no gate verdict) are flagged by audit.')}
+      ${head('Learning', 'Every interaction is an append-only learning event. A lesson stands only because the gate promoted it — its verdict travels with it. Forged lessons (a lesson-shaped record with no gate verdict) are flagged by audit.', 'Improvement is shown, event by event — not asserted.')}
       <h3>Before / after — one task class</h3>
       ${verdicts.length ? `<div class="timeline-strip">${verdicts.map((v, i, a) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step">${v.decision ? verdictBadge(v.decision.decision) : ''}<br>${esc(v.summary)}<br><span class="small">${fmtTs(v.at)}</span></div>`).join('')}</div>
         <p class="small">The task: lodge a global factual claim so the gate approves it. Before the lesson, claims escalated for want of citations. After it, the second agent — never corrected itself — approved first try. The full event trail is in the stream below.</p>`
       : '<div class="empty-state"><h3>No before/after story seeded</h3><p>Run <code class="inline">npm run seed:web</code> to record the learning story into this namespace.</p></div>'}
       <h3 style="margin-top:22px">Standing playbook lessons (${L.lessons.length})</h3>
-      ${L.lessons.length ? L.lessons.map((l) => `<div class="row-item"><div class="meta"><span class="badge ok">gate-promoted</span><span class="small">${fmtDate(l.created_at)}</span>${L.audit.forged_lesson_ids.includes(l.id) ? '<span class="badge bad">audit: no verdict — forged</span>' : ''}</div><div class="text">${esc(l.text)}</div>${jevDetail(l.jev ? { ...l.jev, decision: l.jev.promote ? 'promote' : 'decline' } : null)}</div>`).join('')
+      ${L.lessons.length ? L.lessons.map((l) => `<div class="row-item"><div class="meta"><span class="badge" data-state="approved">gate-promoted</span><span class="small">${fmtDate(l.created_at)}</span>${L.audit.forged_lesson_ids.includes(l.id) ? '<span class="badge" data-state="rejected">audit: no verdict — forged</span>' : ''}</div><div class="text">${esc(l.text)}</div>${jevDetail(l.jev ? { ...l.jev, decision: l.jev.promote ? 'promote' : 'decline' } : null)}</div>`).join('')
       : '<div class="empty-state"><h3>No lessons standing</h3><p>No event has been promoted yet. Promotion is the gate&rsquo;s decision, not a button here.</p></div>'}
       <h3 style="margin-top:22px">Event stream (${L.events.length})</h3>
       <div class="toolbar"><div><label class="f" for="kindFilter">Filter by kind</label>
@@ -327,7 +421,7 @@
     const render = (kind) => {
       const rows = L.events.filter((e) => !kind || e.kind === kind);
       document.getElementById('eventList').innerHTML = rows.length ? rows.map((e) => `
-        <div class="row-item"><div class="meta"><span class="badge thread">${esc(e.kind)}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(e.subject_type || '') + ' ' + esc(e.subject_id) : ''}</span></div>
+        <div class="row-item"><div class="meta"><span class="badge">${esc(e.kind)}</span>${agentBadge(e.actor)}<span class="small">${fmtTs(e.created_at)}${e.subject_id ? ' · ' + esc(e.subject_type || '') + ' ' + esc(e.subject_id) : ''}</span></div>
         <div class="text">${esc(e.summary)}</div></div>`).join('')
         : '<div class="empty-state"><h3>No events of this kind</h3><p>The stream holds other kinds. An honest filter shows an empty set rather than padding it.</p></div>';
     };
@@ -350,16 +444,18 @@
   ];
   let settingsFlash = {};
   function settingsStatus(entry) {
-    if (!entry.configured) return { cls: '', label: 'Not configured', source: 'Source: not configured yet' };
-    if (entry.source === 'env') return { cls: 'ok', label: 'Configured by environment', source: 'Source: the environment variable on this machine' };
-    if (entry.source === 'store') return { cls: 'ok', label: 'Configured in Settings', source: 'Source: saved in Settings on this machine' };
-    return { cls: 'ok', label: 'Configured', source: 'Source: configured' };
+    // Tokens v2: standing by word + marker shape (data-state),
+    // never by a colour class (the v1 ok/bad hues are gone).
+    if (!entry.configured) return { state: 'pending', label: 'Not configured', source: 'Source: not configured yet' };
+    if (entry.source === 'env') return { state: 'approved', label: 'Configured by environment', source: 'Source: the environment variable on this machine' };
+    if (entry.source === 'store') return { state: 'approved', label: 'Configured in Settings', source: 'Source: saved in Settings on this machine' };
+    return { state: 'approved', label: 'Configured', source: 'Source: configured' };
   }
   function settingsSection(def, entry) {
     const st = settingsStatus(entry);
     const flash = settingsFlash[def.id] || '';
     return `<section class="card settings-card">
-      <div class="provider-head"><h3>${esc(def.name)}</h3><span class="badge ${st.cls}">${esc(st.label)}</span></div>
+      <div class="provider-head"><h3>${esc(def.name)}</h3><span class="badge" data-state="${st.state}">${esc(st.label)}</span></div>
       <div class="settings-meta">
         ${entry.configured
           ? (entry.last4
@@ -388,7 +484,7 @@
     const entries = SETTINGS_PROVIDERS.map((d) => [d, providers[d.id] || { configured: false, last4: null, source: null }]);
     const anyConfigured = entries.some(([, e]) => e.configured);
     main.innerHTML = `
-      ${head('Settings — provider keys', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.')}
+      ${head('Settings', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.', 'Your keys stay on this machine.')}
       ${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h3>No provider keys configured</h3><p>MemoryLoom runs locally without keys — the demo corpus, recall, the graph and time travel all work on this machine. Add a key below to unlock that provider&rsquo;s live calls: Meta Model API for narration and reasoning, and Jev for the decision gate. A Baseten key unlocks nothing yet — the Baseten lane is parked; the key is stored and can be tested here.</p></div>`}
       <div class="settings-grid">${entries.map(([d, e]) => settingsSection(d, e)).join('')}</div>
     `;
