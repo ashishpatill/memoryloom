@@ -3,8 +3,10 @@
 Status: adopted at Iteration 5.0. `web/public/tokens.css` is the
 source of truth; `web/public/style-tile.html` is its reference render
 (open `/style-tile.html` on the running app). The landing page adopts
-the tokens in Iteration 5.1 and the console in 5.2; until a page is
-migrated, `web/public/styles.css` (v1) still styles it. This note
+the tokens in Iteration 5.1 and the console in 5.2; as of 5.2 every
+product page is on the tokens and no page links
+`web/public/styles.css` (v1) any more — the file remains in the tree
+as the v1 record, styling nothing. This note
 records the decisions so the migrations are mechanical, not taste
 calls made twice.
 
@@ -158,3 +160,28 @@ All defined in `tokens.css`, all rendered once on the style tile:
 - The console's working conventions carry over unchanged: skeleton
   loading (restyled, not removed), designed empty states, the
   shared error component, three states per view.
+
+## Migration record (5.2, closing the notes above)
+
+- All seven console views plus the sidebar shell are on tokens.css
+  alone; the console's page-level helpers re-express its own
+  components (rows, receipts, forms, state blocks) in token values.
+  The v1 debts are closed: skeleton shimmer → still ruled blocks,
+  badge/agent hues → `data-state` word + marker badges (agents are
+  named, never coloured), pill buttons → the tokens' 4px buttons,
+  woven texture → plain figure frame.
+- The graph has ONE renderer: `web/public/graph.js` is the v2
+  renderer (three ink threads — grok, moose, and the learning
+  promotion — told apart by position and label), shared by the
+  landing weave and the console graph. The landing spends the one
+  accent on its animated playhead; the console's static graph
+  spends none, consciously: no console view marks a live decision
+  with the accent, because verdicts there are records.
+- `.site-head nav` wraps, in the tokens (5.2 decision): the landing
+  page's 5.1 page-level workaround was promoted into the component
+  after the console work confirmed any top-nav reuse hits the same
+  360px overflow. Page-level rules keep only per-page spacing.
+- One console-specific layout law, learned at 360px: a grid column
+  holding ruled tables needs `min-width: 0`, or the table's
+  min-content blows the column out past the viewport and
+  `.table-wrap` never gets to scroll.
