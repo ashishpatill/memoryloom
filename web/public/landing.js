@@ -146,7 +146,7 @@
           if (superseded) el('line', { x1: n.x - 6, y1: n.y + 6, x2: n.x + 6, y2: n.y - 6, stroke: INK, 'stroke-width': 1.6 }, g);
         }
         const lbl = el('text', { x: n.x, y: n.y + (n.labelDy ?? -13), 'text-anchor': 'middle', class: 'node-sub' }, g);
-        const short = n.id.replace('demo-', '');
+        const short = n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson';
         lbl.textContent = short.length > 14 ? short.slice(0, 13) + '…' : short;
       }
       nodeEls.push({ g, at: tOf(n) || tMin, kind: n.kind });
