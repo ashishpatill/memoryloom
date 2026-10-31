@@ -195,7 +195,7 @@ DATABASE_URL=postgres://… npm run rehearse -- 1          # frozen demo script,
 Working and verified locally:
 
 - Schema v1 + migrations 002–005 apply cleanly to a fresh database.
-- All 10 MCP tools pass the surface check (34/34 assertions), including
+- All 10 MCP tools pass the surface check (37/37 assertions), including
   hybrid recall where a paraphrase query hits through the vector leg
   with no keyword overlap, the full propose → review → promote/reject
   flow, and cold-start behaviour on an empty namespace.
@@ -219,7 +219,7 @@ Working and verified locally:
   passed 40/40 with zero unsafe approvals on its golden set, so the
   thresholds are live; the gate **fails closed** — on any Jev backend
   failure a proposal queues for a human, and no fallback ever
-  approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 15/15).
+  approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 19/19).
   The decision backend is swappable per class in router config
   (default Jev everywhere); Baseten's decision models are built
   as challenger adapters, deferred while the probe record stands.
@@ -310,7 +310,7 @@ Modal have no role in this build.
   loop, two planes, forgetting and time travel, the learning layer,
   checked numbers — is diagram-led, and every figure is captioned
   with what it proves and what it does not prove. The web check
-  (`checks/web.mjs`, 55 assertions) exercises the whole API on a
+  (`checks/web.mjs`, 89 assertions) exercises the whole API on a
   fresh database, including a live propose through the gate, a human
   decision, recall receipts, both sides of the Hall A → Hall B
   supersession, and the API-level empty states. Deployment is
