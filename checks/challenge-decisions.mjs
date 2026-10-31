@@ -7,9 +7,9 @@
  *   1. MemoryLoom gate golden set (40 items) — Jev baseline 40/40,
  *      0 unsafe approvals, ~$0.0000164 per decision (measured in the
  *      2026-10-30 gate calibration: 40 calls, $0.000657 total).
- *   2. ProofDesk sample re-gate — Jev baseline 14/15, zero unsupported
+ *   2. A 15-item sample re-gate — Jev baseline 14/15, zero unsupported
  *      shipped. NOT automated here: run only for a challenger still
- *      unbeaten after leg 1, using the pack in ~/workspace/proofdesk.
+ *      unbeaten after leg 1, using an external sample pack.
  *   3. ContractNLI full test split (2,091 pairs) — Jev baseline
  *      accuracy 0.8207, 36 false approvals. Same gating as leg 2.
  * A challenger that loses any leg is closed and recorded; no re-runs.

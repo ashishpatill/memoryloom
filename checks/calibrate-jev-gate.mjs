@@ -10,7 +10,7 @@
  * effective decision always escalate).
  *
  * Scoring uses lib/gate.mjs evaluateGate — the production path.
- * Decisions use the ProofDesk piecewise calibration of raw Jev
+ * Decisions use the piecewise calibration of raw Jev
  * probabilities (anchors raw 0.05 -> 0.30, raw 0.30 -> 0.80), the
  * winning branch by calibrated score (a branch must reach 0.5), and
  * a structural layer that can only escalate: procedural, pinned and
@@ -85,7 +85,7 @@ const doc = `# Calibration — Jev write gate (jev-1.13.0)
 
 Run ${out.at}. Fixed golden set of ${ITEMS.length} synthetic proposals
 with expected write-gate decisions, scored through the production
-path (lib/gate.mjs evaluateGate) with the ProofDesk piecewise
+path (lib/gate.mjs evaluateGate) with the piecewise
 calibration of raw Jev probabilities (anchors raw 0.05 -> 0.30 and
 raw 0.30 -> 0.80).
 
