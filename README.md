@@ -130,6 +130,15 @@ DATABASE_URL=postgres://… npm run seed:web   # Project Lantern corpus + learni
 DATABASE_URL=postgres://… npm run web        # site at / · console at /console
 ```
 
+The corpus, recall, the graph and time travel seed and run with no
+keys at all. The learning story is the one recorded part: it is
+recorded when the demo is seeded with a Jev key configured in
+Settings (or `TYPESAFE_API_KEY` in the environment). Seeded without
+one, the gate fails closed, the seed prints a plain notice that the
+learning story was not recorded and why, and the demo has no
+standing lesson until it is re-seeded with a key on a fresh
+database.
+
 The console has seven views, each designed in three states (loading,
 empty, populated):
 

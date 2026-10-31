@@ -19,6 +19,7 @@
  */
 import pg from 'pg';
 import { resolveDatabaseUrl } from '../lib/load-env.mjs';
+import { resolveProviderKey } from '../lib/config.mjs';
 import { seedDemo, DEMO_NAMESPACE } from './seed-demo.mjs';
 import { decideGate } from '../lib/gate.mjs';
 import { correctInTurn, listEvents, promoteEvent, recordEvent } from '../lib/learning.mjs';
@@ -112,6 +113,28 @@ const lessonEventId = await recordEvent(pool, {
 const promotion = await promoteEvent(pool, lessonEventId, { decided_by: 'memoryloom-learning' });
 console.log('promotion:', JSON.stringify({ promoted: promotion.promoted, lesson_id: promotion.lesson_id }));
 
+// Honest degradation (Iteration 5.3, Finding D): the learning story
+// is a Jev-gated story. With no Jev key resolvable (Settings store
+// or TYPESAFE_API_KEY) and no cached verdict to serve it, the gate
+// fails closed, the lesson is not promoted, and the demo quietly
+// used to end up with 9 events, no standing lesson and no second
+// agent approval — while the site presented Fig. 3 as the demo's
+// recorded story. The seed now SAYS SO, in plain words, at seed
+// time. The corpus, recall, graph and time travel are unaffected.
+if (!promotion.promoted) {
+  const jevKey = resolveProviderKey('jev');
+  console.log(
+    'NOTICE — the learning story was NOT fully recorded: the gate did not promote the lesson' +
+    ` (${promotion.decision?.reason || 'no promotion decision'}), so this demo has no standing lesson` +
+    ' and no second-agent approval, and the learning figure will show its empty state.' +
+    (jevKey.key
+      ? ' A Jev key is configured, so the gate itself declined or failed; see the promotion record above.'
+      : ' No Jev key is resolvable (none in Settings, none in the environment), so every gate decision failed closed.') +
+    ' The corpus, recall, the graph and time travel are fully seeded and work with no keys.' +
+    ' To record the full 12-event learning story, configure a Jev key in Settings (or set TYPESAFE_API_KEY) and re-seed a fresh database.'
+  );
+}
+
 if (promotion.promoted) {
   const recall = await recallWithReceipts(pool, { namespace, query: 'global claim two grounding records escalate', k: 5 });
   const hit = recall.results.find((r) => r.id === promotion.lesson_id);
@@ -124,6 +147,15 @@ if (promotion.promoted) {
   });
   const after = await lodge('moose', CLAIM_2, [SPARE_1[0], SPARE_2[0]]);
   console.log('after (moose, first try):', after.decision);
+  if (after.decision !== 'approve') {
+    console.log(
+      'NOTICE — the learning story was NOT fully recorded: the lesson was promoted, but the second' +
+      ` agent's first-try claim was not approved (gate: ${after.decision} — ${after.reason}).` +
+      ' The corpus, recall, the graph and time travel are fully seeded. Re-seed a fresh database' +
+      ' with a Jev key configured in Settings (or TYPESAFE_API_KEY in the environment) to record' +
+      ' the full 12-event story.'
+    );
+  }
 }
 
 await runDaemonOnce(pool, namespace);
