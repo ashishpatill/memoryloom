@@ -19,16 +19,25 @@
  *    gate decision (fail closed: escalate).
  *  - local: embeddings and all dev/debug traffic; final fallback for
  *    every task, so a dead credit never stops the loop.
- *  - baseten: CLOSED (probe 2026-10-30 proved the grant key refuses
- *    all non-Spark inference with HTTP 403 — DeepSeek, GLM and Kimi
- *    chat calls all rejected; only catalogue reads succeed). The
- *    DeepSeek triage lane was therefore not built, its budget stays
- *    untouched, and triage runs on the Meta Wonder medium tier.
+ *  - baseten / Muse Spark Open (meta-models/muse-spark-open-1026) is
+ *    Tier 0, the operations tier (opened 2026-10-31): cheap language
+ *    work around operations — proposal pre-screening and first-pass
+ *    drafts of consolidation, narration and explanation. It never
+ *    decides: Jev still decides every enumerable decision, and a
+ *    pre-screen is a drafting aid, not a verdict. History: the
+ *    2026-10-30 probe proved the grant key refuses all non-Spark
+ *    inference with HTTP 403 (DeepSeek, GLM and Kimi chat calls all
+ *    rejected; only catalogue reads succeeded), so the DeepSeek
+ *    triage lane was never built. On 2026-10-31 exactly one lane was
+ *    opened instead: Spark Open on Baseten as Tier 0, confirmed
+ *    callable by a capped probe the same day. No other Baseten model
+ *    is wired, and the baseten provider refuses any other model id.
  *    fireworks: no spend authorised in this build. modal: no role.
  *
- * Muse Spark is not used anywhere: no spark ids in config, and the
- * meta provider refuses any model id containing "spark" or
- * "contributor".
+ * Meta's own Spark ids are not used anywhere: no such ids in config,
+ * and the meta provider refuses any model id containing "spark" or
+ * "contributor". The one Spark that runs is Spark Open on Baseten,
+ * above.
  *
  * Hosted providers are armed only when MEMORYLOOM_ROUTER_MODE=live, and
  * even then only for calls explicitly marked { synthetic: true } — the
@@ -444,6 +453,115 @@ const metaProvider = {
   },
 };
 
+// ---- Baseten provider: Muse Spark Open, Tier 0 operations -----------------
+
+const BASETEN_MODEL = 'meta-models/muse-spark-open-1026';
+
+function basetenBaseUrl() {
+  return String(process.env.BASETEN_BASE_URL || 'https://inference.baseten.co').replace(/\/$/, '');
+}
+
+function basetenPrompt(task, payload) {
+  if (task === 'prescreen') {
+    const proposal = { text: payload.proposal?.text || '', type: payload.proposal?.type || null };
+    const evidence = (payload.evidence || []).map((e) => ({ id: e.id || null, text: e.text || '' }));
+    return {
+      json: true,
+      maxOut: 500,
+      system:
+        'You pre-screen a proposed memory for a human review queue. This is a pre-screen drafting aid only — ' +
+        'you are NOT making a decision; a separate decision layer decides, and nothing you return approves anything. ' +
+        'Given the proposal and its evidence records, lean one of: approve (the proposal looks well-formed and, where it ' +
+        'makes a factual claim, the evidence supports it), escalate (a person should look: procedures, pinned or ' +
+        'high-stakes claims, missing, thin or mismatched evidence, or any doubt), or reject (the text is meaningless ' +
+        'noise, placeholder filler or gibberish). grounding_ok is true only when the evidence records actually ' +
+        'support the proposal\'s claim; for proposals that need no evidence (plain episodic or local notes) say true. ' +
+        'Reply with JSON only: {"lean": "approve|escalate|reject", "grounding_ok": true|false, "reason": "<= 25 words"}.',
+      user: JSON.stringify({ proposal, evidence }),
+    };
+  }
+  // Same prompt text and result shapes as the Meta provider for the
+  // shared tasks, so calibration compares models, not prompts.
+  return metaPrompt(task, payload);
+}
+
+function basetenShapeResult(task, payload, parsed, rawText) {
+  if (task === 'prescreen') {
+    if (!parsed || !['approve', 'escalate', 'reject'].includes(parsed.lean)) return null;
+    if (typeof parsed.grounding_ok !== 'boolean') return null;
+    return {
+      lean: parsed.lean,
+      grounding_ok: parsed.grounding_ok,
+      reason: String(parsed.reason || '').split(/\s+/).filter(Boolean).slice(0, 25).join(' '),
+    };
+  }
+  return metaShapeResult(task, payload, parsed, rawText);
+}
+
+function basetenPromptFingerprint(task, payload) {
+  const p = basetenPrompt(task, payload);
+  if (!p) return null;
+  return createHash('sha256').update(p.system + '\n' + p.user).digest('hex').slice(0, 16);
+}
+
+const basetenProvider = {
+  id: 'baseten',
+  live: true,
+  paid: true,
+  promptFingerprint: basetenPromptFingerprint,
+  role: 'Muse Spark Open on Baseten: Tier 0 operations (pre-screen and first-pass drafts; Jev decides)',
+  get configured() {
+    return hostedEnabled() && Boolean(resolveProviderKey('baseten').key);
+  },
+  /** Model spec for a task: the pinned Spark Open model, Tier 0 only. */
+  defaultModel(task) {
+    return {
+      id: BASETEN_MODEL,
+      tier: 'tier0',
+      reasoning_effort: task === 'prescreen' ? 'low' : 'medium',
+    };
+  },
+  async call(task, payload, ctx = {}) {
+    const prompt = basetenPrompt(task, payload);
+    if (!prompt) return { ok: false, reason: `baseten provider has no task '${task}'` };
+    const spec = ctx.spec || this.defaultModel(task);
+    if (spec.id !== BASETEN_MODEL) {
+      return { ok: false, reason: `baseten: model ${spec.id} is refused — the Tier 0 lane is pinned to ${BASETEN_MODEL}`, model: spec.id };
+    }
+    const effort = task === 'prescreen' ? 'low' : 'medium';
+    const body = {
+      model: BASETEN_MODEL,
+      messages: [
+        { role: 'system', content: prompt.system },
+        { role: 'user', content: prompt.user },
+      ],
+      // Spark Open is a reasoning model: completion tokens are spent on
+      // reasoning before visible content, so the cap carries headroom
+      // above the task's content budget or answers come back empty.
+      max_tokens: prompt.maxOut + 1000,
+      reasoning_effort: effort,
+    };
+    if (prompt.json) body.response_format = { type: 'json_object' };
+    let r = await authedFetch(this.id, `${basetenBaseUrl()}/v1/chat/completions`, body);
+    if (r.status === 400) {
+      delete body.response_format;
+      r = await authedFetch(this.id, `${basetenBaseUrl()}/v1/chat/completions`, body);
+    }
+    if (r.status !== 200 || !r.json) {
+      return { ok: false, reason: `baseten chat HTTP ${r.status}: ${r.raw}`, model: BASETEN_MODEL };
+    }
+    const text = r.json.choices?.[0]?.message?.content || '';
+    const result = basetenShapeResult(task, payload, extractJson(text), text);
+    if (!result) return { ok: false, reason: 'baseten chat: unparsable output', usage: r.json.usage || null, model: BASETEN_MODEL };
+    const u = r.json.usage || {};
+    const usage = {
+      ...u,
+      cached_input_tokens: u.prompt_tokens_details?.cached_tokens || 0,
+    };
+    return { ok: true, result, usage, model: BASETEN_MODEL, endpoint: 'chat' };
+  },
+};
+
 // ---- parked / disabled providers -------------------------------------------
 
 function disabledProvider(id, envVar, role, reason) {
@@ -464,12 +582,7 @@ function disabledProvider(id, envVar, role, reason) {
 export const PROVIDERS = {
   local: localProvider,
   meta: metaProvider,
-  baseten: disabledProvider(
-    'baseten',
-    'BASETEN_API_KEY',
-    'bulk triage (CLOSED — probe failed 2026-10-30)',
-    'baseten: closed — probe 2026-10-30 proved the grant key refuses all non-Spark inference (HTTP 403); DeepSeek lane not built, budget untouched, triage on Meta Wonder medium'
-  ),
+  baseten: basetenProvider,
   modal: disabledProvider('modal', 'MODAL_TOKEN_ID', 'batch compute', 'modal: no role in the credit plan ($0 confirmed)'),
   fireworks: disabledProvider('fireworks', 'FIREWORKS_API_KEY', 'live-loop scoring', 'fireworks: spend not authorised in this build'),
 };
