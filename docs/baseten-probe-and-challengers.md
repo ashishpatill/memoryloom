@@ -93,3 +93,9 @@ What is built and waiting:
   `checks/out/challengers.json`.
 - `checks/fixtures/gate-golden.mjs` — the 40-item golden set, now
   shared verbatim by the Jev calibration and the challenger harness.
+
+## Update 2026-10-31 — the Spark Open lane opens
+
+The 2026-10-30 record above is not rewritten, and its facts stand: non-Spark completions were refused, and the challengers are still deferred — no challenger leg was run in this iteration.
+
+On 2026-10-31 Ashish reversed the Spark position for exactly one lane: Muse Spark Open on Baseten, as the Tier 0 operations provider. The capped probe and the calibration were then run for that lane. See `docs/spark-open-calibration.md` for the numbers.

@@ -1,0 +1,820 @@
+{
+  "at": "2026-10-31T13:06:39.269Z",
+  "model": "meta-models/muse-spark-open-1026",
+  "provider": "baseten",
+  "tier": "tier0",
+  "effort": {
+    "prescreen": "low",
+    "consolidate": "medium",
+    "narrate": "medium",
+    "explain": "medium"
+  },
+  "gate_set": {
+    "total": 40,
+    "provider_ok": 40,
+    "agree_expect": {
+      "count": 33,
+      "pct": 82.5
+    },
+    "agree_jev": {
+      "count": 33,
+      "pct": 82.5
+    },
+    "disagreements_vs_expect": [
+      {
+        "name": "a03",
+        "expect": "approve",
+        "jev": "approve",
+        "lean": "escalate"
+      },
+      {
+        "name": "a04",
+        "expect": "approve",
+        "jev": "approve",
+        "lean": "escalate"
+      },
+      {
+        "name": "a12",
+        "expect": "approve",
+        "jev": "approve",
+        "lean": "escalate"
+      },
+      {
+        "name": "e03",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      },
+      {
+        "name": "e06",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      },
+      {
+        "name": "e12",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      },
+      {
+        "name": "e13",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      }
+    ],
+    "disagreements_vs_jev": [
+      {
+        "name": "a03",
+        "expect": "approve",
+        "jev": "approve",
+        "lean": "escalate"
+      },
+      {
+        "name": "a04",
+        "expect": "approve",
+        "jev": "approve",
+        "lean": "escalate"
+      },
+      {
+        "name": "a12",
+        "expect": "approve",
+        "jev": "approve",
+        "lean": "escalate"
+      },
+      {
+        "name": "e03",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      },
+      {
+        "name": "e06",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      },
+      {
+        "name": "e12",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      },
+      {
+        "name": "e13",
+        "expect": "escalate",
+        "jev": "escalate",
+        "lean": "approve"
+      }
+    ],
+    "items": [
+      {
+        "name": "a01",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Episodic note well-formed; plain local notes need no evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a02",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Plain episodic note requires no external evidence; no factual claim needing grounding.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a03",
+        "expect": "approve",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Semantic factual claim about laptop location has no supporting evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "a04",
+        "expect": "approve",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "No evidence provided to support semantic factual claim about lamp casings location.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "a05",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Evidence directly states receipts cite record ids for every recall result.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a06",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Evidence ev-f1 verbatim supports hybrid recall RRF claim.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a07",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Direct verbatim support in ev-d1; ev-d2 corroborates valid-to retention.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a08",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Exact match in evidence; claim supported by ev-p1 and ev-p2.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a09",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Evidence directly supports decay effect on unrecalled memories with matching paraphrasy.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a10",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "ev-d2 verbatim supports superseded fact remaining readable via valid_to date",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a11",
+        "expect": "approve",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Plain episodic note needs no evidence and is well-formed.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "a12",
+        "expect": "approve",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Factual claim about whiteboard contents has no evidence; needs human verification.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "e01",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Procedural claim requires verification, no evidence provided; needs human review.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e02",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Procedural arrival-order claim lacks any supporting evidence; receipts evidence is unrelated.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e03",
+        "expect": "escalate",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Evidence directly supports receipt with record id claim.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "e04",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Procedural proposal requires human review and has no supporting evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e05",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Semantic factual claim requires evidence but none provided",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e06",
+        "expect": "escalate",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Exact evidence match supports factual claim verbatim.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "e07",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Semantic claim about recall receipts unsupported; evidence only discusses solar lamp kit.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e08",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Evidence supports record-id receipt only; home address claim unsupported and sensitive.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e09",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Evidence unrelated to pricing; cannot support claim that corpus never mentions it.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e10",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "No evidence supports universal negative storage claim; records discuss assembly and charging only.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e11",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "k=30 contradicted by evidence showing k=60",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e12",
+        "expect": "escalate",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Well-formed team goal statement, no external factual claim requiring evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "e13",
+        "expect": "escalate",
+        "lean": "approve",
+        "grounding_ok": true,
+        "reason": "Claim directly supported by identical evidence text, well-formed reflective proposal.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": false,
+        "agree_jev": false
+      },
+      {
+        "name": "e14",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Semantic claim about Recall receipts has no evidence; needs human review.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e15",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Factual claim about demo script lacks supporting evidence records",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e16",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Evidence states k=60, contradicting proposal claim k=45.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e17",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Pinned claim about all memories; evidence only about valid dates, no pin support.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e18",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Evidence shows 40-household pilot only, not guaranteed success or 10k expansion next quarter.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e19",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Evidence directly contradicts proposal; superseded facts remain readable, not deleted permanently.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "e20",
+        "expect": "escalate",
+        "lean": "escalate",
+        "grounding_ok": false,
+        "reason": "Claim of one hour contradicts evidence stating six hours; factual mismatch requires review.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r01",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Gibberish filler text with no semantic meaning; no evidence to ground.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r02",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Gibberish symbols only, no semantic content; no evidence to support any claim.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r03",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Placeholder gibberish with no meaning, no evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r04",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Proposal is placeholder lorem ipsum filler text with no meaningful content.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r05",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Text 'stuff' is placeholder filler with no semantic meaning and no evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r06",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Meaningless placeholder filler text, no semantic content or evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r07",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Gibberish keyboard sequences, no meaningful content, no supporting evidence.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      },
+      {
+        "name": "r08",
+        "expect": "reject",
+        "lean": "reject",
+        "grounding_ok": false,
+        "reason": "Text is placeholder \"...\" with no evidence; meaningless noise.",
+        "provider_ok": true,
+        "cached": false,
+        "agree_expect": true,
+        "agree_jev": true
+      }
+    ]
+  },
+  "meta_set": {
+    "total": 36,
+    "passed": 36,
+    "wonder_full_recorded_passed": 36,
+    "differing_from_wonder": [],
+    "items": [
+      {
+        "name": "c1",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c2",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c3",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c4",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c5",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c6",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c7",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c8",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c9",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c10",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c11",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "c12",
+        "kind": "consolidate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n1",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n2",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n3",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n4",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n5",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n6",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n7",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n8",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n9",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n10",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n11",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "n12",
+        "kind": "narrate",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x1",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x2",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x3",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x4",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x5",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x6",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x7",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x8",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x9",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x10",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x11",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      },
+      {
+        "name": "x12",
+        "kind": "explain",
+        "pass": true,
+        "why": null,
+        "cached": false
+      }
+    ]
+  },
+  "spend_calibration_class": {
+    "calls": 76,
+    "input_tokens": 26706,
+    "output_tokens": 33986,
+    "est_cost_usd": 0.168111
+  }
+}
