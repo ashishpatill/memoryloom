@@ -37,7 +37,7 @@
   @media (max-width: 700px) { .asked { grid-template-columns: 1fr; } }
   .asked .card p { margin: 0; }
   .asked .when { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2); display: block; margin-bottom: var(--space-2); }
-  .site-head nav { flex-wrap: wrap; row-gap: var(--space-2); }
+  .site-head nav { row-gap: var(--space-2); } /* wrapping itself is in the tokens since 5.2 */
   @media (max-width: 700px) { .site-head nav { gap: var(--space-2) var(--space-4); } .site-head nav a { white-space: nowrap; } }
   table.data td.wrap-num { font-family: var(--font-mono); white-space: normal; }
   .empty-state { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-5); text-align: center; color: var(--ink-2); background: var(--surface); }
@@ -249,6 +249,7 @@ DATABASE_URL=postgres://&hellip; npm run web       # the one command: site + con
     <p>MemoryLoom &mdash; one shared, auditable memory brain for agent teams. Data lives in one Postgres store on your own machine; the demonstration corpus (Project Lantern) is fictional, written for this demo, and no real data appears anywhere on this site or in the console.</p>
   </footer>
 </div>
+<script src="/graph.js"></script>
 <script src="/landing.js"></script>
 </body>
 </html>

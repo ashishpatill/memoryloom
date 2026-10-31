@@ -122,7 +122,11 @@ a:hover { text-decoration-color: var(--ink); }
 }
 .wordmark { font-family: var(--font-display); font-size: 1.55rem; font-weight: 700; }
 .wordmark .loom { color: var(--ink-2); }
-.site-head nav { margin-left: auto; display: flex; gap: var(--space-5); font-size: 0.95rem; }
+.site-head nav { margin-left: auto; display: flex; gap: var(--space-5); font-size: 0.95rem; flex-wrap: wrap; }
+/* flex-wrap lives in the tokens (decided in Iteration 5.2): the
+   landing page first worked around the unwrapped nav at page level
+   in 5.1, but any top-nav reuse hits the same 360px overflow, so
+   the wrap is part of the component, not of one page. */
 .site-head nav a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: 1px; }
 .site-head nav a:hover { border-bottom-color: var(--ink); }
 
