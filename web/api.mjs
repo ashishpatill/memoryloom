@@ -19,6 +19,7 @@ import { reviewList, promoteProposal, rejectProposal } from '../lib/curator-deci
 import { recordEvent, listEvents } from '../lib/learning.mjs';
 import { listDaemonRuns } from '../lib/daemon.mjs';
 import { readSpendLog, routerConfig } from '../router/spend.mjs';
+import { maskedSettings, providerDef, removeProviderKey, saveProviderKey, testProvider } from '../lib/config.mjs';
 
 const HUMAN = 'human (console)';
 
@@ -37,6 +38,41 @@ async function readBody(req) {
   if (!chunks.length) return {};
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
+
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '::1']);
+
+function hostOf(value) {
+  return String(value || '').trim().toLowerCase().replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+}
+
+/**
+ * Settings mutations and provider tests are LOCAL ONLY.
+ *
+ * Choice (Iteration 1.1): a mutating or test request is accepted
+ * only when (a) the deployment marker VERCEL is absent — a hosted
+ * deployment can never mutate settings, even if a header is forged —
+ * and (b) the request's Host is a loopback host, and (c) when an
+ * Origin header is present, its host is loopback too. The Host
+ * check is what the browser the user actually runs sends for the
+ * local app (http://localhost:<port>), so the Settings screen works
+ * locally while the public deployment answers 403. The masked GET
+ * view stays readable anywhere: it exposes only last-4 tails.
+ */
+function isLocalRequest(req) {
+  if (process.env.VERCEL) return false;
+  if (!LOCAL_HOSTS.has(hostOf(req.headers.host))) return false;
+  const origin = req.headers.origin;
+  if (origin) {
+    try {
+      if (!LOCAL_HOSTS.has(new URL(origin).hostname.toLowerCase())) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+const LOCAL_ONLY = { status: 403, payload: { error: 'settings can only be changed from the local app' } };
 
 export function createHandler({ pool, namespace }) {
   if (!pool) throw new Error('createHandler needs a pg pool');
@@ -300,6 +336,25 @@ export function createHandler({ pool, namespace }) {
       if (req.method === 'GET' && (m = p.match(/^\/api\/trail\/(.+)$/))) return json(res, 200, await provenanceTrail(pool, decodeURIComponent(m[1])));
       if (req.method === 'GET' && (m = p.match(/^\/api\/chain\/(.+)$/))) return json(res, 200, await supersessionChain(pool, decodeURIComponent(m[1])));
       if (req.method === 'GET' && (m = p.match(/^\/api\/neighbourhood\/(.+)$/))) return json(res, 200, await agentNeighbourhood(pool, namespace, decodeURIComponent(m[1])));
+      // Settings: masked view for everyone; save / remove / test are
+      // local-only (see isLocalRequest). None of these touch the
+      // database pool or the namespace — provider keys are app-level.
+      if (req.method === 'GET' && p === '/api/settings') return json(res, 200, { providers: maskedSettings() });
+      if ((m = p.match(/^\/api\/settings\/([a-z_]+)$/)) && (req.method === 'POST' || req.method === 'DELETE')) {
+        if (!providerDef(m[1])) return json(res, 400, { error: 'unknown provider' });
+        if (!isLocalRequest(req)) return json(res, LOCAL_ONLY.status, LOCAL_ONLY.payload);
+        if (req.method === 'DELETE') { const r = removeProviderKey(m[1]); return json(res, r.status, r.payload); }
+        const body = await readBody(req).catch(() => ({}));
+        const r = saveProviderKey(m[1], body.api_key ?? body.key);
+        return json(res, r.status, r.payload);
+      }
+      if (req.method === 'POST' && (m = p.match(/^\/api\/settings\/([a-z_]+)\/test$/))) {
+        if (!providerDef(m[1])) return json(res, 400, { error: 'unknown provider' });
+        if (!isLocalRequest(req)) return json(res, LOCAL_ONLY.status, LOCAL_ONLY.payload);
+        const body = await readBody(req).catch(() => ({}));
+        const r = await testProvider(m[1], { candidateKey: body.api_key ?? body.key ?? null });
+        return json(res, 200, r);
+      }
       if (req.method === 'POST' && p === '/api/propose') { const r = await propose(await readBody(req)); return json(res, r.status, r.payload); }
       if (req.method === 'POST' && (m = p.match(/^\/api\/proposals\/(.+)\/decide$/))) { const r = await decide(decodeURIComponent(m[1]), await readBody(req)); return json(res, r.status, r.payload); }
       return json(res, 404, { error: 'not found', path: p });
