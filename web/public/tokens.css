@@ -1,0 +1,230 @@
+/* MemoryLoom design tokens v2 — the single source of truth for the
+   product surface from Iteration 5.0 on. The site and console adopt
+   these tokens in Iterations 5.1 and 5.2; until then styles.css
+   (v1) still styles the shipped pages and this file styles the
+   style tile (style-tile.html), which is the reference render.
+
+   The system in one paragraph: ink near-black on warm paper,
+   hairline rules instead of boxes and shadows, one restrained
+   accent that means "a memory moved, or a decision is live" and
+   appears at most once in any view, status carried by word,
+   marker shape and weight — never by colour alone. Typography
+   carries the design: a serif display face, a humanist text face,
+   a mono face for data, receipts and numbers. No gradients, no
+   glass, no shadows, no decorative colour. The full reasoning and
+   the component inventory live in docs/design-tokens.md. */
+
+/* ---- Fonts: self-hosted, SIL Open Font License 1.1 -------------
+   No build-time or runtime network fetch. Licence texts sit beside
+   the files in web/public/fonts/. Latin subsets; the stacks below
+   fall back to named system faces, never to a bare generic alone. */
+@font-face {
+  font-family: "Newsreader";
+  src: url("/fonts/newsreader.woff2") format("woff2");
+  font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "Newsreader";
+  src: url("/fonts/newsreader-italic.woff2") format("woff2");
+  font-weight: 400 700; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "Source Sans 3";
+  src: url("/fonts/source-sans-3.woff2") format("woff2");
+  font-weight: 400 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/fonts/ibm-plex-mono-400.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/fonts/ibm-plex-mono-500.woff2") format("woff2");
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+
+:root {
+  /* ---- Colour: monotone + one accent ---- */
+  --paper: #f7f3eb;          /* page ground: warm paper */
+  --paper-sunken: #efe9da;   /* recessed ground: code, receipt fill */
+  --surface: #fdfbf6;        /* raised ground: cards, diagram frames */
+  --ink: #1d1a15;            /* text and rules at full strength */
+  --ink-2: #5f584a;          /* secondary text (AA on paper) */
+  --ink-3: #8a8171;          /* faint marks only — never body text */
+  --line: #dad1bb;           /* hairline rule */
+  --line-strong: #a99b7d;    /* rule that must be seen at a glance */
+  --accent: #a63d2a;         /* the one accent: a memory moved */
+  --accent-ink: #f7f3eb;     /* text on the accent, if ever filled */
+
+  /* ---- Type ---- */
+  --font-display: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --font-text: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;        /* 12px — labels, fig heads */
+  --text-sm: 0.875rem;       /* 14px — captions, detail */
+  --text-base: 1.0625rem;    /* 17px — body */
+  --text-lg: 1.25rem;        /* 20px — lede */
+  --display-sm: 1.625rem;    /* 26px — card and view titles */
+  --display-md: 2.25rem;     /* 36px — section titles */
+  --display-lg: 3.25rem;     /* 52px — hero headline */
+  --leading-tight: 1.15;     /* display lines */
+  --leading-body: 1.6;       /* body copy */
+  --leading-data: 1.5;       /* mono blocks and receipts */
+  --tracking-label: 0.12em;  /* mono labels and kickers, uppercase */
+
+  /* ---- Space: 4px base, generous by default ---- */
+  --space-1: 4px;  --space-2: 8px;   --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px;  --space-7: 48px; --space-8: 64px;
+  --space-9: 96px;
+  --measure: 68ch;           /* longest line of body copy */
+  --page: 1120px;            /* site measure */
+  --radius: 4px;             /* one radius everywhere; no pills */
+  --rule: 1px solid var(--line);
+  --rule-strong: 1px solid var(--line-strong);
+  --rule-ink: 2px solid var(--ink);
+
+  /* ---- Motion: slow, small, purposeful, or absent ---- */
+  --motion-fast: 120ms;      /* hover and focus feedback */
+  --motion: 240ms;           /* state changes */
+  --motion-slow: 600ms;      /* reveals on scroll, once */
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+/* ---- Base ---- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font-family: var(--font-text); font-size: var(--text-base);
+  line-height: var(--leading-body);
+}
+h1, h2, h3 {
+  font-family: var(--font-display); font-weight: 600;
+  line-height: var(--leading-tight); font-optical-sizing: auto;
+  margin: 0 0 0.45em;
+}
+h1 { font-size: clamp(2.2rem, 5vw, var(--display-lg)); }
+h2 { font-size: clamp(1.7rem, 3.4vw, var(--display-md)); }
+h3 { font-size: var(--display-sm); }
+p { margin: 0 0 1em; max-width: var(--measure); }
+a { color: var(--ink); text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
+a:hover { text-decoration-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); }
+.small { font-size: var(--text-sm); color: var(--ink-2); }
+.wrap { max-width: var(--page); margin: 0 auto; padding: 0 var(--space-5); }
+
+/* ---- Nav (site header and console share the wordmark) ---- */
+.site-head {
+  display: flex; align-items: baseline; gap: var(--space-5); flex-wrap: wrap;
+  padding: var(--space-5) 0 var(--space-3); border-bottom: var(--rule-ink);
+}
+.wordmark { font-family: var(--font-display); font-size: 1.55rem; font-weight: 700; }
+.wordmark .loom { color: var(--ink-2); }
+.site-head nav { margin-left: auto; display: flex; gap: var(--space-5); font-size: 0.95rem; }
+.site-head nav a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: 1px; }
+.site-head nav a:hover { border-bottom-color: var(--ink); }
+
+/* ---- Hero ---- */
+.hero { padding: var(--space-8) 0 var(--space-5); }
+.hero .lede { font-size: var(--text-lg); max-width: 56ch; }
+.cta-row { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-5); }
+
+/* ---- Buttons: ink carries rank, never colour ---- */
+.btn {
+  display: inline-block; padding: 9px 18px; border-radius: var(--radius);
+  border: 1px solid var(--ink); background: transparent; color: var(--ink);
+  font-family: var(--font-text); font-weight: 600; font-size: 0.95rem;
+  text-decoration: none; cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease), color var(--motion-fast) var(--ease);
+}
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn:hover { background: var(--paper-sunken); }
+.btn.primary:hover { background: var(--ink-2); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn.small-btn { padding: 4px 12px; font-size: var(--text-sm); }
+
+/* ---- Section header: numbered, like an engineering document ---- */
+section.band { padding: var(--space-8) 0 var(--space-2); }
+.section-head { border-top: var(--rule-ink); padding-top: var(--space-4); margin-bottom: var(--space-5); }
+.section-head .num {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2);
+  display: block; margin-bottom: var(--space-2);
+}
+.section-head h2 { margin-bottom: var(--space-2); }
+.section-head .standfirst { color: var(--ink-2); max-width: var(--measure); margin: 0; }
+
+/* ---- Ruled table: hairlines only, mono numerals ---- */
+table.data { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+table.data th, table.data td {
+  text-align: left; vertical-align: top;
+  padding: var(--space-2) var(--space-3); border-bottom: var(--rule);
+}
+table.data thead th {
+  font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500;
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2);
+  border-bottom: var(--rule-strong);
+}
+table.data td.num, table.data td .num { font-family: var(--font-mono); white-space: nowrap; }
+/* A ruled table never widens the page: inside .table-wrap it scrolls
+   sideways on a narrow screen instead of overflowing it. */
+.table-wrap { overflow-x: auto; }
+
+/* ---- Diagram frame: the figure is the component ---- */
+figure.fig {
+  margin: 0; background: var(--surface); border: var(--rule-strong);
+  border-radius: var(--radius); overflow: hidden;
+}
+figure.fig .fig-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3);
+  padding: var(--space-2) var(--space-4); border-bottom: var(--rule);
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2);
+}
+figure.fig .fig-body { padding: var(--space-4); }
+figure.fig figcaption {
+  padding: var(--space-3) var(--space-4); border-top: var(--rule);
+  font-size: var(--text-sm); color: var(--ink-2); line-height: var(--leading-data);
+}
+figure.fig figcaption b { color: var(--ink); }
+
+/* ---- Receipt card: mono, sunken ground, verdict by word ---- */
+.receipt-card {
+  background: var(--paper-sunken); border: var(--rule); border-radius: var(--radius);
+  padding: var(--space-4) var(--space-5);
+  font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-data);
+  white-space: pre-wrap; word-break: break-word;
+}
+.receipt-card .verdict { font-weight: 500; }
+
+/* ---- Badges: word + marker shape, ink only ---- */
+.badge {
+  display: inline-block; padding: 1px 9px; border-radius: var(--radius);
+  border: var(--rule-strong); color: var(--ink); font-size: 0.8rem; font-weight: 600;
+  white-space: nowrap; background: var(--surface);
+}
+.badge::before { margin-right: 6px; font-weight: 400; }
+.badge[data-state="approved"]::before { content: "●"; }
+.badge[data-state="pending"]::before { content: "○"; }
+.badge[data-state="escalated"]::before { content: "◐"; }
+.badge[data-state="rejected"]::before { content: "✕"; }
+.badge[data-state="superseded"]::before { content: "◌"; }
+
+/* ---- Card: a ruled surface, not a floating box ---- */
+.card { background: var(--surface); border: var(--rule); border-radius: var(--radius); padding: var(--space-4) var(--space-5); }
+.card h3 { margin-top: 0; }
+
+/* ---- Footer: a sentence, not a sitemap ---- */
+footer.site-foot { border-top: var(--rule-ink); margin-top: var(--space-8); padding: var(--space-5) 0 var(--space-6); }
+footer.site-foot p { color: var(--ink-2); font-size: var(--text-sm); }
+
+/* ---- Motion discipline ---- */
+.reveal { opacity: 0; transform: translateY(8px); }
+.reveal.seen { opacity: 1; transform: none; transition: opacity var(--motion-slow) var(--ease), transform var(--motion-slow) var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  .reveal { opacity: 1; transform: none; }
+}

@@ -36,11 +36,17 @@ for (const f of jsFiles) {
   }
 }
 
-const assets = ['web/public/index.html', 'web/public/console.html', 'web/public/styles.css'];
+const assets = [
+  'web/public/index.html', 'web/public/console.html', 'web/public/styles.css',
+  'web/public/tokens.css', 'web/public/style-tile.html',
+  'web/public/fonts/newsreader.woff2', 'web/public/fonts/newsreader-italic.woff2',
+  'web/public/fonts/source-sans-3.woff2',
+  'web/public/fonts/ibm-plex-mono-400.woff2', 'web/public/fonts/ibm-plex-mono-500.woff2',
+];
 for (const f of assets) check(existsSync(join(root, f)), `exists: ${f}`);
 
 // Pages must only reference assets that exist.
-for (const page of ['web/public/index.html', 'web/public/console.html']) {
+for (const page of ['web/public/index.html', 'web/public/console.html', 'web/public/style-tile.html']) {
   const html = readFileSync(join(root, page), 'utf8');
   for (const m of html.matchAll(/(?:src|href)="(\/[^"]+)"/g)) {
     const target = m[1];

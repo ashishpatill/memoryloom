@@ -38,6 +38,8 @@ const MIME = {
   '.png': 'image/png',
   '.json': 'application/json',
   '.md': 'text/plain; charset=utf-8',
+  '.txt': 'text/plain; charset=utf-8',
+  '.woff2': 'font/woff2',
 };
 
 const server = createServer(async (req, res) => {
