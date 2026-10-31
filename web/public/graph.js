@@ -27,7 +27,11 @@
  *   -> { setTime(t), toggle(), settle(), stop() }
  * onSelect, when given, fires for EVERY knot kind (agent, memory,
  * proposal, source) — what a click means is the view's business,
- * but no knot is a silent dead end.
+ * but no knot is a silent dead end. The clicked knot wears an ink
+ * ring in the figure itself (5.3 re-review: selection used to change
+ * only the panel below, leaving the reader unable to see WHICH knot
+ * they had picked in a dense cluster). The ring is ink shape, not
+ * the accent — selection is a reading position, not a decision.
  */
 (function () {
   const NS = 'http://www.w3.org/2000/svg';
@@ -109,18 +113,38 @@
           if (items[i].labelX < need) items[i].labelX = need;
         }
       };
+      // Compression from the right: never moves a label right, so
+      // it can enforce separation without breaking the right bound.
+      const backward = () => {
+        for (let i = items.length - 2; i >= 0; i--) {
+          const cap = items[i + 1].labelX - items[i + 1].labelHalf - gap - items[i].labelHalf;
+          if (items[i].labelX > cap) items[i].labelX = cap;
+        }
+      };
       forward();
       const last = items[items.length - 1];
       if (last && last.labelX + last.labelHalf > right) {
         const shift = last.labelX + last.labelHalf - right;
         for (const it of items) it.labelX -= shift;
-        forward(); // re-assert separation after the pull-back
+        backward(); // re-assert separation after the pull-back
       }
       const first = items[0];
       if (first && first.labelX - first.labelHalf < left) {
         const shift = left - (first.labelX - first.labelHalf);
         for (const it of items) it.labelX += shift;
         forward();
+        // The left recovery can push the tail out of the frame
+        // again — the first spread() version stopped here, and the
+        // 5.3 re-review measured a label 30 units past the right
+        // edge, clipped mid-word by the figure frame. So the tail
+        // is pulled back inside once more and the row compressed
+        // leftwards: a label may lean toward the left gutter, but
+        // no label ever leaves the frame.
+        const tail = items[items.length - 1];
+        if (tail && tail.labelX + tail.labelHalf > right) {
+          tail.labelX = right - tail.labelHalf;
+          backward();
+        }
       }
     }
     // Source diamonds first (they are positions, not labels), then
@@ -257,6 +281,11 @@
     // Nodes.
     const nodeG = el('g', {}, svg);
     const nodeEls = [];
+    let selectedRing = null;
+    const markSelected = (g, n, ringR) => {
+      if (selectedRing) selectedRing.remove();
+      selectedRing = el('circle', { cx: n.x, cy: n.y, r: ringR, fill: 'none', stroke: INK, 'stroke-width': 1.5, class: 'knot-ring' }, g);
+    };
     for (const n of nodes.values()) {
       if (!shown.has(n.kind) || n.x === undefined) continue;
       const g = el('g', { 'data-t': tOf(n) || tMin, 'data-kind': n.kind, style: opts.onSelect ? 'cursor:pointer' : '' }, nodeG);
@@ -295,7 +324,7 @@
         const short = n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson';
         lbl.textContent = short.length > 14 ? short.slice(0, 13) + '…' : short;
       }
-      if (opts.onSelect) g.addEventListener('click', () => opts.onSelect(n));
+      if (opts.onSelect) g.addEventListener('click', () => { markSelected(g, n, n.kind === 'agent' ? 23 : n.kind === 'memory' ? 13.5 : 12); opts.onSelect(n); });
       nodeEls.push({ g, at: tOf(n) || tMin, kind: n.kind });
     }
 
