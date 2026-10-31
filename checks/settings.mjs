@@ -123,7 +123,22 @@ assert(seenAuth.every((a) => a.startsWith('Bearer ')), 'probe sends the key as a
 console.log('git hygiene (real repo store, dummy key only):');
 const realStore = join(root, '.env.local');
 const existedBefore = existsSync(realStore);
-if (!existedBefore) {
+// When MEMORYLOOM_SETTINGS_FILE points somewhere else, saves and
+// removes without opts act on THAT store, not the repo file — so
+// this section must not write to or delete the repo store at all
+// (Iteration 5.3 closure: a run under an override once removed a
+// line from the override store and then threw unlinking a repo
+// file it had never created). Assert git hygiene only, same count.
+const overrideActive = Boolean(process.env.MEMORYLOOM_SETTINGS_FILE)
+  && join(process.env.MEMORYLOOM_SETTINGS_FILE) !== realStore;
+if (overrideActive) {
+  let ignored = true;
+  try { execFileSync('git', ['check-ignore', '-q', '.env.local'], { cwd: root }); } catch { ignored = false; }
+  assert(ignored, 'git check-ignore confirms .env.local is ignored (store override active)');
+  const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+  assert(!status.split('\n').some((l) => l.includes('.env.local')), 'git status stays clean for .env.local (store override active)');
+  assert(existsSync(realStore) === existedBefore, 'repo store untouched while a store override is active');
+} else if (!existedBefore) {
   saveProviderKey('meta', DUMMY_META);
   const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
   assert(!status.split('\n').some((l) => l.includes('.env.local')), 'git status stays clean after a save to .env.local');

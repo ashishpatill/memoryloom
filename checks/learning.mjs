@@ -134,9 +134,17 @@ const deadEventId = await recordEvent(pool, {
   summary: `A reusable, evidence-backed lesson about rehearsal run sheets (${nonce}).`,
   evidence: { verified: true, lesson_text: `Rehearsal run sheets must name a fallback operator (${nonce}).` },
 });
+// Save/restore, not delete (Iteration 5.3 closure): in-process
+// callers read JEV_BASE_URL directly, so deleting it here would
+// silently retarget the real promotion below at the hosted default
+// instead of the backend this run was configured with. The fail-
+// closed assertions that follow are unaffected: the probe itself
+// runs while the override is in force.
+const savedJevBaseUrl = process.env.JEV_BASE_URL;
 process.env.JEV_BASE_URL = 'https://api.typesafe.ai.invalid';
 const dead = await promoteEvent(pool, deadEventId);
-delete process.env.JEV_BASE_URL;
+if (savedJevBaseUrl === undefined) delete process.env.JEV_BASE_URL;
+else process.env.JEV_BASE_URL = savedJevBaseUrl;
 assert(dead.promoted === false && dead.decision.failed === true && dead.decision.fail_closed === true, 'dead Jev backend: promotion fails closed', JSON.stringify(dead.decision).slice(0, 200));
 const deadLesson = await pool.query(
   `SELECT count(*)::int n FROM memories WHERE namespace = $1 AND provenance->>'learning_event_id' = $2`,
