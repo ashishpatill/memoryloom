@@ -39,8 +39,9 @@ const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
 
 let failures = 0;
+let passes = 0;
 function assert(cond, label, extra = '') {
-  if (cond) console.log(`  PASS ${label}`);
+  if (cond) { passes++; console.log(`  PASS ${label}`); }
   else { failures++; console.log(`  FAIL ${label} ${extra}`); }
 }
 
@@ -133,9 +134,18 @@ if (!existedBefore) {
   unlinkSync(realStore); // the check created this file; leave the repo as found
   assert(!existsSync(realStore), 'cleanup: the dummy-only store file the check created is removed');
 } else {
+  // A pre-existing store (the demo machine's real keys) must be left
+  // exactly as found — but the branch still prints the same number
+  // of assertions as the no-store branch above. Before Iteration
+  // 5.3 (Finding F) this branch printed one assertion where the
+  // other printed three, so the suite totalled 44 on a machine with
+  // a store and 46 on one without, while the docs quoted 46.
   let ignored = true;
   try { execFileSync('git', ['check-ignore', '-q', '.env.local'], { cwd: root }); } catch { ignored = false; }
-  assert(ignored, 'git check-ignore confirms .env.local is ignored (pre-existing store left untouched)');
+  assert(ignored, 'git check-ignore confirms .env.local is ignored (pre-existing store)');
+  const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+  assert(!status.split('\n').some((l) => l.includes('.env.local')), 'git status stays clean with a pre-existing .env.local');
+  assert(existsSync(realStore), 'pre-existing store left untouched by the check');
 }
 
 // ---------------------------------------------------------------- HTTP level
@@ -229,5 +239,9 @@ assert(!serverOut.includes(GOOD) && !serverOut.includes(BAD) && !serverOut.inclu
 
 if (savedEnv === undefined) delete process.env.META_MODEL_API_KEY; else process.env.META_MODEL_API_KEY = savedEnv;
 
+// The printed tally is the count every quoting document must use:
+// it is computed from the assertions actually printed above, so the
+// evidence and the quoted number can never drift apart again.
+console.log(`\nsettings: ${passes}/${passes + failures} assertions passed`);
 console.log(failures ? `\n${failures} FAILURES` : '\nALL GREEN');
 process.exit(failures ? 1 : 0);
