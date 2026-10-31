@@ -219,7 +219,7 @@ Working and verified locally:
   passed 40/40 with zero unsafe approvals on its golden set, so the
   thresholds are live; the gate **fails closed** — on any Jev backend
   failure a proposal queues for a human, and no fallback ever
-  approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 19/19).
+  approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 21/21).
   The decision backend is swappable per class in router config
   (default Jev everywhere); Baseten's decision models are built
   as challenger adapters, deferred while the probe record stands.
@@ -280,16 +280,22 @@ Working and verified locally:
   databases, 8/8 beats each. Total rehearsal spend was $0.0034 (one
   live narration call in run 1; runs 2–3 served the identical prompt
   from the router cache, as the fallback plan intends).
-- Final clean-room pass (Block 7): every check suite re-run on fresh
-  databases — surface 34/34, router 11/11, Jev gate 15/15, two-plane
-  22/22, graph + daemon 44/44, learning 36/36, learning demo 8/8,
-  web 55/55 — and the documented run path (db:init, seed:web, web,
-  MCP over stdio) verified from a clean shell.
-- Spend, cumulative in the router log: Meta $0.3749 of the $150
-  credit (calibration $0.3595 of $22.50, evals $0 of $52.50 — the
-  recall eval is fully deterministic — demo and final runs $0.0153
-  of $60, reserve untouched). Jev decisions $0.0012. Baseten,
-  Fireworks and Modal: $0.
+- Clean-room passes, each on fresh databases: at the end of the
+  main build (Block 7, 30 Oct) — surface 34/34, router 11/11, Jev
+  gate 15/15, two-plane 22/22, graph + daemon 44/44, learning 36/36,
+  learning demo 8/8, web 55/55 — and again at the close-out
+  (31 Oct, cold provider cache) — surface 37/37, router 11/11, Jev
+  gate 21/21, two-plane 22/22, graph + daemon 44/44, learning 36/36,
+  learning demo 8/8, settings 46/46, web 89/89, MCP roundtrip ok —
+  with the documented run path (db:init, seed:web, web, MCP over
+  stdio) verified from a clean shell both times.
+- Spend, cumulative in the router log as of 31 Oct 2026 (the log
+  is the record — later runs append to it, so a later read will
+  differ): Meta $0.3758 of the $150 credit (calibration $0.3595 of
+  $22.50, evals $0 of $52.50 — the recall eval is fully
+  deterministic — demo and final runs $0.0163 of $60, reserve
+  untouched). Jev decisions $0.0033. Baseten, Fireworks and Modal:
+  $0.
 
 Honest limits of the above: these are small-scale local checks on a
 small fictional corpus. They prove the surface, the routing, the
