@@ -212,9 +212,10 @@ Working and verified locally:
   failure a proposal queues for a human, and no fallback ever
   approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 15/15).
   The decision backend is swappable per class in router config
-  (default Jev everywhere); Baseten's decision models are integrated
-  as challenger adapters, but a challenger may replace Jev only by
-  beating it on every benchmark leg and on price.
+  (default Jev everywhere); Baseten's decision models are built
+  as challenger adapters, deferred while the probe record stands.
+  A challenger may replace Jev only by beating it on every
+  benchmark leg and on price.
 - Two-plane memory: Plane 1 is the append-only truth store with
   provenance; Plane 2 is the derived recall index, proven rebuildable
   from Plane 1. Every recall result dereferences to a Plane-1 record
@@ -230,8 +231,8 @@ Working and verified locally:
   contradiction flags — into the review queue; it never writes truth,
   its apply path routes through the Jev-gated library functions, and
   its cycles are watermark-resumable with a run log. The synthetic
-  demo corpus wires the Grok bot and Moose as named graph agents
-  (`checks/graph-daemon.mjs` 44/44).
+  demo corpus wires two demo agents, grok and moose, as named
+  graph agents (`checks/graph-daemon.mjs` 44/44).
 - A continual learning layer: every interaction — proposals, gate
   verdicts, human approvals, rejections and corrections, recall hits
   and misses, eval outcomes — is captured as an append-only,
