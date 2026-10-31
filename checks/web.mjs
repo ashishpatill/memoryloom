@@ -107,6 +107,15 @@ try {
   const g4 = rec.body.results.find((r) => r.id === 'demo-g4');
   assert(Boolean(g4), 'recall returns the firmware memory');
   assert(g4 && g4.receipt && g4.receipt.grounding_ids.length === 2, 'the receipt names both grounding records');
+  assert(rec.body.answerable === true && rec.body.no_answer === false, 'answerable recall is marked answerable (5.3, Finding B)', JSON.stringify({ answerable: rec.body.answerable, no_answer: rec.body.no_answer }));
+
+  // Unanswerable recall (5.3, Finding B): nearest neighbours exist,
+  // but the payload must say there is no answer rather than letting
+  // them render as one.
+  const wifi = await get('/api/recall?q=' + encodeURIComponent('what is the wifi password?'));
+  assert(wifi.body.no_answer === true && wifi.body.answerable === false, 'unanswerable recall is marked no_answer (5.3, Finding B)', JSON.stringify({ answerable: wifi.body.answerable, no_answer: wifi.body.no_answer, top: wifi.body.results[0]?.rrf }));
+  const consoleJsRecall = await getText('/console.js');
+  assert(consoleJsRecall.text.includes('No receipts, no answer') && consoleJsRecall.text.includes('do not answer'), 'console recall renders the no-answer state with near-misses labelled as not answering (5.3, Finding B)');
 
   const b12 = await get('/api/believed?at=2026-10-12T00:00:00Z');
   assert(b12.body.some((r) => r.id === 'demo-v1') && !b12.body.some((r) => r.id === 'demo-v2'), 'believed on Oct 12: Hall A held, Hall B not yet');
@@ -142,6 +151,20 @@ try {
   assert(decide.body.status === 'ok' && decide.body.decision === 'approved', 'human approval promotes the escalated proposal', JSON.stringify(decide.body).slice(0, 160));
   const approve = await post('/api/propose', { author: 'moose', type: 'semantic', text: 'The Lantern demo rig runs firmware 2.4.1 on the bench unit.', grounding_ids: ['demo-g2', 'demo-g3'] });
   assert(approve.body.decision === 'auto_approved', 'grounded claim is auto-approved by the gate', JSON.stringify(approve.body).slice(0, 160));
+
+  // Fabricated citations (5.3, Finding A regression, web path): two
+  // invented grounding ids must escalate, never auto-approve; and a
+  // human approval afterwards must store a record whose grounding —
+  // and therefore whose receipt — names none of the invented ids.
+  const fake = await post('/api/propose', { author: 'grok', type: 'semantic', text: 'The Lantern demo rig runs firmware 2.4.1 on the bench unit.', grounding_ids: ['demo-does-not-exist', 'demo-also-fake-99'] });
+  assert(fake.body.decision === 'queued_for_review', 'fabricated citations escalate through the web propose path (5.3, Finding A)', JSON.stringify(fake.body).slice(0, 160));
+  const fakeDecide = await post(`/api/proposals/${fake.body.proposal_id}/decide`, { decision: 'approve' });
+  assert(fakeDecide.body.status === 'ok', 'human approval of the fabricated-citation proposal is recorded', JSON.stringify(fakeDecide.body).slice(0, 160));
+  const mems = await get('/api/memories');
+  const fakeMem = mems.body.memories.find((mm) => mm.id === (fakeDecide.body.promoted_id || fakeDecide.body.memory_id));
+  assert(Boolean(fakeMem) && Array.isArray(fakeMem.grounding_ids) && fakeMem.grounding_ids.length === 0, 'promoted fabricated-citation record stores no unresolved grounding (5.3, Finding A)', JSON.stringify(fakeMem?.grounding_ids));
+  const fakeTrail = await get('/api/trail/' + encodeURIComponent(fakeMem.id));
+  assert(fakeTrail.body.grounding.length === 0, 'the promoted record rests on nothing fabricated — its trail lists no grounding (5.3, Finding A)');
 
   const missing = await fetch(base + '/api/nope');
   assert(missing.status === 404, 'unknown API route returns 404');

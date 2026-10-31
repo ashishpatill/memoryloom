@@ -210,7 +210,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
         ${['what firmware does the rig run?', 'where is the demo held?', 'when does the venue open?', 'what is the wifi password?'].map((q) => `<button class="btn small-btn chip" data-q="${esc(q)}" type="button">${esc(q)}</button>`).join('')}
       </div>
-      <div id="recallOut"><div class="empty-state"><h3>Nothing recalled yet</h3><p>Ask a question above. Ask something the corpus cannot answer — the wifi password — and watch the fusion scores: weak matches sink, and anything that cannot produce a receipt is dropped in the open.</p></div></div>
+      <div id="recallOut"><div class="empty-state"><h3>Nothing recalled yet</h3><p>Ask a question above. Ask something the corpus cannot answer — the wifi password — and the view says there is no answer: the closest records are listed underneath, labelled as records that do not answer, with their fusion scores, and anything that cannot produce a receipt is dropped in the open.</p></div></div>
     `;
     const ask = async () => {
       const q = document.getElementById('q').value.trim();
@@ -221,6 +221,29 @@
         const r = await api('/api/recall?q=' + encodeURIComponent(q) + '&k=8');
         if (!r.results.length && !r.dropped.length) {
           out.innerHTML = '<div class="empty-state"><h3>No receipts, no answer</h3><p>The store holds nothing that answers this — and says so, instead of inventing one. That refusal is the feature.</p></div>';
+          return;
+        }
+        // No-answer state (Iteration 5.3, Finding B): when the best
+        // fusion score is under the answer threshold (the API marks
+        // it `no_answer`; the same rule is re-checked here from the
+        // scores so the view is honest against any payload), the
+        // near-misses are NOT an answer. They are listed below the
+        // refusal, labelled as the closest records that do not
+        // answer, with their scores shown.
+        const topScore = Math.max(...r.results.map((res) => res.rrf ?? 0));
+        const noAnswer = r.no_answer === true || (r.results.length > 0 && r.answerable === undefined && topScore > 0 && topScore < 0.025);
+        if (noAnswer) {
+          out.innerHTML =
+            '<div class="empty-state"><h3>No receipts, no answer</h3><p>No receipts, no answer — the store holds nothing that answers this, and says so, instead of inventing one. The best match scored ' + topScore.toFixed(3) + ', below the 0.025 answer threshold: both search legs must agree before a record counts as an answer.</p></div>' +
+            '<h3 style="margin-top:18px">Closest records — these do not answer the question (' + r.results.length + ')</h3>' +
+            r.results.map((res) => `
+            <div class="row-item">
+              <div class="meta"><span class="badge">closest record — not an answer</span><span class="badge">${esc(res.type)}</span>${res.rrf != null ? `<span class="small">fusion score ${Number(res.rrf).toFixed(3)}</span>` : ''}</div>
+              <div class="text">${esc(res.text)}</div>
+              <div class="receipt">receipt — record ${esc(res.receipt.memory_id)} · by ${esc(res.receipt.author)} via ${esc(res.receipt.origin)} · recorded ${fmtDate(res.receipt.record_created_at)}</div>
+            </div>`).join('') +
+            (r.dropped.length ? `<h3 style="margin-top:18px">Dropped before the agent could see them (${r.dropped.length})</h3>` +
+              r.dropped.map((d) => `<div class="row-item"><div class="meta"><span class="badge" data-state="rejected">dropped</span><code class="inline">${esc(d.id)}</code></div><div class="detail">${esc(d.why)}</div></div>`).join('') : '');
           return;
         }
         out.innerHTML =

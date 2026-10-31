@@ -13,7 +13,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import { buildGraph, provenanceTrail, agentNeighbourhood, supersessionChain, believedAt } from '../lib/graph.mjs';
-import { recallWithReceipts, embedStaged } from '../lib/planes.mjs';
+import { recallWithReceipts, embedStaged, recallAnswers } from '../lib/planes.mjs';
 import { decideGate } from '../lib/gate.mjs';
 import { reviewList, promoteProposal, rejectProposal } from '../lib/curator-decide.mjs';
 import { recordEvent, listEvents } from '../lib/learning.mjs';
@@ -240,6 +240,14 @@ export function createHandler({ pool, namespace }) {
     const k = Math.min(20, Math.max(1, Number(url.searchParams.get('k') || 8)));
     if (!q.trim()) return { status: 400, payload: { error: 'q is required' } };
     const out = await recallWithReceipts(pool, { namespace, query: q, k });
+    // Answerability (Iteration 5.3, Finding B): hybrid recall always
+    // returns nearest neighbours, even for questions the store cannot
+    // answer. The payload says plainly whether the best fusion score
+    // clears the answer threshold (lib/planes.mjs
+    // RECALL_ANSWER_MIN_FUSION), so the console can present a
+    // no-answer state instead of dressing near-misses as an answer.
+    out.answerable = recallAnswers(out.results);
+    out.no_answer = out.results.length > 0 && !out.answerable;
     await recordEvent(pool, {
       namespace,
       kind: out.results.length ? 'recall_hit' : 'recall_miss',
