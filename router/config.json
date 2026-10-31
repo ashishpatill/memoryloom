@@ -1,5 +1,5 @@
 {
-  "baseten_parked": true,
+  "baseten_parked": false,
   "baseten_probe": {
     "also_refused": [
       "zai-org/GLM-5.2",
@@ -18,7 +18,7 @@
         "reserve": 25,
         "triage": 60
       },
-      "parked": true,
+      "parked": false,
       "total": 100
     },
     "meta": {
@@ -31,7 +31,7 @@
       "total": 150
     }
   },
-  "comment": "Corrected 2026-10-30 evening (Ashish): Muse Spark is not used anywhere in MemoryLoom. The only Meta model is muse-wonder-1.0 in two effort tiers. All enumerable decisions go through Jev (TypeSafe) by default; the decision backend is swappable per class (decision_backends) and a challenger replaces Jev only by beating it on every benchmark leg and on price. Baseten probe 2026-10-30 FAILED: the grant key refuses all non-Spark inference (HTTP 403), so the Baseten DeepSeek triage lane stays closed, its budget untouched, and challenger spot-checks are deferred; triage runs on Meta Wonder medium. Meta prices are the published standard rates (cheat sheet); Jev is $0.042 per 1M input tokens, output free; Baseten prices are the published Model API rates recorded in docs/baseten-probe-and-challengers.md.",
+  "comment": "Updated 2026-10-31 (Ashish, Feature 6): exactly one Baseten lane is open — Muse Spark Open (meta-models/muse-spark-open-1026) on Baseten as the Tier 0 operations provider (pre-screening and first-pass drafts; Jev decides every enumerable decision, Wonder medium handles escalation, Wonder Full the most critical work). The 2026-10-30 probe facts stand: the grant key refuses all non-Spark inference (HTTP 403 on DeepSeek, GLM and Kimi; catalogue reads succeed), and Spark Open itself was confirmed callable by a capped probe on 2026-10-31 (HTTP 200). Meta's own Spark ids and the contributor model remain banned everywhere; the only Meta model is muse-wonder-1.0 in two effort tiers. A challenger decision backend replaces Jev only by beating it on every benchmark leg and on price. Prices are the published rates recorded in the provider docs.",
   "decision_backends": {
     "consolidation": "jev",
     "decay": "jev",
@@ -45,6 +45,12 @@
       "judge": "evals",
       "narrate": "demo_final",
       "triage": "demo_final"
+    },
+    "baseten": {
+      "prescreen": "triage",
+      "narrate": "triage",
+      "explain": "triage",
+      "consolidate": "triage"
     }
   },
   "jev": {
@@ -63,6 +69,10 @@
       "id": "muse-wonder-1.0",
       "reasoning_effort": "medium",
       "tier": "wonder"
+    },
+    "baseten_operations": {
+      "id": "meta-models/muse-spark-open-1026",
+      "tier": "tier0"
     }
   },
   "pricing_usd_per_1m": {
@@ -88,6 +98,11 @@
         "deepseek-ai/DeepSeek-V4.1-Flash-1017-Fast": {
           "in": 0.6,
           "out": 2.4
+        },
+        "meta-models/muse-spark-open-1026": {
+          "in": 1.25,
+          "cached_in": 0.15,
+          "out": 4.25
         }
       },
       "out": 1.2
