@@ -880,7 +880,16 @@ info(`corpus: ${graph.nodes.length} nodes, ${graph.edges.length} edges, range ${
   const ax = probes['g7-ax'] || {};
   const axNodes = Array.isArray(ax) ? ax : (ax.nodes || []);
   const axSlider = axNodes.find((n) => n.role === 'slider');
-  assert(axSlider && String(axSlider.name).toLowerCase() === 'believed at date slider' && axSlider.value === overview.latest_date,
+  // Corrected 4 November 2026. The tree cannot carry the date
+  // string for a native range slider. Headless Chromium reports
+  // the slider value in its numeric form and drops the aria
+  // value text the page sets, proven on a bare test page with no
+  // app code in it. The date string itself is asserted at the DOM
+  // level in the start probe above, which reads the aria value
+  // text the page actually sets. This assertion keeps the part
+  // the tree can truthfully carry, the programmatic name and the
+  // selected date in the numeric form the tree uses.
+  assert(axSlider && String(axSlider.name).toLowerCase() === 'believed at date slider' && axSlider.value === String(Date.parse(overview.latest_date + 'T00:00:00Z')),
     'walk time: the accessibility tree carries the slider under its programmatic name with the selected date as its value',
     JSON.stringify(axSlider));
   const prevDay = new Date(Date.parse(overview.latest_date + 'T00:00:00Z') - 86400000).toISOString().slice(0, 10);
