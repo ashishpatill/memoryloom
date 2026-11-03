@@ -1,8 +1,9 @@
 # Design tokens v2, the MemoryLoom surface system
 
 Status: adopted at Iteration 5.0. `web/public/tokens.css` is the
-source of truth. `web/public/style-tile.html` is its reference render
-(open `/style-tile.html` on the running app). The landing page adopts
+source of truth. `docs/style-tile.html` is its reference render
+(open that file in a browser to see it). It is a design reference
+and is not part of the served site. The landing page adopts
 the tokens in Iteration 5.1 and the console in 5.2. As of 5.2 every
 product page is on the tokens and no page links
 `web/public/styles.css` (v1) any more. The file remains in the tree
