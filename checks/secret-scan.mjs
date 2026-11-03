@@ -24,8 +24,8 @@
  * results):
  *   neon-connection-string: a Postgres URL carrying a password at
  *     a neon.tech host.
- *   provider-key-assignment: one of META_MODEL_API_KEY,
- *     BASETEN_API_KEY or TYPESAFE_API_KEY, anchored to a line
+ *   provider-key-assignment: one of META_API_KEY,
+ *     BASETEN_API_KEY or JEV_API_KEY, anchored to a line
  *     start or a quote, assigned a value of 12 or more characters
  *     that is not a known placeholder shape.
  * With --values-from-store the scanner also searches every scope
@@ -50,7 +50,7 @@ export const PATTERNS = [
   },
   {
     name: 'provider-key-assignment',
-    re: /(?:^|["'`])(META_MODEL_API_KEY|BASETEN_API_KEY|TYPESAFE_API_KEY)\s*[:=]\s*["']?([^\s"']{12,})/gm,
+    re: /(?:^|["'`])(META_API_KEY|META_MODEL_API_KEY|BASETEN_API_KEY|JEV_API_KEY|TYPESAFE_API_KEY)\s*[:=]\s*["']?([^\s"']{12,})/gm,
   },
 ];
 const PLACEHOLDER = /dummy|stub|decoy|fake|synthetic|probe|placeholder|example|sample/i;
@@ -108,7 +108,7 @@ if (WITH_VALUES) {
   const storeFile = join(ROOT, '.env.local');
   if (existsSync(storeFile)) {
     for (const raw of readFileSync(storeFile, 'utf8').split(/\r?\n/)) {
-      const m = /^(DATABASE_URL|META_MODEL_API_KEY|BASETEN_API_KEY|TYPESAFE_API_KEY)=(.*)$/.exec(raw.trim());
+      const m = /^(DATABASE_URL|META_API_KEY|META_MODEL_API_KEY|BASETEN_API_KEY|JEV_API_KEY|TYPESAFE_API_KEY)=(.*)$/.exec(raw.trim());
       if (m && m[2].trim()) storeValues.push({ name: m[1], value: m[2].trim() });
     }
     console.log(`values mode: searching for the store values of ${storeValues.map((v) => v.name).join(', ') || 'no variables'} by location only`);

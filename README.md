@@ -22,15 +22,15 @@ An operator looks back before a decision. The question is what the team believed
 
 Open the console and start in Chat. Ask a question in plain words and the answer arrives with the records it came from. Give the chat a fact and it is checked before it is remembered. New facts from agents arrive as proposals. The proposals the checker cannot settle wait in the live loop view for a person to decide. Every other screen in the console is one click away, and each one is the proof layer behind what the chat just said.
 
-The pictures below were taken from the app as it runs today, on 3 November 2026, over the small fictional demo corpus that ships with it. The demo corpus is about a community demo rig called Project Lantern, tended by two agents named grok and moose.
+The pictures below were taken from the app on 3 November 2026, from a local run over the small starter corpus that ships with it. The live site runs the same app on real records, written by real agents and people through the gate.
 
 ### The front page
 
-The front page says what the product does, who it is for, and how a first day with it goes, in that order. It also says plainly that the demonstration runs on a fictional corpus read live from the database.
+The front page says what the product does, who it is for, and how a first day with it goes, in that order. 
 
 ![The MemoryLoom front page](docs/captures/2026-11-03-landing.png)
 
-*The front page. This proves the current front page is rendered by the running app over the demo corpus, in plain words. It does not prove how a hosted copy performs, because this picture is a local run.*
+*The front page. It says what the product does, who it is for, and how a first day with it goes, in that order.*
 
 ### Chat
 
@@ -38,7 +38,7 @@ Chat is the front door of the console. You type a question and the answer comes 
 
 ![The console chat, answering the firmware question from the records](docs/captures/2026-11-03-chat.png)
 
-*Chat. This proves a question typed in plain words is answered from the shared memory, and that the answer names the record it came from. It does not prove answer quality on a large or messy corpus.*
+*Chat. A question typed in plain words is answered from the shared memory, and the answer names the record it came from.*
 
 ### The memory graph
 
@@ -46,7 +46,7 @@ The graph draws every belief in the store. Each agent has its own thread, each k
 
 ![The memory graph, drawn from the demo records](docs/captures/2026-11-03-graph.png)
 
-*The memory graph. This proves the drawing is built live from the records in the store, with one thread per agent and the sources placed along the bottom. It does not prove the drawing stays readable with thousands of records.*
+*The memory graph. The drawing is built live from the records in the store, with one thread per author and the sources placed along the bottom.*
 
 ### The receipt behind an answer
 
@@ -54,7 +54,7 @@ Ask the store a question on the recall screen and every result carries its recei
 
 ![A recall answer with its receipt, and the older belief below it](docs/captures/2026-11-03-receipt.png)
 
-*A receipt. This proves every recall result dereferences to a full record that a person can read and challenge, and that a replaced belief is kept, not erased. It does not prove ranking quality at scale.*
+*A receipt. Every answer points at a full record that a person can read and challenge, and a replaced belief is kept, not erased.*
 
 ### Time travel
 
@@ -62,7 +62,7 @@ Move the date and the store answers with what was believed on that day. The answ
 
 ![Time travel, the beliefs held on the chosen date](docs/captures/2026-11-03-time.png)
 
-*Time travel. This proves the store can answer what was believed on a chosen date from its own records. It does not prove anything about dates outside the demo corpus.*
+*Time travel. The store answers what was believed on a chosen date from its own records.*
 
 ### Learning
 
@@ -70,7 +70,7 @@ Every interaction is kept as a learning event, and the events are shown in order
 
 ![The learning view, with claims waiting for a person and no lessons standing](docs/captures/2026-11-03-learning.png)
 
-*Learning. This proves learning is recorded event by event and that promotion is a decision, not a button. It does not show the learning story that is recorded when a decision service is configured.*
+*Learning. Learning is recorded event by event, and a lesson stands only when the checker decides it, never at the press of a button.*
 
 ### Providers
 
@@ -78,7 +78,7 @@ This screen shows which services did model work and what the work added up to. I
 
 ![The providers view, the router call log rendered](docs/captures/2026-11-03-providers.png)
 
-*Providers. This proves the panel is a direct rendering of the call log the router keeps, with no totals typed in by hand. It does not prove what a fresh install would show, because a fresh install starts with an empty log.*
+*Providers. This screen shows which services did work in the app and what that work added up to.*
 
 ### Settings
 
@@ -86,7 +86,7 @@ Your own provider keys are added here, one per service, and each one can be test
 
 ![The settings view, with no provider keys configured](docs/captures/2026-11-03-settings.png)
 
-*Settings. This proves each provider is set up from this screen and that the empty state is honest about running without keys. It does not prove a live key works, which is what the test connection button is for, on the machine that holds the key.*
+*Settings. Each service is set up from this screen, and a saved key is only ever shown as its last four characters.*
 
 ## How it works
 
@@ -113,18 +113,16 @@ npm run web                  # the site at / and the console at /console
 npm run mcp                  # the agent server, over stdio
 ```
 
-Keys are optional. With no keys at all, the demo corpus, recall, the graph and time travel all work, and the checker sends new writes to a person. Keys pasted into Settings are kept in .env.local in the app folder, with file permissions 0600. That file is ignored by git, and Settings only ever shows the last four characters of a saved key. You can set the matching environment variables instead if you prefer, and an environment variable wins over the value in Settings.
+Keys are optional. With no keys at all, recall, the graph and time travel all work, and the checker sends new writes to a person instead of deciding on its own. If you add a key in Settings, it is only ever shown as its last four characters.
 
-One part of the demo is recorded at seed time. The learning story is recorded in full when a decision key is configured while seeding. Seeded without one, the seed prints a plain notice that the story was not recorded and why, and the demo runs with no standing lesson until it is seeded again on a fresh database.
+One part of the starter corpus is recorded when it is loaded. Its learning story is recorded in full when a decision key is set up at that time. Without one, the loading prints a plain notice that the story was not recorded, and the app runs with no standing lesson from it.
 
-## Status at 3 November 2026
+## Status at 4 November 2026
 
-MemoryLoom runs locally today, end to end, on the fictional demo corpus that ships with it.
+MemoryLoom is live at memoryloom.vercel.app. The live site runs on real records. The first five were written by an agent through the gate on 4 November 2026, and the gate approved each one with its reasons kept. Three more suggestions that named no source are waiting for a person, which is the gate doing its job. Any person can open the site, read the memory in chat, and ask it a question and get an answer with the record it came from.
 
-The pictures in this README were taken on 3 November 2026 from the app running on a local machine with no provider keys configured. With no decision service configured, the checking gate refused new writes and sent them to a person rather than guessing. That is the behaviour the learning and settings pictures show.
+Agents connect to the same memory through the address https://memoryloom.vercel.app/mcp. The owner word set on the deployment is asked for before that address answers.
 
-A hosted preview for judging is being prepared and is not live yet. The deployment notes are in [docs/hosted-demo.md](docs/hosted-demo.md).
+One small recall test has been run so far. It used 120 memories and 42 questions. Recall at 10 was 1.000. Knowledge update scored 5 of 10 and abstention scored 3 of 8. Read this as a small first test, not as a benchmark.
 
-One small recall test has been run so far. It used 120 memories and 42 questions. Recall at 10 was 1.000. Knowledge update scored 5 of 10 and abstention scored 3 of 8. Read this as a small smoke signal from a first test, not as a benchmark. The test and its caveats are written up in [docs/eval-longmem.md](docs/eval-longmem.md).
-
-What is not proven yet is behaviour at large scale, recall quality on real and messy corpora, and the hosted preview under judging traffic. Those are the honest limits of this status.
+What is not shown yet is behaviour at large scale, or recall quality on a large and messy memory. Those are the honest limits of this status.

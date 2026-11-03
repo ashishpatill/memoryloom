@@ -89,8 +89,7 @@
       <a href="#first-day">How to start</a>
       <a href="#helps">Use cases</a>
       <a href="#loop">How it works</a>
-      <a href="#proof">Proof</a>
-      <a href="#start">For developers</a>
+      <a href="#start">Connect an agent</a>
       <a href="/console">Open chat</a>
     </nav>
   </header>
@@ -145,16 +144,16 @@
       <p class="standfirst">Agents suggest what they have learned. Each suggestion is checked before it can become part of the shared memory. What passes the check is written once and is never edited after that. When a fact is replaced, the old fact stays readable with its dates. Every answer shows the record it came from. The team also keeps a log of its interactions, and lessons drawn from that log go through the same check before they can guide future answers.</p>
     </div>
     <figure class="fig reveal" style="margin-top:var(--space-5)">
-          <div class="fig-head"><span>Fig. 1, The weave, live</span><span id="heroState">loading the corpus&hellip;</span></div>
+          <div class="fig-head"><span>Fig. 1, The weave, live</span><span id="heroState">loading the records&hellip;</span></div>
           <div class="fig-body">
             <div class="skeleton" id="heroLoading" role="status"><span class="sr-only">Loading the weave…</span><div class="sk" style="height:150px"></div><div class="sk" style="height:150px"></div></div>
-            <svg id="heroGraph" class="graph-svg" role="img" aria-label="Animated graph of the demo corpus: two agents weaving memories over time"></svg>
+            <svg id="heroGraph" class="graph-svg" role="img" aria-label="Graph of the live store, drawn from the records held now"></svg>
             <div class="graph-ctl" id="heroCtl" style="display:none">
               <button class="btn small-btn" id="heroToggle" type="button">Pause</button>
-              <span class="small">Each thread is one author. Grok runs on the upper thread, moose on the middle thread, and the standing lesson on the lower thread, recorded under the learning promotion name and labelled learning. Threads are told apart by position and label. A knot is a memory, placed at the moment it was recorded. Hollow knots are proposals still waiting for a decision, and crossed knots have been superseded. The rust line is the playhead. It sweeps the corpus timeline, and it is the one use of the accent on this page, because it marks the moment a memory moved. Dates run in order along the bottom axis. The spacing shows the order of the dates, not the time between them, and a long stretch with no records is drawn as a labelled break.</span>
+              <span class="small">Each thread is one author, labelled with the name of the person or agent who wrote the records on it. Threads are told apart by position and label. A knot is a memory, placed at the moment it was recorded. Hollow knots are proposals still waiting for a decision, and crossed knots have been superseded. The rust line is the playhead. It sweeps the timeline of the records, and it is the one use of the accent on this page, because it marks the moment a memory moved. Dates run in order along the bottom axis. The spacing shows the order of the dates, not the time between them, and a long stretch with no records is drawn as a labelled break.</span>
             </div>
           </div>
-          <figcaption><b>Proves.</b> The graph on this page is rendered from the same records the console queries. Dates, authors, grounding and supersession all come from the store. <b>Does not prove.</b> Anything about scale. This corpus is small by design.</figcaption>
+          <figcaption>The graph on this page is drawn live from the same records the chat answers from. Dates, authors and replaced records all come from the store.</figcaption>
         </figure>
         <p class="small corpus-note">The weave above is drawn from the live store. Every record in it passed the gate or was settled by a human.</p>
     <div class="two-col">
@@ -197,7 +196,7 @@
             </g>
           </svg>
         </div>
-        <figcaption><b>Proves.</b> The shape of the system. Every write crosses the check, and every read carries a receipt. <b>Does not prove.</b> That the decisions of the check are right. That is what the calibration numbers in <a href="#proof">Proof</a> are for.</figcaption>
+        <figcaption>Every write crosses the check before it is kept, and every answer carries the record it came from.</figcaption>
       </figure>
     </div>
 
@@ -226,7 +225,7 @@
       <div class="card" aria-live="polite"><span class="when">Asked as of 12 Oct 2026</span><div class="skeleton believed-loading"><div class="sk" style="height:20px"></div></div><p id="believed12"></p></div>
       <div class="card" aria-live="polite"><span class="when">Asked as of 25 Oct 2026</span><div class="skeleton believed-loading"><div class="sk" style="height:20px"></div></div><p id="believed25"></p></div>
     </div>
-    <p class="small" style="margin-top:var(--space-3)">Try other dates in the <a href="/console#/time">console time travel view</a>. <b>Proves.</b> A replaced belief keeps its dates, so both beliefs stay readable. <b>Does not prove.</b> That the newer belief is correct, only that it is the one the team held.</p>
+    <p class="small" style="margin-top:var(--space-3)">Try other dates in the <a href="/console#/time">console time travel view</a>. A replaced belief keeps its dates, so both the old belief and the new one stay readable.</p>
   </section>
 
   <section class="band" id="learning">
@@ -264,64 +263,9 @@
         <div id="lessonCard" style="margin-top:var(--space-4)"></div>
         <p class="small" id="learningAudit" style="margin-top:var(--space-3)"></p>
       </div>
-      <figcaption><b>Proves.</b> The sequence in this figure is the recorded one. Every line is an event or a verdict read live from the store, with its evidence, for the seeded task of lodging a global claim. <b>Recorded when.</b> The demo is seeded with a Jev key configured in Settings or set in the environment. The gate that promotes the lesson needs it. Seeded without one, the seed prints a notice that the story was not recorded and this figure shows its empty state instead. The corpus, recall, the graph and time travel need no key. <b>Does not prove.</b> That lessons keep helping as they accumulate. The record so far is one lesson, and it says so. Read the full stream in the <a href="/console#/learning">console learning view</a>.</figcaption>
+      <figcaption>This figure reads the learning events from the live store, in the order they were recorded. When no lesson stands in the store, it says so here.</figcaption>
     </figure>
-    <p class="small" style="margin-top:var(--space-3)">In plain terms. Grok lodged a claim citing no evidence and was escalated. The correction was written down in the same turn. The episode became a lesson only after the gate approved it. Moose, a different agent, then lodged a claim of the same kind and was approved first try, because the lesson was recalled, with its receipt, before acting.</p>
-  </section>
-
-  <section class="band" id="providers">
-    <div class="section-head">
-      <span class="num">Providers</span>
-      <h2>Who does the work</h2>
-      <p class="standfirst">Model work runs in steps. Cheap first pass work is done cheaply. The check decides every decision that can be listed in advance, and disagreements move up to the strongest step. Every name, count and figure in the table is read from the router records when the page loads.</p>
-    </div>
-    <div class="card" style="padding:6px 14px">
-      <div class="table-wrap">
-      <table class="data">
-        <thead><tr><th scope="col">Tier</th><th scope="col">Work</th><th scope="col">Run on</th><th scope="col">Decides</th><th scope="col">Refuses</th></tr></thead>
-        <tbody id="cascadeBody">
-          <tr><td colspan="5"><div class="skeleton"><div class="sk" style="height:16px"></div><div class="sk" style="height:16px"></div></div></td></tr>
-        </tbody>
-      </table>
-      </div>
-      <div class="cascade-strip" id="cascadeStrip"></div>
-      <p class="small" style="margin-top:var(--space-4)">A part appears here only when the router has logged work for it. Fireworks and Modal did no work in this build and do not appear.</p>
-      <p class="small" style="margin-top:var(--space-2)"><b>Proves.</b> Model work ran in a priced cascade, and the deciding stayed with the gate at every tier. <b>Does not prove.</b> That the cheap tier is careful. It is never given a decision to be careful with.</p>
-    </div>
-  </section>
-
-  <section class="band" id="proof">
-    <div class="section-head">
-      <span class="num">Proof</span>
-      <h2>Checked, not claimed</h2>
-      <p class="standfirst">Every number below is traced to a record in the repository, named beside it. Small numbers, honestly labelled. They prove the mechanics behave as designed. They do not prove quality at scale, and the table says where each one stops.</p>
-    </div>
-    <div class="card" style="padding:6px 14px">
-      <div class="table-wrap">
-      <table class="data">
-        <thead><tr><th scope="col">Check</th><th scope="col">Result</th><th scope="col">Source</th><th scope="col">What it does not prove</th></tr></thead>
-        <tbody>
-          <tr><td>Write gate calibration. A fixed golden set of 40 synthetic proposals scored through the production gate path</td><td class="num">40 / 40<br>0 unsafe approvals</td><td class="small"><span class="mono">docs/calibration-jev-gate.md</span> (run 30 Oct 2026, jev-1.13.0). Thresholds went live only after this passed.</td><td>That unseen proposal classes are safe. Escalation exists for those.</td></tr>
-          <tr><td>Core reasoning calibration. 36 synthetic items covering consolidation, recall narration and contradiction explanation</td><td class="num">36 / 36<br>both tiers</td><td class="small"><span class="mono">docs/calibration-meta-core-reasoning.md</span> (Wonder Full and Wonder, muse-wonder-1.0).</td><td>Anything about public benchmarks. This is a private golden set.</td></tr>
-          <tr><td>Recall evaluation in the LongMemEval style. 42 questions over a 120 memory haystack (Project Kestrel, six dated sessions)</td><td class="num">recall@5 27/29 (93%)<br>recall@10 29/29 (100%)</td><td class="small"><span class="mono">docs/eval-longmem.md</span>, harness <span class="mono">checks/eval-longmem.mjs</span>, scored deterministically, no model judge.</td><td>Recall quality at scale. The weak spots are measured, not hidden. Knowledge update 6/10 and abstention 3/8, both explained in the source.</td></tr>
-          <tr><td>Check suites, run fresh on new databases</td><td class="wrap-num" id="suiteCounts">surface 37/37 &middot; router 11/11 &middot; gate 21/21 &middot; two-plane 22/22 &middot; graph+daemon 44/44 &middot; learning 36/36 &middot; learning demo 8/8 &middot; settings 46/46 &middot; web 89/89</td><td class="small">The suites under <span class="mono">checks/</span> in this repository, run again for this page build. The iteration report carries the fresh counts.</td><td>Behaviour under production load.</td></tr>
-          <tr><td>Spend to date, all providers</td><td class="num" id="spendLive"><div class="skeleton"><div class="sk" style="height:16px"></div></div></td><td class="small"><span class="mono">router/spend-log.jsonl</span>, read live through the console spend view. The log is the record and the figure at left is its current total. Nothing on this page is typed in. Fireworks and Modal stand at $0, with no calls in this build. The Baseten share of the total at left comes from the same log and covers the operations tier calibration recorded in docs/spark-open-calibration.md.</td><td>The log is the whole claim.</td></tr>
-        </tbody>
-      </table>
-      </div>
-    </div>
-    <h3 class="sub-table-head">The cascade behind these numbers</h3>
-    <p class="small" style="max-width:var(--measure)">One row for every group the router has logged, read from the same spend records as the table in Providers above. Cached calls are free and are counted apart from charged calls.</p>
-    <div class="card" style="padding:6px 14px">
-      <div class="table-wrap">
-      <table class="data">
-        <thead><tr><th scope="col">Tier</th><th scope="col">Work</th><th scope="col">Run on</th><th scope="col">Calls</th><th scope="col">Cached, free</th><th scope="col">Spend</th></tr></thead>
-        <tbody id="cascadeSubBody">
-          <tr><td colspan="6"><div class="skeleton"><div class="sk" style="height:16px"></div><div class="sk" style="height:16px"></div></div></td></tr>
-        </tbody>
-      </table>
-      </div>
-    </div>
+    <p class="small" style="margin-top:var(--space-3)">In plain terms. A claim with no source behind it is passed to a person. A lesson guides later answers only after it passes the same check as any other fact, and the next agent can read the lesson and the record it came from before it acts.</p>
   </section>
 
   <section class="band" id="limits">
@@ -329,23 +273,19 @@
       <span class="num">Limits</span>
       <h2>What MemoryLoom does not do</h2>
     </div>
-    <p style="max-width:var(--measure)">MemoryLoom answers from the records it holds. When nothing solid is stored, it says so instead of guessing. It does not settle arguments between records on its own, and a person decides the proposals the check passes on. The public demo runs on a small set of records about Project Lantern, so demo answers show the shape of the product rather than the size of a real team memory.</p>
+    <p style="max-width:var(--measure)">MemoryLoom answers from the records it holds. When nothing solid is stored, it says so instead of guessing. It does not settle arguments between records on its own, and a person decides the proposals the check passes on. The store on this site is still young and holds a small number of records, so answers here show how the product works on real records rather than how it behaves for a large team.</p>
   </section>
 
   <section class="band" id="start">
     <div class="section-head">
-      <span class="num">For developers</span>
-      <h2>Run it, then paste your keys in Settings</h2>
-      <p class="standfirst">You need Node 22 or later and Postgres 16 with pgvector. Copy the example settings file to your local settings file and set your database address there. Then install and prepare and seed and start with the commands below. Setup is done once. After that, one command starts the whole app, this site at <span class="mono">/</span> and the console at <span class="mono">/console</span>.</p>
+      <span class="num">Connect an agent</span>
+      <h2>Your agents can use this memory too</h2>
+      <p class="standfirst">A person uses MemoryLoom in chat. An agent uses the same memory through the agent address below. Tell the agent once and it can suggest facts, read facts back with their records, and see what is waiting for a person.</p>
     </div>
-    <pre class="code">cp .env.example .env.local   # set DATABASE_URL (Postgres 16 + pgvector)
-npm install
-npm run db:init                                  # schema + migrations
-DATABASE_URL=postgres://&hellip; npm run seed:web   # the Project Lantern demo corpus + its learning story
-DATABASE_URL=postgres://&hellip; npm run web       # the one command: site + console</pre>
-    <p style="max-width:var(--measure)"><strong>Provider keys, the standard way.</strong> MemoryLoom runs with no keys at all. The demo corpus, recall, the graph and time travel all work on your machine. One part is recorded, not live. The learning story in Fig. 3 is recorded at seed time, and recording it needs the gate. Seed with a Jev key configured in Settings or set in the environment and the full story is recorded. Seed without one and the seed prints a notice saying the story was not recorded, while everything else still works. To switch on the hosted providers, open the console, go to <strong>Settings</strong>, and paste your own key for each provider. A Meta Model API key comes from <span class="mono">dev.meta.ai</span>, a Jev key from TypeSafe, and a Baseten key from the Baseten workspace settings. Use <strong>Test connection</strong> on each one before you rely on it.</p>
-    <p style="max-width:var(--measure)"><strong>Where the keys live.</strong> Keys pasted into Settings are stored in <span class="mono">.env.local</span> in the app folder, on your machine only, with file permissions 0600. The file is git ignored and never committed. Settings shows only the last four characters of a saved key, and keys are never written to any log. An environment variable (<span class="mono">META_MODEL_API_KEY</span>, <span class="mono">TYPESAFE_API_KEY</span>, <span class="mono">BASETEN_API_KEY</span>) can be set instead and wins over Settings. Settings can only be changed from the local app. A hosted deployment cannot change them.</p>
-    <p class="small">Agents connect over MCP (<code class="inline">npm run mcp</code>) and speak the same propose, recall and review surface the console renders. The console displays decisions. It never makes or overrides one.</p>
+    <pre class="code">{ "memoryloom": { "url": "https://memoryloom.vercel.app/mcp" } }</pre>
+    <p style="max-width:var(--measure)">Add that address in the agent app you already use, in its settings for connected tools. The address asks for the owner word before it answers, so only agents you connect can read or suggest anything. The owner word is set by the person who runs this MemoryLoom and is never shown on this page.</p>
+    <p style="max-width:var(--measure)">Keys for the services behind MemoryLoom are handled the same way. They are never shown in full, never appear on this page, and are never part of an answer. The console shows only whether a service is ready and the last four characters of its key, so a person can tell which key is in use without seeing it.</p>
+    <p class="small">An agent can suggest and read. It cannot approve its own suggestion. Approval stays with the check and, where the check is unsure, with a person.</p>
   </section>
   </main>
 

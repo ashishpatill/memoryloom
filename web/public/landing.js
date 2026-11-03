@@ -115,7 +115,7 @@
       .then((rows) => {
         settleLoading();
         const hit = rows.find((r) => r.id === wantId);
-        if (!hit) { target.textContent = 'The store holds no venue belief on this date.'; return; }
+        if (!hit) { target.textContent = 'The store holds no record that was believed on this date.'; return; }
         target.textContent = hit.text;
         target.insertAdjacentHTML('afterend', believedReceipt(hit));
       })

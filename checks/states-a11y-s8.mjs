@@ -445,7 +445,7 @@ info(`corpus: ${graph.nodes.length} nodes, ${graph.edges.length} edges, range ${
     'empty settings: the banner and three not configured rows', JSON.stringify(st));
   const ld = probes['g4-landing'] || {};
   assert(ld.hero && ld.hero.includes('The weave is empty'), 'empty landing: the hero empty state shows', String(ld.hero));
-  assert(ld.believed === 'The store holds no venue belief on this date.', 'empty landing: the believed at panel states no belief without inventing a date', String(ld.believed));
+  assert(ld.believed === 'The store holds no record that was believed on this date.', 'empty landing: the believed at panel states no belief without inventing a date', String(ld.believed));
   assert(ld.learningFig && ld.learningFig.includes('No learning story recorded yet'), 'empty landing: the learning figure empty state shows', String(ld.learningFig));
 }
 

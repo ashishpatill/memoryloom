@@ -41,13 +41,14 @@ export default async function vercelHandler(req, res) {
       return res.end(JSON.stringify({ error: 'unauthorized' }));
     }
   }
-  if (!process.env.DATABASE_URL) {
+  const connectionString = process.env.DATABASE_URL || process.env.NEON_CONNECTION_STRING;
+  if (!connectionString) {
     res.writeHead(500, { 'content-type': 'application/json' });
-    return res.end(JSON.stringify({ error: 'DATABASE_URL is not configured on this deployment' }));
+    return res.end(JSON.stringify({ error: 'NEON_CONNECTION_STRING is not configured on this deployment' }));
   }
   const server = buildMemoryServer({
     getPool,
-    databaseUrl: process.env.DATABASE_URL,
+    databaseUrl: connectionString,
     queue: process.env.MEMORY_QUEUE || 'memory-embed',
   });
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });

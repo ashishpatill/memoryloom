@@ -222,15 +222,15 @@
       <div class="card" style="margin-bottom:20px">
         <h2>Propose a memory</h2>
         <div class="toolbar" style="margin-bottom:0">
-          <div><label class="f" for="pAuthor">Agent</label>
-            <select id="pAuthor"><option>grok</option><option>moose</option></select></div>
+          <div><label class="f" for="pAuthor">Your name, or your agent's name</label>
+            <input type="text" id="pAuthor" value="you"></div>
           <div><label class="f" for="pType">Type</label>
             <select id="pType"><option value="semantic">semantic (a fact)</option><option value="episodic">episodic (an event)</option><option value="procedural">procedural (a how-to)</option></select></div>
           <div><label class="f" for="pGround">Grounding record ids (comma-separated, optional)</label>
-            <input type="text" id="pGround" placeholder="e.g. demo-g2, demo-g3"></div>
+            <input type="text" id="pGround" placeholder="Record ids, separated by commas"></div>
         </div>
         <label class="f" for="pText">The memory</label>
-        <textarea id="pText" placeholder="One atomic claim. Try the firmware claim with no grounding, then with demo-g2 and demo-g3 cited."></textarea>
+        <textarea id="pText" placeholder="Write one clear fact, in plain words."></textarea>
         <div style="margin-top:12px;display:flex;gap:10px;align-items:center">
           <button class="btn primary" id="pSend" type="button">Send through the gate</button>
           <span id="pResult" class="small" aria-live="polite"></span>
@@ -478,7 +478,7 @@
       ${head('Memory graph', 'Truth, drawn. Threads show authorship. Arcs show grounding, supersession and contradiction. Click any knot for its provenance trail, the full answer to why this record exists.', 'Every belief, drawn from the record.')}
       <figure class="fig">
         <div class="fig-head"><span>${graph.nodes.length} nodes · ${graph.edges.length} edges</span><span>namespace ${esc(graph.namespace || '')}</span></div>
-        <div class="fig-body"><svg id="graphSvg" class="graph-svg" role="img" aria-label="The demo corpus as a graph"></svg></div>
+        <div class="fig-body"><svg id="graphSvg" class="graph-svg" role="img" aria-label="The live store as a graph"></svg></div>
         <figcaption><b>Reading it.</b> Threads run top to bottom in the order the authors first appear. Position and label tell them apart, never colour. Solid knots are memories. Hollow dashed knots are proposals. Crossed knots are superseded. Ink diamonds are cited sources. The knot you clicked wears an ink ring. Dates run in order along the bottom axis. The spacing shows the order of the dates, not the time between them. A long stretch with no records is drawn as a labelled break. This view spends no accent. Nothing here is a live decision. <b>Limit.</b> A derived view. It shows only what the truth plane holds.</figcaption>
       </figure>
       <div id="trailOut" style="margin-top:16px"></div>
@@ -492,7 +492,7 @@
     });
     // The frame label is built from the returned thread and knot
     // counts as drawn (card S8, Section 6.6).
-    svg.setAttribute('aria-label', `The demo corpus as a graph. ${svg.dataset.threadCount} threads and ${svg.dataset.knotCount} knots.`);
+    svg.setAttribute('aria-label', `The live store as a graph. ${svg.dataset.threadCount} threads and ${svg.dataset.knotCount} knots.`);
     // A receipt link names the record it opens (card S5): the id
     // arrives from the click in this page, or from the landing
     // page through session storage, and that record opens here as

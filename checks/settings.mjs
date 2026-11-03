@@ -78,7 +78,7 @@ assert((statSync(store).mode & 0o777) === 0o600, 'store file created with permis
 chmodSync(store, 0o644); // loosen it, then prove the next write tightens it again
 saveProviderKey('jev', DUMMY_JEV, opts);
 assert((statSync(store).mode & 0o777) === 0o600, 'a later write restores 0600 on a loosened store file');
-assert(readFileSync(store, 'utf8').includes('TYPESAFE_API_KEY='), 'second provider lands in the same store file');
+assert(readFileSync(store, 'utf8').includes('JEV_API_KEY='), 'second provider lands in the same store file under the primary name');
 
 process.env.META_MODEL_API_KEY = DUMMY_ENV;
 const resolved = resolveProviderKey('meta', opts);
@@ -94,7 +94,7 @@ assert(saveProviderKey('nope', DUMMY_META, opts).status === 400, 'save for an un
 
 const rm = removeProviderKey('meta', opts);
 assert(rm.payload.configured === false && rm.payload.last4 === null && rm.payload.source === null, 'remove works: masked view back to not configured');
-assert(!readFileSync(store, 'utf8').includes('META_MODEL_API_KEY'), 'remove deletes the key line from the store');
+assert(!readFileSync(store, 'utf8').includes('META_API_KEY'), 'remove deletes the key line from the store');
 
 // Edge cases: empty file, corrupt lines, unrelated content preserved.
 writeFileSync(store, '', { mode: 0o600 });
@@ -148,7 +148,7 @@ const gitStatusAfterSave = execFileSync('git', ['status', '--porcelain'], { cwd:
 assert(!gitStatusAfterSave.split('\n').some((line) => line.includes('.env.local')), 'git status stays clean after a save (temp store override)');
 removeProviderKey('meta');
 const tempStoreContents = existsSync(process.env.MEMORYLOOM_SETTINGS_FILE) ? readFileSync(process.env.MEMORYLOOM_SETTINGS_FILE, 'utf8') : '';
-assert(!tempStoreContents.includes('META_MODEL_API_KEY'), 'save and remove without opts act on the temp store, never the repo store');
+assert(!tempStoreContents.includes('META_API_KEY'), 'save and remove without opts act on the temp store, never the repo store');
 const realStoreAfter = existsSync(realStore) ? readFileSync(realStore) : null;
 assert((realStoreBefore === null && realStoreAfter === null) || (realStoreBefore !== null && realStoreAfter !== null && realStoreBefore.equals(realStoreAfter)), 'real repo store is byte-identical after the git section');
 assert(existsSync(realStore) === (realStoreBefore !== null), 'real repo store existence unchanged by the check');

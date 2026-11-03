@@ -18,10 +18,12 @@
  * playhead (the moment a memory moved); the console's static graph
  * spends none. Callers style .playhead-line / .playhead-label.
  *
- * The demo corpus has THREE authors: grok, moose, and the learning
- * promotion (recorded as "memoryloom-learning", labelled "learning")
- * that authored the standing lesson. Promoted records carry UUID
- * ids and are labelled "lesson".
+ * Threads are built from the authors the store actually returns.
+ * The learning promotion (recorded as "memoryloom-learning",
+ * labelled "learning") authored the standing lessons, and only its
+ * records are labelled "lesson". Every other record is labelled
+ * with its own type, never with a standing word that does not
+ * belong to it.
  *
  * Layout (Iteration 5.4, defect round; placement rule completed by
  * card S4 under the frozen master plan, defect D1): the x axis is
@@ -66,7 +68,6 @@
   const INK = '#1d1a15';
   const INK2 = '#5f584a';
   const SURFACE = '#fdfbf6';
-  const AGENT_Y = { grok: 70, moose: 182, 'memoryloom-learning': 262 };
   const AGENT_LABEL = { grok: 'grok', moose: 'moose', 'memoryloom-learning': 'learning' };
   let clipSeq = 0;
 
@@ -89,6 +90,25 @@
     for (const e of graph.edges) {
       if (e.type === 'authored_by' || e.type === 'proposed_by') authorOf.set(e.from, e.to.replace('agent:', ''));
     }
+    // Thread positions are built from the authors in this graph.
+    // The three long standing authors keep their places. Any other
+    // author takes the first free place, in the order the graph
+    // returns them, so a real author always gets a labelled thread
+    // of their own instead of sharing a default line.
+    const PRESET_Y = { grok: 70, moose: 182, 'memoryloom-learning': 262 };
+    const SLOT_Y = [70, 182, 262];
+    const yMap = new Map();
+    const authorsInOrder = [];
+    for (const n of graph.nodes) if (n.kind === 'agent' && !authorsInOrder.includes(n.id)) authorsInOrder.push(n.id);
+    for (const a of authorOf.values()) if (a && !authorsInOrder.includes(a)) authorsInOrder.push(a);
+    for (const a of authorsInOrder) {
+      if (PRESET_Y[a] !== undefined && ![...yMap.values()].includes(PRESET_Y[a])) yMap.set(a, PRESET_Y[a]);
+      else {
+        const free = SLOT_Y.find((y) => ![...yMap.values()].includes(y));
+        yMap.set(a, free !== undefined ? free : 70 + yMap.size * 80);
+      }
+    }
+    const yOf = (a) => (a && yMap.has(a) ? yMap.get(a) : 130);
     const timed = graph.nodes.filter((n) => (n.kind === 'memory' || n.kind === 'proposal') && tOf(n) > 0);
     const tMin = Math.min(...timed.map(tOf));
     const tMax = Math.max(...timed.map(tOf));
@@ -161,14 +181,14 @@
       return slotX(i) + f * (slotX(i + 1) - slotX(i));
     };
     for (const n of nodes.values()) {
-      if (n.kind === 'agent') { n.x = 44; n.y = AGENT_Y[n.id] ?? 130; }
+      if (n.kind === 'agent') { n.x = 44; n.y = yOf(n.id); }
       else if (n.kind === 'memory' || n.kind === 'proposal') {
         const a = authorOf.get(n.node_id);
         const key = (a || '?') + '|' + dayOf(tOf(n));
         const ids = sameDay.get(key) || [n.node_id];
         const j = ids.indexOf(n.node_id);
         n.x = slotX(slotIndex.get(dayOf(tOf(n)))) + (ids.length > 1 ? (j - (ids.length - 1) / 2) * MIN_SEP : 0);
-        n.y = (AGENT_Y[a] ?? 130) + hashJitter(n.id, 12);
+        n.y = yOf(a) + hashJitter(n.id, 12);
         n.author = a || null;
       }
     }
@@ -194,7 +214,7 @@
     // knot, drawn at render whenever the label moved.
     const labelTextOf = (n) => {
       if (n.kind === 'source') return n.id.length > 22 ? n.id.slice(0, 21) + '…' : n.id;
-      const short = n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson';
+      const short = n.id.startsWith('demo-') ? n.id.slice(5) : (n.author === 'memoryloom-learning' ? 'lesson' : (n.type || 'record'));
       return short.length > 14 ? short.slice(0, 13) + '…' : short;
     };
     // 9px IBM Plex Mono advances ≈5.4 units per character; the
@@ -275,7 +295,7 @@
     for (const n of nodes.values()) {
       if (n.kind === 'source' && n.labelX === undefined) n.labelX = n.x;
     }
-    return { nodes, tMin, tMax, xFor, slots, slotX, gap, frameW };
+    return { nodes, tMin, tMax, xFor, slots, slotX, gap, frameW, yMap };
   }
 
   function renderGraph(svg, graph, opts = {}) {
@@ -288,7 +308,7 @@
       svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
       return { setTime() {}, toggle: () => true, settle() {}, stop() {} };
     }
-    const { nodes, tMin, tMax, xFor, slots, slotX, gap, frameW } = layout(graph, W, H);
+    const { nodes, tMin, tMax, xFor, slots, slotX, gap, frameW, yMap } = layout(graph, W, H);
     // The frame is at least the nominal width and grows by what
     // the column placement needed, so the viewBox always matches
     // the laid out figure.
@@ -319,7 +339,7 @@
     // Thread lines: one per author, ink, told apart by position.
     // A thread stops at the break band and resumes after it, with
     // two short slashes inside the band carrying the eye across.
-    for (const [agent, y] of Object.entries(AGENT_Y)) {
+    for (const [agent, y] of yMap.entries()) {
       const mine = [...nodes.values()]
         .filter((n) => n.author === agent && (n.kind === 'memory' || n.kind === 'proposal'))
         .sort((a, b) => a.x - b.x);
@@ -399,7 +419,7 @@
     const knotName = (n) => {
       const label = n.kind === 'agent' ? (AGENT_LABEL[n.id] || n.id.split(' ')[0])
         : n.kind === 'source' ? n.id
-        : (n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson');
+        : (n.id.startsWith('demo-') ? n.id.slice(5) : (n.author === 'memoryloom-learning' ? 'lesson' : (n.type || 'record')));
       if (n.kind === 'agent') return label + ', agent';
       if (n.kind === 'source') return label + ', source';
       const date = new Date(tOf(n)).toISOString().slice(0, 10);
@@ -450,7 +470,7 @@
           el('line', { x1: n.x, y1: n.y + (ldy < 0 ? -8 : 8), x2: lx, y2: n.y + ldy + (ldy < 0 ? 4 : -10), stroke: INK2, 'stroke-width': 0.8, opacity: 0.55 }, g);
         }
         const lbl = el('text', { x: lx, y: n.y + ldy, 'text-anchor': 'middle', class: 'node-sub' }, g);
-        const short = n.id.startsWith('demo-') ? n.id.slice(5) : 'lesson';
+        const short = n.id.startsWith('demo-') ? n.id.slice(5) : (n.author === 'memoryloom-learning' ? 'lesson' : (n.type || 'record'));
         lbl.textContent = short.length > 14 ? short.slice(0, 13) + '…' : short;
       }
       if (opts.onSelect) {
