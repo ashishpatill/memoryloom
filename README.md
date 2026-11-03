@@ -266,8 +266,7 @@ Working and verified locally:
   (was 31/36 and 33/36; the failures were dropped receipt citations
   in narration and paraphrased conflicts in explanations — prompts
   tightened, and a cache bug that hid prompt edits was found and
-  fixed). Records: `docs/calibration-meta-core-reasoning.md`,
-  `docs/prompt-hardening-block7.md`.
+  fixed). Record: `docs/calibration-meta-core-reasoning.md`.
 - **All enumerable decisions go through the Jev API** (TypeSafe,
   jev-1.13.0): write-gate accept/reject/escalate, consolidation
   accept, decay keep/drop, learning promotion. The gate calibration
@@ -307,8 +306,8 @@ Working and verified locally:
   memories, so decay and recall treat them like everything else.
   In-turn correction stores a verbal reflection with its trigger
   evidence and returns the corrected directive for the same turn.
-  The research patterns are verified and recorded in
-  `docs/learning-research.md` (Harness², ACE, Reflexion, Voyager).
+  The research patterns are verified against the published
+  work they study (Harness², ACE, Reflexion, Voyager).
   `checks/learning.mjs` 36/36, and `checks/learning-demo.mjs` shows
   the same task class before vs after a promoted lesson — escalated
   with no citations, approved first try by a second agent after
