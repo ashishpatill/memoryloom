@@ -3,7 +3,8 @@
  *
  * Serves the same shared server that the stdio entry uses over
  * Streamable HTTP in stateless mode. The pool comes from the
- * DATABASE_URL environment variable only. There is no database
+ * DATABASE_URL environment variable, or from
+ * NEON_CONNECTION_STRING when DATABASE_URL is not set. There is no database
  * gate check on this hosted path and that matches the hosted API
  * entry in api/index.mjs.
  *
@@ -26,7 +27,7 @@ import { buildMemoryServer } from '../mcp/server.mjs';
 let pool = null;
 function getPool() {
   if (!pool) {
-    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+    pool = new pg.Pool({ connectionString: process.env.DATABASE_URL || process.env.NEON_CONNECTION_STRING, max: 2 });
   }
   return pool;
 }
