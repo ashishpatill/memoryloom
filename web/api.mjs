@@ -73,6 +73,13 @@ function isLocalRequest(req) {
   return true;
 }
 
+function hasOwnerToken(req) {
+  const token = String(process.env.MEMORYLOOM_MCP_TOKEN || '').trim();
+  if (!token) return false;
+  const header = req?.headers?.authorization || req?.headers?.Authorization || '';
+  return header === `Bearer ${token}`;
+}
+
 const LOCAL_ONLY = { status: 403, payload: { error: 'settings can only be changed from the local app' } };
 
 const DECIDE_LOCAL_ONLY = {
@@ -436,9 +443,11 @@ export function createHandler({ pool, namespace }) {
       if (req.method === 'POST' && (m = p.match(/^\/api\/proposals\/(.+)\/decide$/))) {
         // The decide route is local only, guarded in the same way
         // as the Settings routes (card S3b, Section 10.7). The
-        // hosted preview can show the queue, and no decision can
-        // be taken from it.
-        if (!isLocalRequest(req)) return json(res, DECIDE_LOCAL_ONLY.status, DECIDE_LOCAL_ONLY.payload);
+        // hosted preview can show the queue. A hosted request may
+        // also decide when it carries the owner token, the same
+        // credential the hosted MCP entry checks, so a connected
+        // client holding the token can act as the human reviewer.
+        if (!isLocalRequest(req) && !hasOwnerToken(req)) return json(res, DECIDE_LOCAL_ONLY.status, DECIDE_LOCAL_ONLY.payload);
         const r = await decide(decodeURIComponent(m[1]), await readBody(req));
         return json(res, r.status, r.payload);
       }
