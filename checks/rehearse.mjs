@@ -15,17 +15,35 @@
  *
  * Usage: DATABASE_URL=postgres://… node checks/rehearse.mjs <run-number>
  * Writes: checks/out/rehearsal-<n>.json
+ * Owning file: checks/rehearse.mjs
+ * Accountable layer: Demo layer
+ * Provider need: Stub, live for the binding decision 16 call
+ * Declared mode: Separate dated command in the runbook, rehearsal record written
  */
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { preflightDbOrExit, realStoreChangedSince, snapshotRealStore, writeRunRecord } from './db-preflight.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const root = join(__dir, '..');
 const runNo = Number(process.argv[2] || 1);
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+// The rehearsal harness is one of the eligible runners named in
+// Section 3 of the frozen master plan. It writes its run record at
+// startup, snapshots the real store by hash and runs the pre run
+// database gate before it spawns anything.
+const storeSnapshot = snapshotRealStore();
+writeRunRecord({ command: `node checks/rehearse.mjs ${runNo}`, entryPoint: 'checks/rehearse.mjs', snapshotHash: storeSnapshot.hash });
+process.on('exit', () => {
+  if (realStoreChangedSince(storeSnapshot)) {
+    console.error('store guard: the real settings store changed during this run');
+    process.exitCode = process.exitCode || 1;
+  }
+});
+preflightDbOrExit();
 const PORT = 4300 + runNo;
 const BASE = `http://localhost:${PORT}`;
 const SPEND_LOG = join(root, 'router', 'spend-log.jsonl');

@@ -9,6 +9,10 @@
  *  - Triage drafting on the Wonder medium tier through the router.
  *
  * Usage: DATABASE_URL=postgres://... node checks/two-plane.mjs
+ * Owning file: checks/two-plane.mjs
+ * Accountable layer: Plane 1 and Plane 2 data layer
+ * Provider need: Stub Jev and stub Meta for the consolidation and triage cases, corrected at card S2
+ * Declared mode: Stub
  */
 process.env.MEMORYLOOM_ROUTER_MODE = 'live';
 process.env.JEV_TIMEOUT_MS = process.env.JEV_TIMEOUT_MS || '15000';
@@ -21,9 +25,11 @@ import {
   recallWithReceipts,
   rebuildRecallIndex,
 } from '../lib/planes.mjs';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 const NS = 'memoryloom-planes';
 const NSD = 'memoryloom-decay';
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3 });
@@ -108,11 +114,21 @@ async function strengths() {
   const r = await pool.query(`SELECT id, strength FROM memories WHERE namespace = $1 ORDER BY id`, [NSD]);
   return Object.fromEntries(r.rows.map((x) => [x.id, x.strength]));
 }
+async function anchors() {
+  const r = await pool.query(`SELECT id, decay_anchor_at FROM memories WHERE namespace = $1 ORDER BY id`, [NSD]);
+  return Object.fromEntries(r.rows.map((x) => [x.id, x.decay_anchor_at]));
+}
 const snap0 = await strengths();
+const anchors0 = await anchors();
 const dA = await applyDecay(pool, { namespace: NSD, now: NOW, halfLifeDays: 30, useJev: false });
 const snapA = await strengths();
+// The restore puts back the decay anchor together with the
+// original strengths (card S3b). The first run wrote the run time
+// into the anchor, so restoring strengths alone would leave the
+// second run measuring an age of zero from that anchor and the
+// equality below would prove nothing.
 for (const [id, s] of Object.entries(snap0)) {
-  await pool.query(`UPDATE memories SET strength = $2 WHERE id = $1`, [id, s]);
+  await pool.query(`UPDATE memories SET strength = $2, decay_anchor_at = $3 WHERE id = $1`, [id, s, anchors0[id]]);
 }
 const dB = await applyDecay(pool, { namespace: NSD, now: NOW, halfLifeDays: 30, useJev: false });
 const snapB = await strengths();

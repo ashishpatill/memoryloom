@@ -2,11 +2,18 @@
  * recall_smoke.mjs — one-shot hybrid RRF recall smoke check.
  * Drives the MemoryLoom MCP server over stdio and calls `recall`.
  * Usage: DATABASE_URL=postgres://... node checks/recall_smoke.mjs "<namespace>" "<query>" [k]
+ * Owning file: checks/recall_smoke.mjs
+ * Accountable layer: Recall layer
+ * Provider need: None
+ * Declared mode: Keyless, separate dated command in the runbook
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { preflightOrExit } from './db-preflight.mjs';
+
+preflightOrExit({ storeFallback: true });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MCP = path.join(__dirname, '..', 'mcp', 'index.mjs');

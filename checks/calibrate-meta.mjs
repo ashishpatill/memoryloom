@@ -13,6 +13,10 @@
  *
  * Usage: node checks/calibrate-meta.mjs
  * Writes: checks/out/calibration-meta.json, docs/calibration-meta-core-reasoning.md
+ * Owning file: checks/calibrate-meta.mjs
+ * Accountable layer: Router layer
+ * Provider need: Live Meta
+ * Declared mode: Runs only inside its owning card
  */
 process.env.MEMORYLOOM_ROUTER_MODE = 'live';
 import { writeFileSync, mkdirSync } from 'node:fs';

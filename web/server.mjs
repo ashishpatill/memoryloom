@@ -16,6 +16,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { resolveDatabaseUrl } from '../lib/load-env.mjs';
+import { realStoreChangedSince, snapshotRealStore, writeRunRecord } from '../lib/run-record.mjs';
 import { createHandler } from './api.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
@@ -24,6 +25,21 @@ const url = resolveDatabaseUrl();
 if (!url) {
   console.error('DATABASE_URL missing — the console reads the demo database. See README "Run the site + console".');
   process.exit(1);
+}
+if (process.env.npm_lifecycle_event === 'web') {
+  // Started by the named local start command, npm run web. This is
+  // one of the eligible runs under the named exception in Section 3
+  // of the frozen master plan, so the runner writes its run record
+  // at startup and snapshots the real store by hash for comparison
+  // when the process ends. Servers spawned by check suites do not
+  // carry the npm lifecycle marker and write no record.
+  const storeSnapshot = snapshotRealStore();
+  writeRunRecord({ command: 'npm run web', entryPoint: 'web/server.mjs', snapshotHash: storeSnapshot.hash });
+  process.on('exit', () => {
+    if (realStoreChangedSince(storeSnapshot)) {
+      console.error('store guard: the real settings store changed during this run');
+    }
+  });
 }
 const namespace = process.env.WEB_NAMESPACE || 'memoryloom-demo';
 const port = Number(process.env.WEB_PORT || 4173);

@@ -8,13 +8,18 @@
 -- optimistic version; halfvec(384) in-column; NO trust tiers, NO per-bot ACLs,
 -- NO contested state (contradictions resolve via evidence weighing, Q6).
 --
+-- Card S3b made every statement in this file re-runnable (IF NOT
+-- EXISTS and DROP TRIGGER IF EXISTS) without changing the schema it
+-- builds, so scripts/init-db.mjs can run over a database that
+-- already applied this file when it applies a later migration.
+--
 -- P0 scope: memories + sync_log. pg-boss creates its own tables at runtime.
 -- P1 adds: provenance / validity / review tables, replica watermarks.
 -- ============================================================================
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
-CREATE TABLE memories (
+CREATE TABLE IF NOT EXISTS memories (
   id               TEXT PRIMARY KEY,  -- ULID, time-ordered
   namespace        TEXT NOT NULL,     -- preferences | project-* | decisions-* |
                                      -- errors-resolved-* | handoff-* | bot-* |
@@ -51,28 +56,29 @@ CREATE TABLE memories (
 );
 
 -- Hybrid retrieval (plan §7): tsvector/GIN leg + pgvector/HNSW leg, RRF-fused in SQL.
-CREATE INDEX memories_text_gin ON memories USING gin (text_tsv);
-CREATE INDEX memories_embedding_hnsw ON memories USING hnsw (embedding halfvec_cosine_ops);
+CREATE INDEX IF NOT EXISTS memories_text_gin ON memories USING gin (text_tsv);
+CREATE INDEX IF NOT EXISTS memories_embedding_hnsw ON memories USING hnsw (embedding halfvec_cosine_ops);
 
 -- Recall filters.
-CREATE INDEX memories_recall_cover ON memories (namespace, type, approval, index_status);
-CREATE INDEX memories_validity ON memories (valid_from, valid_to);
-CREATE INDEX memories_node ON memories (node_id) WHERE node_id IS NOT NULL;
-CREATE INDEX memories_pinned ON memories (pinned) WHERE pinned;
+CREATE INDEX IF NOT EXISTS memories_recall_cover ON memories (namespace, type, approval, index_status);
+CREATE INDEX IF NOT EXISTS memories_validity ON memories (valid_from, valid_to);
+CREATE INDEX IF NOT EXISTS memories_node ON memories (node_id) WHERE node_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS memories_pinned ON memories (pinned) WHERE pinned;
 
 -- Replica sync: every mutation appends here; devices track last_seq (plan §13.5).
-CREATE TABLE sync_log (
+CREATE TABLE IF NOT EXISTS sync_log (
   seq        BIGSERIAL PRIMARY KEY,
   memory_id  TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
   op         TEXT NOT NULL CHECK (op IN ('insert','update','retire')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX sync_log_seq ON sync_log (seq);
+CREATE INDEX IF NOT EXISTS sync_log_seq ON sync_log (seq);
 
 CREATE OR REPLACE FUNCTION memories_touch_updated_at()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END $$;
 
+DROP TRIGGER IF EXISTS memories_updated_at ON memories;
 CREATE TRIGGER memories_updated_at
   BEFORE UPDATE ON memories
   FOR EACH ROW EXECUTE FUNCTION memories_touch_updated_at();
@@ -84,10 +90,12 @@ BEGIN
   RETURN NEW;
 END $$;
 
+DROP TRIGGER IF EXISTS memories_sync_insert ON memories;
 CREATE TRIGGER memories_sync_insert
   AFTER INSERT ON memories
   FOR EACH ROW EXECUTE FUNCTION memories_append_sync_log('insert');
 
+DROP TRIGGER IF EXISTS memories_sync_update ON memories;
 CREATE TRIGGER memories_sync_update
   AFTER UPDATE OF text, embedding, strength, importance, approval, valid_to,
                   version, pinned, superseded_by, merged_into ON memories

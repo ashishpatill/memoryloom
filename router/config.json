@@ -29,6 +29,16 @@
         "reserve": 15
       },
       "total": 150
+    },
+    "jev": {
+      "classes": {
+        "drill": 5,
+        "gate_calibration": 5,
+        "product": 5
+      },
+      "per_iteration_cap": 1,
+      "pool_note": "One shared pool of $5 across the gate_calibration, product and drill classes. The class figures restate the pool size per class because the spend layer reads a number per class. The pool total and the per iteration cap are the operative limits, and the Jev client enforces both at the full cap with no stop loss fraction (card S3b).",
+      "total": 5
     }
   },
   "comment": "Updated 2026-10-31 (Ashish, Feature 6): exactly one Baseten lane is open — Muse Spark Open (meta-models/muse-spark-open-1026) on Baseten as the Tier 0 operations provider (pre-screening and first-pass drafts; Jev decides every enumerable decision, Wonder medium handles escalation, Wonder Full the most critical work). The 2026-10-30 probe facts stand: the grant key refuses all non-Spark inference (HTTP 403 on DeepSeek, GLM and Kimi; catalogue reads succeed), and Spark Open itself was confirmed callable by a capped probe on 2026-10-31 (HTTP 200). Meta's own Spark ids and the contributor model remain banned everywhere; the only Meta model is muse-wonder-1.0 in two effort tiers. A challenger decision backend replaces Jev only by beating it on every benchmark leg and on price. Prices are the published rates recorded in the provider docs.",
@@ -54,7 +64,6 @@
     }
   },
   "jev": {
-    "base_url": "https://api.typesafe.ai",
     "model": "jev-1.13.0",
     "thresholds_live": true
   },

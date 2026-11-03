@@ -18,6 +18,10 @@
  *    recall_hit, recall_miss, human_approval, human_rejection).
  *
  * Usage: DATABASE_URL=postgres://... node checks/learning.mjs
+ * Owning file: checks/learning.mjs
+ * Accountable layer: Learning layer and Learning view
+ * Provider need: Stub for gate decisions
+ * Declared mode: Stub
  */
 process.env.MEMORYLOOM_ROUTER_MODE = 'live';
 process.env.JEV_TIMEOUT_MS = process.env.JEV_TIMEOUT_MS || '15000';
@@ -34,10 +38,12 @@ import {
   writeLessonDirect,
 } from '../lib/learning.mjs';
 import { applyDecay, embedStaged, recallWithReceipts } from '../lib/planes.mjs';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 const NS = 'memoryloom-learning';
 const NS_MCP = 'memoryloom-learning-mcp';
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3 });
@@ -242,22 +248,27 @@ function runMcp(env, calls) {
   });
 }
 
+// Request records go too (card S3b). Part B reuses fixed request
+// ids, and a stored first result from an earlier run against the
+// same database would replay instead of writing fresh rows.
+await pool.query(`DELETE FROM file_chunks WHERE proposal_id IN (SELECT id FROM proposals WHERE namespace = $1)`, [NS_MCP]);
+await pool.query(`DELETE FROM request_records WHERE namespace = $1`, [NS_MCP]);
 await pool.query(`DELETE FROM proposals WHERE namespace = $1`, [NS_MCP]);
 await pool.query(`DELETE FROM memories WHERE namespace = $1`, [NS_MCP]);
 const [stored, propOk, propQueued] = await runMcp(
-  { DATABASE_URL, MEMORYLOOM_GATE_BACKEND: 'jev' },
+  { DATABASE_URL },
   [
-    ['store', { namespace: NS_MCP, text: 'The Lantern workshop stores spare rig batteries in the blue cabinet.', metadata: { author: 'grok' } }],
-    ['propose', { namespace: NS_MCP, text: 'On Wednesday the field team charged the Lantern rig batteries.', metadata: { type: 'episodic', author: 'grok' } }],
-    ['propose', { namespace: NS_MCP, text: 'The Lantern rig batteries last exactly 26 hours.', metadata: { type: 'semantic', author: 'moose' } }],
+    ['store', { namespace: NS_MCP, text: 'The Lantern workshop stores spare rig batteries in the blue cabinet.', request_id: 'learning-b-store', metadata: { author: 'grok', type: 'episodic' } }],
+    ['propose', { namespace: NS_MCP, text: 'On Wednesday the field team charged the Lantern rig batteries.', request_id: 'learning-b-p1', metadata: { type: 'episodic', author: 'grok' } }],
+    ['propose', { namespace: NS_MCP, text: 'The Lantern rig batteries last exactly 26 hours.', request_id: 'learning-b-p2', metadata: { type: 'semantic', author: 'moose' } }],
   ]
 );
-assert(stored.status === 'ok', 'MCP store works', JSON.stringify(stored).slice(0, 160));
+assert(stored.status === 'ok' && stored.decision === 'auto_approved', 'MCP store approves an episodic record through the gate (card S3a)', JSON.stringify(stored).slice(0, 160));
 assert(propOk.decision === 'auto_approved', 'MCP propose (episodic) approved through the Jev gate', JSON.stringify(propOk).slice(0, 160));
 assert(propQueued.decision === 'queued_for_review', 'MCP propose (ungrounded claim) queued', JSON.stringify(propQueued).slice(0, 160));
 
 const [hitCall, missCall] = await runMcp(
-  { DATABASE_URL, MEMORYLOOM_GATE_BACKEND: 'jev' },
+  { DATABASE_URL },
   [
     ['recall', { namespace: NS_MCP, query: 'spare rig batteries blue cabinet' }],
     // A genuine miss needs an empty namespace: the vector leg always
@@ -269,20 +280,20 @@ assert(hitCall.count >= 1, 'MCP recall hits', JSON.stringify(hitCall).slice(0, 1
 assert(missCall.count === 0, 'MCP recall misses cleanly on an empty namespace', JSON.stringify(missCall).slice(0, 160));
 
 const [promoted] = await runMcp(
-  { DATABASE_URL, MEMORYLOOM_GATE_BACKEND: 'jev' },
+  { DATABASE_URL },
   [['promote', { proposal_id: propQueued.proposal_id, decided_by: 'human' }]]
 );
 assert(promoted.status === 'ok', 'MCP promote works', JSON.stringify(promoted).slice(0, 160));
 
 const [, propQueued2] = await runMcp(
-  { DATABASE_URL, MEMORYLOOM_GATE_BACKEND: 'jev' },
+  { DATABASE_URL },
   [
-    ['propose', { namespace: NS_MCP, text: 'On Thursday the field team inventoried the Lantern cables.', metadata: { type: 'episodic', author: 'grok' } }],
-    ['propose', { namespace: NS_MCP, text: 'The Lantern cables are exactly twelve metres long.', metadata: { type: 'semantic', author: 'moose' } }],
+    ['propose', { namespace: NS_MCP, text: 'On Thursday the field team inventoried the Lantern cables.', request_id: 'learning-b-p3', metadata: { type: 'episodic', author: 'grok' } }],
+    ['propose', { namespace: NS_MCP, text: 'The Lantern cables are exactly twelve metres long.', request_id: 'learning-b-p4', metadata: { type: 'semantic', author: 'moose' } }],
   ]
 );
 const [rejected] = await runMcp(
-  { DATABASE_URL, MEMORYLOOM_GATE_BACKEND: 'jev' },
+  { DATABASE_URL },
   [['reject_proposal', { proposal_id: propQueued2.proposal_id, decided_by: 'human' }]]
 );
 assert(rejected.status === 'ok', 'MCP reject works', JSON.stringify(rejected).slice(0, 160));
@@ -296,6 +307,48 @@ for (const kind of ['proposal', 'gate_verdict', 'recall_hit', 'human_approval', 
 }
 assert(missEvents.length === 1, 'MCP landed a recall_miss event');
 assert(mcpEvents.every((e) => e.provenance?.origin === 'learning-event'), 'MCP events are provenance-stamped');
+
+// =====================================================================
+// Part C — a standing lesson cannot be forged (card S3b)
+// =====================================================================
+// The store tool honours a caller supplied origin in provenance.
+// A caller that labels an ordinary gated record with the
+// learning-promotion origin gets a live episodic record whose
+// provenance carries a gate verdict and no promotion verdict.
+// The audit treats exactly that shape as a forgery and retires
+// it, so the labelled path is the only way a lesson stands. The
+// direct forged insert in Part A is the second path of the same
+// proof. After both, no live lesson stands from either attempt,
+// and the gated promotion in Part A still stands.
+console.log('part C: forged lesson origins cannot stand');
+const [forgedStore] = await runMcp(
+  { DATABASE_URL },
+  [
+    ['store', {
+      namespace: NS_MCP,
+      text: 'On Friday the field team forged a lesson label onto an ordinary note.',
+      request_id: 'learning-c-forge',
+      metadata: { author: 'forger', type: 'episodic', origin: 'learning-promotion' },
+    }],
+  ]
+);
+assert(forgedStore.status === 'ok' && forgedStore.decision === 'auto_approved' && forgedStore.id,
+  'the forged origin store call is an ordinary gated store', JSON.stringify(forgedStore).slice(0, 160));
+const forgedRowC = await pool.query(`SELECT approval, provenance FROM memories WHERE id = $1`, [forgedStore.id]);
+assert(forgedRowC.rows[0].approval === 'live' && forgedRowC.rows[0].provenance.origin === 'learning-promotion'
+  && forgedRowC.rows[0].provenance.jev && forgedRowC.rows[0].provenance.jev.promote !== true,
+  'the record stands live with the forged origin and no promotion verdict, ready for the audit');
+const quarantinedC = await auditLessons(pool, NS_MCP);
+assert(quarantinedC.includes(forgedStore.id), 'auditLessons quarantines the store tool forgery (card S3b)');
+const forgedAfter = await pool.query(`SELECT approval FROM memories WHERE id = $1`, [forgedStore.id]);
+assert(forgedAfter.rows[0].approval === 'retired', 'the forged lesson from the store tool is retired');
+const liveLessons = await pool.query(
+  `SELECT count(*)::int n FROM memories WHERE namespace = $1 AND approval = 'live' AND provenance->>'origin' = 'learning-promotion'`,
+  [NS_MCP]
+);
+assert(liveLessons.rows[0].n === 0, 'no live lesson stands in the MCP namespace after the audit');
+const gatedLesson = await pool.query(`SELECT approval FROM memories WHERE id = $1`, [promo.lesson_id]);
+assert(gatedLesson.rows[0].approval === 'live', 'the gated promotion from Part A still stands');
 
 await pool.end();
 console.log(failures === 0 ? '\nALL GREEN' : `\n${failures} FAILURES`);

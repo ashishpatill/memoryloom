@@ -1,0 +1,45 @@
+{
+  "comment": "Throwaway database targets for the pre run database gate in lib/db-gate.mjs, built by card S1a under Section 10.4 of the frozen master plan. A target passes only when host, port and database name together match one entry. Database names starting with ml are the throwaway family this repo creates on the local development server, covering names such as ml_verify_web from the verify entry and the numbered throwaway names earlier iterations used. The hosted demo target is not listed here and never joins this list. It is reached only through the named operation exceptions. The real memory database name is refused by the gate itself before this list is read.",
+  "entries": [
+    {
+      "databasePrefixes": [
+        "ml"
+      ],
+      "databases": [
+        "memoryloom_demo"
+      ],
+      "host": "127.0.0.1",
+      "port": 5433
+    },
+    {
+      "databasePrefixes": [
+        "ml"
+      ],
+      "databases": [
+        "memoryloom_demo"
+      ],
+      "host": "localhost",
+      "port": 5433
+    },
+    {
+      "databasePrefixes": [
+        "ml"
+      ],
+      "databases": [
+        "memoryloom_demo"
+      ],
+      "host": "127.0.0.1",
+      "port": 5434
+    },
+    {
+      "databasePrefixes": [
+        "ml"
+      ],
+      "databases": [
+        "memoryloom_demo"
+      ],
+      "host": "localhost",
+      "port": 5434
+    }
+  ]
+}

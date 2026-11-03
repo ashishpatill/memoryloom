@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MemoryLoom Console — the live loop, recall, graph, time travel, providers, learning, settings</title>
+<title>MemoryLoom Console, chat, the live loop, recall, graph, time travel, providers, learning, settings</title>
 <link rel="stylesheet" href="/tokens.css">
 <style>
   /* Console layout helpers only. Every colour, face, size and rule
@@ -16,7 +16,7 @@
   .console-shell { display: grid; grid-template-columns: 208px 1fr; min-height: 100vh; }
   .console-nav {
     border-right: var(--rule-strong); padding: var(--space-5) var(--space-4);
-    background: var(--paper-sunken); display: flex; flex-direction: column; gap: var(--space-1);
+    background: var(--paper-sunken); display: flex; flex-direction: column; gap: var(--space-2);
   }
   .console-nav .wordmark { font-size: 1.25rem; margin-bottom: var(--space-1); }
   .console-nav a {
@@ -39,6 +39,36 @@
      a 360px screen in 5.2's first pass. With it, .table-wrap does
      its job and scrolls the table sideways instead. */
   .console-main h2 { margin-bottom: var(--space-1); }
+  /* Card S8 heading order: the view title is the page h1 and the
+     block headings are h2, in the order Section 6 states. The
+     sizes stay the ones the design already used, taken from the
+     same token values the old h2 and h3 rules carried. */
+  .view-title { font-size: clamp(1.7rem, 3.4vw, 2.25rem); margin-bottom: var(--space-1); }
+  .console-main h2 { font-size: var(--display-sm); }
+  .skip-link {
+    position: absolute; left: var(--space-3); top: var(--space-3); z-index: 20;
+    width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    background: var(--surface); color: var(--ink); border: var(--rule-strong); border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3); font-size: var(--text-sm); text-decoration: none;
+  }
+  .skip-link:focus-visible { width: auto; height: auto; overflow: visible; clip: auto; }
+  .view-alert {
+    font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink);
+    background: var(--paper-sunken); border: var(--rule-strong); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4);
+  }
+  .sunken-mono {
+    background: var(--paper-sunken); font-family: var(--font-mono); font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3); border-radius: var(--radius);
+    white-space: pre-wrap; overflow-wrap: anywhere; margin: var(--space-2) 0 0;
+  }
+  .table-cue { display: none; }
+  @media (max-width: 560px) { .table-cue { display: block; margin-top: var(--space-1); } }
+  .esc-list, .stream-list { list-style: none; margin: 0; padding: 0; }
+  /* A lesson card's heading is its text (card S8, Section 6.9):
+     the h3 carries the record text's own face and weight, not
+     the display heading style. */
+  h3.lesson-text { font-family: var(--font-text); font-weight: 400; letter-spacing: 0; }
   .pull-line {
     font-family: var(--font-display); font-style: italic; font-weight: 400;
     font-size: var(--text-lg); line-height: var(--leading-body); margin: 0 0 var(--space-2);
@@ -54,6 +84,7 @@
     padding: var(--space-6) var(--space-5); text-align: center; color: var(--ink-2); background: var(--surface);
   }
   .empty-state h3 { color: var(--ink); }
+  .empty-state h2 { color: var(--ink); font-size: var(--display-sm); }
   .error-state { border: 1px solid var(--ink); }
   .flash {
     border: var(--rule-strong); border-radius: var(--radius); background: var(--surface);
@@ -73,36 +104,74 @@
   .row-item .text { font-size: 1rem; overflow-wrap: anywhere; }
   .row-item .detail { font-size: var(--text-sm); color: var(--ink-2); margin-top: var(--space-2); overflow-wrap: anywhere; }
   .row-item .actions { display: flex; gap: var(--space-2); margin-top: var(--space-3); align-items: center; flex-wrap: wrap; }
-  .receipt {
-    font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-data);
-    background: var(--paper-sunken); border: var(--rule); border-radius: var(--radius);
-    padding: var(--space-2) var(--space-3); margin-top: var(--space-2);
-    white-space: pre-wrap; word-break: break-word;
-  }
+  /* The receipt record (.record) is styled in tokens.css (5.4). */
   label.f { display: block; font-size: var(--text-sm); font-weight: 600; margin: var(--space-3) 0 var(--space-1); }
   input[type="text"], input[type="password"], input[type="date"], select, textarea {
     width: 100%; padding: var(--space-2) var(--space-3); border: var(--rule-strong); border-radius: var(--radius);
     background: var(--surface); color: var(--ink); font-family: var(--font-text); font-size: 0.95rem;
   }
   textarea { min-height: 64px; }
-  /* Time-travel slider, styled within the tokens (5.3, Finding
-     J3): an ink track and a square ink thumb — the UA internals
-     were the one unstyled element left in the console. */
+  /* Time travel control (5.4 defect round): a finished control,
+     not a bare strip. A readout row where label, date and status
+     are one fact, a 32px track wrap with a mark for every date
+     that holds a record, and labelled ends. Tokens only. */
+  .time-travel {
+    background: var(--surface); border: var(--rule); border-radius: var(--radius);
+    padding: var(--space-4);
+  }
+  .time-help { font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-2); margin: 0; }
+  .time-field { margin-top: var(--space-3); max-width: 240px; }
+  .time-field .time-label { display: block; margin-bottom: var(--space-1); }
+  .time-readout { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+  .time-label {
+    font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label);
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  .time-date { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; line-height: 1.4; color: var(--ink); }
+  .time-note {
+    font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-2);
+    border-top: var(--rule); padding-top: var(--space-3); margin: 0 0 var(--space-3);
+  }
+  .time-alert {
+    font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink);
+    background: var(--paper-sunken); border: var(--rule-strong); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4); margin-top: var(--space-4);
+  }
+  .time-status { font-size: var(--text-sm); color: var(--ink-2); margin-left: var(--space-1); }
+  .time-status-marker {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ink); margin-right: 6px;
+  }
+  .time-track-wrap { position: relative; height: 32px; margin-top: var(--space-2); }
+  .time-marks { position: absolute; inset: 0; pointer-events: none; }
+  .time-mark {
+    position: absolute; top: 50%; width: 2px; height: 10px; border-radius: 2px;
+    background: var(--ink); transform: translate(-50%, -50%);
+  }
+  .time-ends { display: flex; justify-content: space-between; margin-top: 6px; }
+  .time-end { display: flex; flex-direction: column; gap: 2px; }
+  .time-end-last { text-align: right; align-items: flex-end; }
+  .time-end-label {
+    font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label);
+    text-transform: uppercase; color: var(--ink-2);
+  }
+  .time-end-date { font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink); }
   input[type="range"] {
     width: 100%; appearance: none; -webkit-appearance: none; background: transparent;
-    height: 24px; margin: var(--space-2) 0; cursor: pointer;
+    height: 32px; margin: 0; cursor: pointer; position: relative; z-index: 1;
   }
-  input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: var(--ink); }
+  input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: var(--line-strong); border-radius: var(--radius); }
   input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 16px; height: 16px; margin-top: -7px;
-    background: var(--ink); border: 2px solid var(--paper); border-radius: var(--radius);
+    -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px;
+    background: var(--surface); border: 2px solid var(--ink); border-radius: var(--radius);
   }
-  input[type="range"]::-moz-range-track { height: 2px; background: var(--ink); }
+  input[type="range"]::-moz-range-track { height: 4px; background: var(--line-strong); border-radius: var(--radius); }
   input[type="range"]::-moz-range-thumb {
-    width: 12px; height: 12px; background: var(--ink);
-    border: 2px solid var(--paper); border-radius: var(--radius);
+    width: 20px; height: 20px; background: var(--surface);
+    border: 2px solid var(--ink); border-radius: var(--radius);
   }
   input[type="range"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  @media (max-width: 560px) { .time-travel { padding: var(--space-3); } }
   .toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: end; margin-bottom: var(--space-4); }
   .toolbar > div { flex: 1; min-width: 180px; }
   .toolbar .btn { flex: none; }
@@ -119,6 +188,27 @@
   .timeline-strip .badge { white-space: normal; }
   .timeline-strip .arrow { align-self: center; color: var(--ink); font-weight: 700; }
 
+  /* chat view (chat first revamp): a message column in the
+     reading measure, a quiet learning strip and a composer that
+     stays at the foot of the column. Tokens only, no new colour. */
+  .chat-log { display: grid; gap: var(--space-4); margin-bottom: var(--space-4); }
+  .chat-msg .text { font-size: 1rem; overflow-wrap: anywhere; }
+  .chat-msg p { margin: 0 0 var(--space-2); max-width: var(--measure); }
+  .chat-who {
+    font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label);
+    text-transform: uppercase; color: var(--ink-2); margin-bottom: var(--space-1);
+  }
+  .chat-receipt { margin-top: var(--space-2); }
+  .chat-receipt-body { margin-top: var(--space-2); }
+  .chat-strip {
+    border-top: var(--rule); padding-top: var(--space-3); margin-bottom: var(--space-4);
+    font-size: var(--text-sm); color: var(--ink-2); display: grid; gap: var(--space-1);
+  }
+  .chat-composer { position: sticky; bottom: 0; background: var(--paper); border-top: var(--rule-strong); padding: var(--space-3) 0 var(--space-4); }
+  .chat-composer-row { display: flex; gap: var(--space-3); align-items: end; }
+  .chat-composer-row input { flex: 1; }
+  .chat-composer-row .btn { flex: none; }
+
   /* graph figure (tokens frame; svg voices) */
   .graph-svg { width: 100%; height: auto; display: block; }
   /* Narrow widths (5.3, Finding E): the graph keeps a legible
@@ -131,7 +221,7 @@
 
   /* settings */
   .settings-grid { display: grid; gap: var(--space-4); }
-  .settings-card h3 { margin: 0; }
+  .settings-card h2 { margin: 0; font-size: var(--display-sm); }
   .provider-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
   .settings-meta { display: flex; gap: var(--space-1) var(--space-4); flex-wrap: wrap; align-items: baseline; }
   .masked-tail { font-family: var(--font-mono); white-space: nowrap; }
@@ -144,10 +234,14 @@
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to the view</a>
 <div class="console-shell">
-  <nav class="console-nav">
-    <div class="wordmark">Memory<span class="loom">Loom</span></div>
-    <div class="small" style="margin-bottom:14px">console · demo namespace</div>
+  <nav class="console-nav" aria-label="Console views">
+    <header>
+      <div class="wordmark">Memory<span class="loom">Loom</span></div>
+      <div class="small" style="margin-bottom:14px">console · demo namespace</div>
+    </header>
+    <a href="#/chat" data-nav="chat">Chat</a>
     <a href="#/loop" data-nav="loop">Live loop</a>
     <a href="#/recall" data-nav="recall">Recall + receipts</a>
     <a href="#/graph" data-nav="graph">Memory graph</a>
@@ -156,9 +250,9 @@
     <a href="#/learning" data-nav="learning">Learning</a>
     <a href="#/settings" data-nav="settings">Settings</a>
     <a href="/">← Product site</a>
-    <div class="nav-note small">Every screen reads the real store. Decisions are made by the gate and shown here — the console never makes or overrides one.</div>
+    <footer class="nav-note small">Every screen reads the real store. Decisions are made by the gate and shown here. The console never makes or overrides one.</footer>
   </nav>
-  <main class="console-main" id="main">
+  <main class="console-main" id="main" tabindex="-1">
     <div class="skeleton" role="status"><span class="sr-only">Loading…</span><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
   </main>
 </div>

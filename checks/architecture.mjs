@@ -13,10 +13,22 @@
 //   2. backend -> router interface (router/router.mjs)
 //
 // Any new crossing fails this check until it is named here, in
-// WEB_ALLOWLIST or BACKEND_ALLOWLIST, with a reason and an owning
-// iteration. Named exceptions are debt, owned — not permission slips:
+// WEB_ALLOWLIST or BACKEND_ALLOWLIST, with a reason, an owner, an
+// owning iteration and a review date (card S3b). An entry with a
+// missing field fails, and an entry whose review date has passed
+// fails, so an exception cannot quietly outlive its review.
+// Named exceptions are debt, owned — not permission slips:
 // every entry is re-verified on each run (Rule B3) so a stale exception
 // fails too and the debt list cannot silently rot.
+//
+// Imports from router/spend.mjs are enumerated by function in
+// SPEND_IMPORT_ALLOWLIST (card S3b). A backend or web server file
+// may import only the functions named for it, so the spend ledger
+// surface each layer touches is explicit, not blanket.
+// Owning file: checks/architecture.mjs
+// Accountable layer: All layers
+// Provider need: None
+// Declared mode: Keyless, runs as step 2 of the verify entry
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,14 +47,48 @@ function assert(cond, label, extra = '') {
 }
 
 const WEB_ALLOWLIST = [
-  { file: 'web/api.mjs', specifier: '../router/spend.mjs', reason: 'the console API reads the spend log and router config to render the providers view; it holds no provider key and calls no provider' },
+  {
+    file: 'web/api.mjs',
+    specifier: '../router/spend.mjs',
+    reason: 'the console API reads the spend log and router config to render the providers view; it holds no provider key and calls no provider',
+    owner: 'project owner',
+    owning_iteration: 'card S3b',
+    review_date: '2026-12-15',
+  },
 ];
 
 const BACKEND_ALLOWLIST = [
-  { file: 'lib/jev.mjs', reason: 'the Jev decision client: the decision layer predates the router interface and is called by the gate; moving it behind the router is owned by Iteration 6.2, which reworks the decisions/escalation path' },
-  { file: 'lib/decisions.mjs', reason: 'the decision-backend challenger adapters call the Baseten System One endpoint directly; they are spend-logged and probe-gated, and their relocation is owned by Iteration 6.2 with the decisions path' },
-  { file: 'lib/config.mjs', reason: 'the configuration service test probe: one harmless models-list read per provider so Settings can test a key; the config service is the sanctioned owner of provider reachability tests and never returns a key or a provider body' },
+  {
+    file: 'lib/jev.mjs',
+    reason: 'the Jev decision client: the decision layer predates the router interface and is called by the gate. Renewed by card S3b with a dated retirement task: move the Jev client behind the router interface, or renew this entry again with fresh evidence, by the review date',
+    owner: 'project owner',
+    owning_iteration: 'card S3b',
+    review_date: '2026-12-15',
+  },
+  {
+    file: 'lib/decisions.mjs',
+    reason: 'the decision-backend challenger adapters call the Baseten System One endpoint directly; they are spend-logged and probe-gated. Renewed by card S3b with a dated retirement task: move the decision backends behind the router interface with the decisions path, or renew this entry again with fresh evidence, by the review date',
+    owner: 'project owner',
+    owning_iteration: 'card S3b',
+    review_date: '2026-12-15',
+  },
+  {
+    file: 'lib/config.mjs',
+    reason: 'the configuration service test probe: one harmless models-list read per provider so Settings can test a key; the config service is the sanctioned owner of provider reachability tests and never returns a key or a provider body',
+    owner: 'project owner',
+    owning_iteration: 'card S3b',
+    review_date: '2026-12-15',
+  },
 ];
+
+// The functions each file may import from router/spend.mjs, named
+// one by one (card S3b). A file absent from this map may not
+// import the spend ledger at all.
+const SPEND_IMPORT_ALLOWLIST = {
+  'lib/jev.mjs': ['cacheGet', 'cacheKey', 'cachePut', 'estimateCostUsd', 'logSpend', 'readSpendLog', 'routerConfig'],
+  'lib/decisions.mjs': ['budgetBlock', 'cacheGet', 'cacheKey', 'cachePut', 'estimateCostUsd', 'logSpend', 'routerConfig'],
+  'web/api.mjs': ['readSpendLog', 'routerConfig'],
+};
 
 const PROVIDER_MARKERS = [
   'api.typesafe.ai',
@@ -101,16 +147,73 @@ function importSpecifiers(content) {
   return [...specs];
 }
 
+/** The names one import statement binds from a specifier ending in suffix. */
+function importedNames(content, suffix) {
+  const names = [];
+  const re = /import\s*\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    if (!m[2].endsWith(suffix)) continue;
+    for (const part of m[1].split(',')) {
+      const name = part.trim().split(/\s+as\s+/)[0].trim();
+      if (name) names.push(name);
+    }
+  }
+  return names;
+}
+
+const ENTRY_FIELDS = ['file', 'reason', 'owner', 'owning_iteration', 'review_date'];
+
+/**
+ * The allowlist entry contract (card S3b). Returns a problem
+ * string, or null when the entry stands: every field present and
+ * the review date today or later.
+ */
+function entryProblem(entry) {
+  if (!entry || typeof entry !== 'object') return 'entry is not an object';
+  for (const field of ENTRY_FIELDS) {
+    if (!entry[field] || typeof entry[field] !== 'string') return `missing field ${field}`;
+  }
+  const review = new Date(`${entry.review_date}T00:00:00Z`);
+  if (Number.isNaN(review.getTime())) return `review_date ${entry.review_date} does not parse`;
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  if (review.getTime() < today.getTime()) return `review date ${entry.review_date} has passed`;
+  return null;
+}
+
 function isDirectProviderCallSite(content) {
   return /fetch(Impl)?\s*\(/.test(content) && PROVIDER_MARKERS.some((marker) => content.includes(marker));
 }
 
 console.log('named exceptions (debt, owned):');
 for (const entry of WEB_ALLOWLIST) {
-  console.log(`  ${entry.file} -> ${entry.specifier}: ${entry.reason}`);
+  console.log(`  ${entry.file} -> ${entry.specifier}: ${entry.reason} [owner ${entry.owner}, ${entry.owning_iteration}, review by ${entry.review_date}]`);
 }
 for (const entry of BACKEND_ALLOWLIST) {
-  console.log(`  ${entry.file}: ${entry.reason}`);
+  console.log(`  ${entry.file}: ${entry.reason} [owner ${entry.owner}, ${entry.owning_iteration}, review by ${entry.review_date}]`);
+}
+
+// ENTRY CONTRACT (card S3b): every allowlist entry carries its
+// owner, its owning iteration and a review date that has not
+// passed. The two fixture entries prove the check fails on an
+// expired entry and on a field missing entry, on the same code
+// path the real entries take.
+{
+  const expiredFixture = {
+    file: 'lib/fixture-expired.mjs',
+    reason: 'fixture entry whose review date has passed',
+    owner: 'project owner',
+    owning_iteration: 'card S3b',
+    review_date: '2020-01-01',
+  };
+  assert(entryProblem(expiredFixture) !== null, 'the check fails on an expired fixture exception entry (card S3b)');
+  const missingFixture = { file: 'lib/fixture-missing.mjs', reason: 'fixture entry with fields missing' };
+  assert(entryProblem(missingFixture) !== null, 'the check fails on a fixture entry with a missing field (card S3b)');
+  for (const entry of [...WEB_ALLOWLIST, ...BACKEND_ALLOWLIST]) {
+    const problem = entryProblem(entry);
+    assert(problem === null, `allowlist entry carries owner, owning iteration and a live review date: ${entry.file}`, problem || '');
+  }
 }
 
 const scanned = walk(root)
@@ -161,6 +264,17 @@ const byRel = new Map(scanned.map((f) => [f.rel, f]));
       if (entry) {
         matchedAllowlist.add(entry);
         assert(true, `web server allowlisted read: ${entry.file} imports ${entry.specifier} — ${entry.reason}`);
+        // The spend ledger enumeration binds the web server too
+        // (card S3b): only the functions named for the file.
+        if (specifier.endsWith('router/spend.mjs')) {
+          const allowed = SPEND_IMPORT_ALLOWLIST[file.rel] || [];
+          for (const name of importedNames(file.content, 'router/spend.mjs')) {
+            if (!allowed.includes(name)) {
+              violations++;
+              assert(false, `web server file imports a spend ledger function outside its enumerated list: ${file.rel}`, `imports ${name}`);
+            }
+          }
+        }
       } else {
         violations++;
         assert(false, `web server file imports router outside the allowlist: ${file.rel}`, `imports ${specifier}`);
@@ -179,22 +293,38 @@ const backendFiles = scanned.filter(
 );
 
 // B1 imports: router/ imports allowed only when they end with
-// router/router.mjs (the router interface) or router/spend.mjs (the
-// shared spend ledger — a data file every layer may append to or
-// read; it calls no provider and holds no key).
+// router/router.mjs (the router interface) or router/spend.mjs
+// (the shared spend ledger — a data file; it calls no provider
+// and holds no key). Spend ledger imports are enumerated by
+// function in SPEND_IMPORT_ALLOWLIST (card S3b): a file may
+// import only the functions named for it.
 {
   let violations = 0;
   for (const file of backendFiles) {
     for (const specifier of importSpecifiers(file.content)) {
       if (!specifier.includes('router/')) continue;
       if (specifier.endsWith('router/router.mjs')) continue;
-      if (specifier.endsWith('router/spend.mjs')) continue;
+      if (specifier.endsWith('router/spend.mjs')) {
+        const allowed = SPEND_IMPORT_ALLOWLIST[file.rel];
+        if (!allowed) {
+          violations++;
+          assert(false, `backend file imports the spend ledger without an enumerated entry: ${file.rel}`, `imports ${specifier}`);
+          continue;
+        }
+        for (const name of importedNames(file.content, 'router/spend.mjs')) {
+          if (!allowed.includes(name)) {
+            violations++;
+            assert(false, `backend file imports a spend ledger function outside its enumerated list: ${file.rel}`, `imports ${name}`);
+          }
+        }
+        continue;
+      }
       violations++;
       assert(false, `backend file imports the AI layer outside the router interface: ${file.rel}`, `imports ${specifier}`);
     }
   }
   if (violations === 0) {
-    assert(true, 'backend (lib/, mcp/, api/) imports the AI layer only through router/router.mjs or the spend ledger');
+    assert(true, 'backend (lib/, mcp/, api/) imports the AI layer only through router/router.mjs or its enumerated spend ledger functions');
   }
 }
 
@@ -237,6 +367,17 @@ for (const entry of WEB_ALLOWLIST) {
   } else {
     assert(true, `allowlist entry still real: ${entry.file} imports ${entry.specifier}`);
   }
+}
+
+// B4 spend enumeration honesty: each enumerated list names exactly
+// the functions its file imports from the spend ledger today, so
+// the enumeration cannot drift in either direction.
+for (const [file, allowed] of Object.entries(SPEND_IMPORT_ALLOWLIST)) {
+  const f = byRel.get(file);
+  const imported = f ? importedNames(f.content, 'router/spend.mjs') : [];
+  const exact =
+    imported.length === allowed.length && allowed.every((name) => imported.includes(name));
+  assert(exact, `spend enumeration matches the real imports: ${file}`, `imports ${imported.join(', ')}`);
 }
 
 console.log(failures === 0 ? 'ALL GREEN' : `${failures} FAILURES`);

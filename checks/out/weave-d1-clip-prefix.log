@@ -1,0 +1,99 @@
+  info seeded state from the API: 15 timed knots over 13 distinct dates
+  PASS seededHero1280: timed knots rendered (15)
+  info seededHero1280: worst out of frame distance 0.00 units (none)
+  PASS seededHero1280: every label inside the frame
+  info seededHero1280: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS seededHero1280: no two labels overlap or touch
+  info seededHero1280: minimum knot separation on one thread 19.00 units
+  PASS seededHero1280: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info seededHero1280: date ticks 13, minimum tick centre separation 39.00 units
+  PASS seededHero1280: one date tick per distinct date (13)
+  PASS seededHero1280: date tick centres stay readable apart
+  FAIL seededHero1280: the settled sweep window covers the whole frame clip 664.0 of 729.5 units
+  PASS seededHero1280: page does not overflow sideways
+  PASS seededHero360: timed knots rendered (15)
+  info seededHero360: worst out of frame distance 0.00 units (none)
+  PASS seededHero360: every label inside the frame
+  info seededHero360: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS seededHero360: no two labels overlap or touch
+  info seededHero360: minimum knot separation on one thread 19.00 units
+  PASS seededHero360: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info seededHero360: date ticks 13, minimum tick centre separation 39.00 units
+  PASS seededHero360: one date tick per distinct date (13)
+  PASS seededHero360: date tick centres stay readable apart
+  FAIL seededHero360: the settled sweep window covers the whole frame clip 664.0 of 729.5 units
+  PASS seededHero360: page does not overflow sideways
+  PASS seededGraph1280: timed knots rendered (15)
+  info seededGraph1280: worst out of frame distance 0.00 units (none)
+  PASS seededGraph1280: every label inside the frame
+  info seededGraph1280: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS seededGraph1280: no two labels overlap or touch
+  info seededGraph1280: minimum knot separation on one thread 19.00 units
+  PASS seededGraph1280: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info seededGraph1280: date ticks 13, minimum tick centre separation 39.00 units
+  PASS seededGraph1280: one date tick per distinct date (13)
+  PASS seededGraph1280: date tick centres stay readable apart
+  FAIL seededGraph1280: the settled sweep window covers the whole frame clip 664.0 of 729.5 units
+  PASS seededGraph1280: page does not overflow sideways
+  PASS seededGraph360: timed knots rendered (15)
+  info seededGraph360: worst out of frame distance 0.00 units (none)
+  PASS seededGraph360: every label inside the frame
+  info seededGraph360: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS seededGraph360: no two labels overlap or touch
+  info seededGraph360: minimum knot separation on one thread 19.00 units
+  PASS seededGraph360: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info seededGraph360: date ticks 13, minimum tick centre separation 39.00 units
+  PASS seededGraph360: one date tick per distinct date (13)
+  PASS seededGraph360: date tick centres stay readable apart
+  FAIL seededGraph360: the settled sweep window covers the whole frame clip 664.0 of 729.5 units
+  PASS seededGraph360: page does not overflow sideways
+  info accumulation fixture: 8 records at 2026-11-01, timed knots grow from 15 to 23
+  PASS accumulatedHero1280: timed knots rendered (23)
+  info accumulatedHero1280: worst out of frame distance 0.00 units (none)
+  PASS accumulatedHero1280: every label inside the frame
+  info accumulatedHero1280: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS accumulatedHero1280: no two labels overlap or touch
+  info accumulatedHero1280: minimum knot separation on one thread 19.00 units
+  PASS accumulatedHero1280: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info accumulatedHero1280: date ticks 13, minimum tick centre separation 39.00 units
+  PASS accumulatedHero1280: one date tick per distinct date (13)
+  PASS accumulatedHero1280: date tick centres stay readable apart
+  FAIL accumulatedHero1280: the settled sweep window covers the whole frame clip 691.5 of 795 units
+  PASS accumulatedHero1280: page does not overflow sideways
+  PASS accumulatedHero360: timed knots rendered (23)
+  info accumulatedHero360: worst out of frame distance 0.00 units (none)
+  PASS accumulatedHero360: every label inside the frame
+  info accumulatedHero360: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS accumulatedHero360: no two labels overlap or touch
+  info accumulatedHero360: minimum knot separation on one thread 19.00 units
+  PASS accumulatedHero360: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info accumulatedHero360: date ticks 13, minimum tick centre separation 39.00 units
+  PASS accumulatedHero360: one date tick per distinct date (13)
+  PASS accumulatedHero360: date tick centres stay readable apart
+  FAIL accumulatedHero360: the settled sweep window covers the whole frame clip 691.5 of 795 units
+  PASS accumulatedHero360: page does not overflow sideways
+  PASS accumulatedGraph1280: timed knots rendered (23)
+  info accumulatedGraph1280: worst out of frame distance 0.00 units (none)
+  PASS accumulatedGraph1280: every label inside the frame
+  info accumulatedGraph1280: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS accumulatedGraph1280: no two labels overlap or touch
+  info accumulatedGraph1280: minimum knot separation on one thread 19.00 units
+  PASS accumulatedGraph1280: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info accumulatedGraph1280: date ticks 13, minimum tick centre separation 39.00 units
+  PASS accumulatedGraph1280: one date tick per distinct date (13)
+  PASS accumulatedGraph1280: date tick centres stay readable apart
+  FAIL accumulatedGraph1280: the settled sweep window covers the whole frame clip 691.5 of 795 units
+  PASS accumulatedGraph1280: page does not overflow sideways
+  PASS accumulatedGraph360: timed knots rendered (23)
+  info accumulatedGraph360: worst out of frame distance 0.00 units (none)
+  PASS accumulatedGraph360: every label inside the frame
+  info accumulatedGraph360: worst label pair overlap area after the moat 0.00 square units (none)
+  PASS accumulatedGraph360: no two labels overlap or touch
+  info accumulatedGraph360: minimum knot separation on one thread 19.00 units
+  PASS accumulatedGraph360: neighbouring knots on one thread keep the recorded minimum separation of 19 units
+  info accumulatedGraph360: date ticks 13, minimum tick centre separation 39.00 units
+  PASS accumulatedGraph360: one date tick per distinct date (13)
+  PASS accumulatedGraph360: date tick centres stay readable apart
+  FAIL accumulatedGraph360: the settled sweep window covers the whole frame clip 691.5 of 795 units
+  PASS accumulatedGraph360: page does not overflow sideways
+weave-d1: 8 FAILURES

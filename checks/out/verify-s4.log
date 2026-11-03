@@ -1,0 +1,83 @@
+
+> memoryloom@0.1.0 verify
+> node checks/verify-all.mjs
+
+== Step 0: startup protections and preflight ==
+startup settings guard: PASS (no inherited settings file value names the real store)
+preflight node: 24.22.1 (major 24)
+preflight postgres: PostgreSQL 16.15 at 127.0.0.1:5433 (PostgreSQL 16 confirmed)
+preflight pgvector: available
+preflight database rights: create and drop confirmed on a scratch database
+preflight provider cache state: 473 files, 82748 bytes in router/cache (recorded, not cleared)
+preflight: PASS
+== Step 1: forbidden-string scan ==
+forbidden strings: PASS (no matches)
+== Step 2: architecture check ==
+named exceptions (debt, owned):
+  web/api.mjs -> ../router/spend.mjs: the console API reads the spend log and router config to render the providers view; it holds no provider key and calls no provider [owner project owner, card S3b, review by 2026-12-15]
+  lib/jev.mjs: the Jev decision client: the decision layer predates the router interface and is called by the gate. Renewed by card S3b with a dated retirement task: move the Jev client behind the router interface, or renew this entry again with fresh evidence, by the review date [owner project owner, card S3b, review by 2026-12-15]
+  lib/decisions.mjs: the decision-backend challenger adapters call the Baseten System One endpoint directly; they are spend-logged and probe-gated. Renewed by card S3b with a dated retirement task: move the decision backends behind the router interface with the decisions path, or renew this entry again with fresh evidence, by the review date [owner project owner, card S3b, review by 2026-12-15]
+  lib/config.mjs: the configuration service test probe: one harmless models-list read per provider so Settings can test a key; the config service is the sanctioned owner of provider reachability tests and never returns a key or a provider body [owner project owner, card S3b, review by 2026-12-15]
+  PASS the check fails on an expired fixture exception entry (card S3b)
+  PASS the check fails on a fixture entry with a missing field (card S3b)
+  PASS allowlist entry carries owner, owning iteration and a live review date: web/api.mjs
+  PASS allowlist entry carries owner, owning iteration and a live review date: lib/jev.mjs
+  PASS allowlist entry carries owner, owning iteration and a live review date: lib/decisions.mjs
+  PASS allowlist entry carries owner, owning iteration and a live review date: lib/config.mjs
+  PASS frontend (web/public) imports no router or provider code
+  PASS web server allowlisted read: web/api.mjs imports ../router/spend.mjs — the console API reads the spend log and router config to render the providers view; it holds no provider key and calls no provider
+  PASS backend (lib/, mcp/, api/) imports the AI layer only through router/router.mjs or its enumerated spend ledger functions
+  PASS backend direct provider calls are limited to the named exceptions
+  PASS allowlist entry still real: lib/jev.mjs
+  PASS allowlist entry still real: lib/decisions.mjs
+  PASS allowlist entry still real: lib/config.mjs
+  PASS allowlist entry still real: web/api.mjs imports ../router/spend.mjs
+  PASS spend enumeration matches the real imports: lib/jev.mjs
+  PASS spend enumeration matches the real imports: lib/decisions.mjs
+  PASS spend enumeration matches the real imports: web/api.mjs
+ALL GREEN
+architecture: PASS (exit=0)
+== Step 3: lint/format ==
+lint/format: none configured in this repo (no eslint/prettier/biome dependency or script) — skipped, not invented
+== Step 4: suites on fresh databases ==
+stub lifecycle: started checks/stub-server-v1.mjs (jev stub on 4711, meta stub on 4712)
+-- backend --
+backend / settings.mjs: PASS=48 FAIL=0 exit=0 mode=stub-internal store=/tmp/ml-verify-settings-ul7FGj/settings.env
+  ALL GREEN
+backend / test-surface.mjs: PASS=102 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-ul7FGj/test-surface.env
+  [memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)
+backend / two-plane.mjs: PASS=22 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-ul7FGj/two-plane.env
+  ALL GREEN
+backend / graph-daemon.mjs: PASS=47 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-ul7FGj/graph-daemon.env
+  ALL GREEN
+backend / learning.mjs: PASS=42 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-ul7FGj/learning.env
+  [memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)
+backend / learning-demo.mjs: PASS=8 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-ul7FGj/learning-demo.env
+  ALL GREEN
+backend / jev-gate.mjs: PASS=39 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-ul7FGj/jev-gate.env
+  [memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)
+backend / backend-hardening.mjs: PASS=55 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-ul7FGj/backend-hardening.env
+      at async file:///home/hatch/workspace/memoryloom/checks/backend-hardening.mjs:361:18
+backend / db-gate.mjs: PASS=46 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-ul7FGj/db-gate.env
+  db-gate: 46 passed, 0 failed
+-- frontend --
+frontend / web.mjs: PASS=98 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-ul7FGj/web.env
+  ALL GREEN
+frontend / weave-d1.mjs: PASS=64 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-ul7FGj/weave-d1.env
+  weave-d1: all assertions passed
+-- AI layer --
+AI layer / router-smoke.mjs: PASS=20 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-ul7FGj/router-smoke.env
+  ALL GREEN
+AI layer / architecture.mjs: PASS=17 FAIL=0 exit=0 - see step 2 (PASS)
+stub lifecycle: stopped
+real settings store byte-identical across the run: PASS
+VERIFY SUMMARY
+real settings store untouched: PASS
+forbidden strings: PASS
+architecture: PASS (PASS=17 FAIL=0 exit=0)
+lint/format: PASS (skipped, none configured)
+backend suites: PASS (PASS=409 FAIL=0)
+frontend suites: PASS (PASS=162 FAIL=0)
+AI layer suites: PASS (PASS=37 FAIL=0)
+run duration: 93 seconds
+VERIFY: PASS

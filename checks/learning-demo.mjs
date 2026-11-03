@@ -18,6 +18,10 @@
  *           with two citations -> approved first try.
  *
  * Usage: DATABASE_URL=postgres://... node checks/learning-demo.mjs
+ * Owning file: checks/learning-demo.mjs
+ * Accountable layer: Demo seed layer
+ * Provider need: Stub
+ * Declared mode: Stub
  */
 process.env.MEMORYLOOM_ROUTER_MODE = 'live';
 process.env.JEV_TIMEOUT_MS = process.env.JEV_TIMEOUT_MS || '15000';
@@ -25,9 +29,11 @@ import pg from 'pg';
 import { decideGate } from '../lib/gate.mjs';
 import { correctInTurn, listEvents, promoteEvent, recordEvent } from '../lib/learning.mjs';
 import { embedStaged, recallWithReceipts } from '../lib/planes.mjs';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 const NS = 'memoryloom-learning-demo';
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3 });
 let failures = 0;

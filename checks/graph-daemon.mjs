@@ -15,6 +15,10 @@
  *    verdict.
  *
  * Usage: DATABASE_URL=postgres://... node checks/graph-daemon.mjs
+ * Owning file: checks/graph-daemon.mjs
+ * Accountable layer: Graph surface and daemon layer
+ * Provider need: Stub Jev for the consolidation and decay verdict cases, corrected at card S2
+ * Declared mode: Stub
  */
 process.env.MEMORYLOOM_ROUTER_MODE = 'live';
 process.env.JEV_TIMEOUT_MS = process.env.JEV_TIMEOUT_MS || '15000';
@@ -28,9 +32,11 @@ import {
 } from '../lib/graph.mjs';
 import { applyDaemonItem, listDaemonRuns, runDaemonCycle } from '../lib/daemon.mjs';
 import { seedDemo, DEMO_NAMESPACE as NS } from '../scripts/seed-demo.mjs';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 3 });
 let failures = 0;
 function assert(cond, label, extra = '') {
@@ -117,7 +123,7 @@ assert(daemonItems2.rows[0].n === 3, 'still three daemon items after cycle 2');
 
 // ---- crash-resume ------------------------------------------------------------------------------
 console.log('crash-resume:');
-await pool.query(`UPDATE sync_state SET last_seq = $1 WHERE key = 'daemon:memoryloom:last_seq'`, [run1.watermark_before]);
+await pool.query(`UPDATE sync_state SET last_seq = $1 WHERE key = $2`, [run1.watermark_before, `daemon:memoryloom:last_seq:ns:${NS}`]);
 await pool.query(
   `INSERT INTO daemon_runs (id, daemon, namespace, status, watermark_before)
    VALUES ('stuck-run', 'memoryloom-daemon', $1, 'running', $2)`,
@@ -153,6 +159,37 @@ assert(decayApply.outcome === (decayApply.decision.drop ? 'retired' : 'kept-by-v
 console.log(`  decay verdict for demo-s1: ${decayApply.decision?.decision} (raw ${JSON.stringify(decayApply.decision?.raw)})`);
 const doubleApply = await applyDaemonItem(pool, byKind.decay_candidate.id);
 assert(doubleApply.applied === false, 're-applying a resolved item is refused');
+
+// ---- interleaved namespace watermark (card S3b) ----------------------------------------------
+// Two namespaces hold duplicate pairs, written interleaved so the
+// sync log alternates between them. A cycle restricted to the
+// first namespace must leave the second namespace's events to be
+// processed by its own cycle. On a single global watermark the
+// first cycle advances the mark past the second namespace's rows
+// and the second cycle finds nothing, so this case fails there.
+console.log('interleaved namespace watermark:');
+const WNS_A = 'memoryloom-daemon-wm-a';
+const WNS_B = 'memoryloom-daemon-wm-b';
+await pool.query(`DELETE FROM memories WHERE namespace = ANY($1)`, [[WNS_A, WNS_B]]);
+await pool.query(`DELETE FROM review_items WHERE payload->>'namespace' = ANY($1)`, [[WNS_A, WNS_B]]);
+await pool.query(`DELETE FROM sync_state WHERE key = ANY($1)`, [[`daemon:memoryloom:last_seq:ns:${WNS_A}`, `daemon:memoryloom:last_seq:ns:${WNS_B}`]]);
+const wmText = 'The watermark interleaved pair states one shared fact.';
+for (const [id, ns] of [['wm-a-1', WNS_A], ['wm-b-1', WNS_B], ['wm-a-2', WNS_A], ['wm-b-2', WNS_B]]) {
+  await pool.query(
+    `INSERT INTO memories (id, namespace, type, scope, text, importance, strength, pinned,
+                           index_status, approval, grounding_ids, provenance)
+     VALUES ($1, $2, 'semantic', 'global', $3, 5, 5.0, false, 'indexed', 'live', '{}', '{"author":"wm-check"}'::jsonb)`,
+    [id, ns, wmText]
+  );
+}
+const wmRunA = await runDaemonCycle(pool, { namespace: WNS_A, now: NOW });
+assert(wmRunA.emitted.consolidation_candidates === 1, 'cycle for the first namespace emits its own candidate', JSON.stringify(wmRunA.emitted));
+const bItemsBefore = await pool.query(
+  `SELECT count(*)::int n FROM review_items WHERE payload->>'namespace' = $1 AND payload->>'daemon' = 'true'`, [WNS_B]
+);
+assert(bItemsBefore.rows[0].n === 0, 'the first namespace cycle emitted nothing for the second namespace');
+const wmRunB = await runDaemonCycle(pool, { namespace: WNS_B, now: NOW });
+assert(wmRunB.emitted.consolidation_candidates === 1, 'cycle for the second namespace still processes its own events (card S3b)', JSON.stringify(wmRunB.emitted));
 
 await pool.end();
 console.log(failures === 0 ? '\nALL GREEN' : `\n${failures} FAILURES`);

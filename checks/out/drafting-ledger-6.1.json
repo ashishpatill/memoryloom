@@ -1,0 +1,404 @@
+{
+  "calls": 22,
+  "input_tokens": 58902,
+  "output_tokens": 125926,
+  "est_cost_usd": 0.608812,
+  "entries": [
+    {
+      "effort": "medium",
+      "prompt_file": "p_test.txt",
+      "input_tokens": 16,
+      "output_tokens": 74,
+      "est_cost_usd": 0.000334,
+      "usage": {
+        "input_tokens": 16,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 74,
+        "output_tokens_details": {
+          "reasoning_tokens": 61
+        },
+        "total_tokens": 90
+      }
+    },
+    {
+      "effort": "high",
+      "prompt_file": "p_harness.txt",
+      "input_tokens": 3437,
+      "output_tokens": 7611,
+      "est_cost_usd": 0.036643,
+      "usage": {
+        "input_tokens": 3437,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 7611,
+        "output_tokens_details": {
+          "reasoning_tokens": 3339
+        },
+        "total_tokens": 11048
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_smoke.txt",
+      "input_tokens": 1702,
+      "output_tokens": 5243,
+      "est_cost_usd": 0.02441,
+      "usage": {
+        "input_tokens": 1702,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 5243,
+        "output_tokens_details": {
+          "reasoning_tokens": 2858
+        },
+        "total_tokens": 6945
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_report.txt",
+      "input_tokens": 1181,
+      "output_tokens": 3234,
+      "est_cost_usd": 0.015221,
+      "usage": {
+        "input_tokens": 1181,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 3234,
+        "output_tokens_details": {
+          "reasoning_tokens": 1464
+        },
+        "total_tokens": 4415
+      }
+    },
+    {
+      "effort": "high",
+      "prompt_file": "p_arch.txt",
+      "input_tokens": 968,
+      "output_tokens": 6081,
+      "est_cost_usd": 0.027054,
+      "usage": {
+        "input_tokens": 968,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 6081,
+        "output_tokens_details": {
+          "reasoning_tokens": 3780
+        },
+        "total_tokens": 7049
+      }
+    },
+    {
+      "effort": "high",
+      "prompt_file": "p_verify.txt",
+      "input_tokens": 813,
+      "output_tokens": 7223,
+      "est_cost_usd": 0.031714,
+      "usage": {
+        "input_tokens": 813,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 7223,
+        "output_tokens_details": {
+          "reasoning_tokens": 4566
+        },
+        "total_tokens": 8036
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_archdoc.txt",
+      "input_tokens": 736,
+      "output_tokens": 3282,
+      "est_cost_usd": 0.014869,
+      "usage": {
+        "input_tokens": 736,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 3282,
+        "output_tokens_details": {
+          "reasoning_tokens": 1722
+        },
+        "total_tokens": 4018
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_settingsfix.txt",
+      "input_tokens": 731,
+      "output_tokens": 1997,
+      "est_cost_usd": 0.009401,
+      "usage": {
+        "input_tokens": 731,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 1997,
+        "output_tokens_details": {
+          "reasoning_tokens": 1552
+        },
+        "total_tokens": 2728
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_plan.txt",
+      "input_tokens": 817,
+      "output_tokens": 3432,
+      "est_cost_usd": 0.015607,
+      "usage": {
+        "input_tokens": 817,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 3432,
+        "output_tokens_details": {
+          "reasoning_tokens": 2625
+        },
+        "total_tokens": 4249
+      }
+    },
+    {
+      "effort": "high",
+      "prompt_file": "p_handoff.txt",
+      "input_tokens": 1186,
+      "output_tokens": 6086,
+      "est_cost_usd": 0.027348,
+      "usage": {
+        "input_tokens": 1186,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 6086,
+        "output_tokens_details": {
+          "reasoning_tokens": 5017
+        },
+        "total_tokens": 7272
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_learnings.txt",
+      "input_tokens": 862,
+      "output_tokens": 3223,
+      "est_cost_usd": 0.014775,
+      "usage": {
+        "input_tokens": 862,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 3223,
+        "output_tokens_details": {
+          "reasoning_tokens": 2448
+        },
+        "total_tokens": 4085
+      }
+    },
+    {
+      "effort": "high",
+      "prompt_file": "p_review1.txt",
+      "input_tokens": 3844,
+      "output_tokens": 8734,
+      "est_cost_usd": 0.041925,
+      "usage": {
+        "input_tokens": 3844,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 8734,
+        "output_tokens_details": {
+          "reasoning_tokens": 6583
+        },
+        "total_tokens": 12578
+      }
+    },
+    {
+      "effort": "high",
+      "prompt_file": "p_review2.txt",
+      "input_tokens": 6239,
+      "output_tokens": 6404,
+      "est_cost_usd": 0.035016,
+      "usage": {
+        "input_tokens": 6239,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 6404,
+        "output_tokens_details": {
+          "reasoning_tokens": 3665
+        },
+        "total_tokens": 12643
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_docfix.txt",
+      "input_tokens": 779,
+      "output_tokens": 3078,
+      "est_cost_usd": 0.014055,
+      "usage": {
+        "input_tokens": 779,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 3078,
+        "output_tokens_details": {
+          "reasoning_tokens": 2531
+        },
+        "total_tokens": 3857
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_sw1.txt",
+      "input_tokens": 3327,
+      "output_tokens": 6517,
+      "est_cost_usd": 0.031856,
+      "usage": {
+        "input_tokens": 3327,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 6517,
+        "output_tokens_details": {
+          "reasoning_tokens": 3400
+        },
+        "total_tokens": 9844
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_sw2.txt",
+      "input_tokens": 3854,
+      "output_tokens": 7174,
+      "est_cost_usd": 0.035307,
+      "usage": {
+        "input_tokens": 3854,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 7174,
+        "output_tokens_details": {
+          "reasoning_tokens": 3489
+        },
+        "total_tokens": 11028
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_sw3.txt",
+      "input_tokens": 3178,
+      "output_tokens": 8124,
+      "est_cost_usd": 0.038499,
+      "usage": {
+        "input_tokens": 3178,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 8124,
+        "output_tokens_details": {
+          "reasoning_tokens": 5117
+        },
+        "total_tokens": 11302
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_sw4.txt",
+      "input_tokens": 3726,
+      "output_tokens": 9183,
+      "est_cost_usd": 0.043685,
+      "usage": {
+        "input_tokens": 3726,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 9183,
+        "output_tokens_details": {
+          "reasoning_tokens": 5567
+        },
+        "total_tokens": 12909
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_sw5.txt",
+      "input_tokens": 5202,
+      "output_tokens": 7449,
+      "est_cost_usd": 0.038161,
+      "usage": {
+        "input_tokens": 5202,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 7449,
+        "output_tokens_details": {
+          "reasoning_tokens": 2298
+        },
+        "total_tokens": 12651
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_sww.txt",
+      "input_tokens": 10872,
+      "output_tokens": 12000,
+      "est_cost_usd": 0.06459,
+      "usage": {
+        "input_tokens": 10872,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 12000,
+        "output_tokens_details": {
+          "reasoning_tokens": 5130
+        },
+        "total_tokens": 22872
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_swt.txt",
+      "input_tokens": 4554,
+      "output_tokens": 7171,
+      "est_cost_usd": 0.036169,
+      "usage": {
+        "input_tokens": 4554,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 7171,
+        "output_tokens_details": {
+          "reasoning_tokens": 2847
+        },
+        "total_tokens": 11725
+      }
+    },
+    {
+      "effort": "medium",
+      "prompt_file": "p_learn61.txt",
+      "input_tokens": 878,
+      "output_tokens": 2606,
+      "est_cost_usd": 0.012173,
+      "usage": {
+        "input_tokens": 878,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 2606,
+        "output_tokens_details": {
+          "reasoning_tokens": 1720
+        },
+        "total_tokens": 3484
+      }
+    }
+  ]
+}

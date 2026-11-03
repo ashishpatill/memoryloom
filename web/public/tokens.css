@@ -10,9 +10,12 @@
    appears at most once in any view, status carried by word,
    marker shape and weight — never by colour alone. Typography
    carries the design: a serif display face, a humanist text face,
-   a mono face for data, receipts and numbers. No gradients, no
-   glass, no shadows, no decorative colour. The full reasoning and
-   the component inventory live in docs/design-tokens.md. */
+   a mono face for data and numbers. Receipts are records set in
+   the text face: their part labels at 11px with a 14px line
+   height, their part values at 14px with a 20px line height. No
+   gradients, no glass, no shadows, no decorative colour. The full
+   reasoning and the component inventory live in
+   docs/design-tokens.md. */
 
 /* ---- Fonts: self-hosted, SIL Open Font License 1.1 -------------
    No build-time or runtime network fetch. Licence texts sit beside
@@ -70,7 +73,7 @@
   --display-lg: 3.25rem;     /* 52px — hero headline */
   --leading-tight: 1.15;     /* display lines */
   --leading-body: 1.6;       /* body copy */
-  --leading-data: 1.5;       /* mono blocks and receipts */
+  --leading-data: 1.5;       /* mono blocks */
   --tracking-label: 0.12em;  /* mono labels and kickers, uppercase */
 
   /* ---- Space: 4px base, generous by default ---- */
@@ -194,14 +197,45 @@ figure.fig figcaption {
 }
 figure.fig figcaption b { color: var(--ink); }
 
-/* ---- Receipt card: mono, sunken ground, verdict by word ---- */
-.receipt-card {
+/* ---- Record: a small readable record of labelled parts (5.4
+   defect round). One fact per part, a label over a value, on the
+   sunken ground. It renders the gate record, the standing lesson
+   card and the evidence lines. The receipt is its own form of the
+   record, with its own rule below. ---- */
+.record {
   background: var(--paper-sunken); border: var(--rule); border-radius: var(--radius);
-  padding: var(--space-4) var(--space-5);
-  font-family: var(--font-mono); font-size: var(--text-sm); line-height: var(--leading-data);
-  white-space: pre-wrap; word-break: break-word;
+  padding: var(--space-4); margin-top: var(--space-3);
 }
-.receipt-card .verdict { font-weight: 500; }
+.record-list { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); margin: 0; }
+.record-fact { display: flex; flex-direction: column; gap: 2px; min-width: 132px; margin: 0; }
+.record-fact.wide { flex-basis: 100%; }
+.record-label {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2);
+}
+.record-value { font-size: 0.9375rem; line-height: 1.35; color: var(--ink); margin: 0; overflow-wrap: anywhere; }
+.record-id { display: block; }
+
+/* ---- Receipt: the seven part record (card S5, Section 6.5 of
+   the master plan). Every part of a receipt is set in the text
+   face. Part labels at 11px with a 14px line height, part values
+   at 14px with a 20px line height. The card form above carries
+   the sunken ground and the hairline border. The plain form,
+   used for near misses in recall, carries the same seven parts
+   with no card border and no sunken ground, so a near miss never
+   wears the receipt card. ---- */
+.receipt .record-label {
+  font-family: var(--font-text); font-size: 11px; line-height: 14px; font-weight: 600;
+}
+.receipt .record-value { font-size: 14px; line-height: 20px; }
+.receipt-plain { margin-top: var(--space-3); }
+.record-note { font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink-2); margin: var(--space-3) 0 0; }
+.record-text { font-size: var(--text-base); line-height: var(--leading-body); margin: 0 0 var(--space-3); }
+@media (max-width: 640px) {
+  .record { padding: var(--space-3); }
+  .record-fact { flex-basis: 128px; }
+  .record-fact.wide { flex-basis: 100%; }
+}
 
 /* ---- Badges: word + marker shape, ink only ---- */
 .badge {

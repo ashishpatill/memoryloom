@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MemoryLoom — design system style tile (tokens v2)</title>
-<meta name="description" content="Internal design-system page: every token and component of MemoryLoom tokens v2 rendered once, so the system can be judged before the product pages adopt it.">
+<title>MemoryLoom, design system style tile (tokens v2)</title>
+<meta name="description" content="Internal page for the design system. Every token and component of MemoryLoom tokens v2 rendered once, so the system can be judged before the product pages adopt it.">
 <link rel="stylesheet" href="/tokens.css">
 <style>
   /* Tile-only layout helpers. Everything visual comes from tokens.css;
@@ -36,14 +36,14 @@
   <div class="hero">
     <h1>Design system, on one page.</h1>
     <p class="lede">This is the style tile for MemoryLoom tokens v2. It is not part of the product and is not linked from the product navigation. Every specimen below is rendered from <code class="mono">tokens.css</code> alone, so what you see is exactly what the landing page and the console will adopt.</p>
-    <p class="specimen-note"><strong>How to judge it:</strong> hold the page at arm&rsquo;s length. It should read as one ink on one paper, set in three voices — a serif for headlines, a plain text face for reading, a mono face for data. Colour should be almost absent. The single accent appears once on this page, in Figure 1, where it marks the one place a decision is live. The small chips in the colour table are specimens, labelled with their values; they are documentation, not decoration.</p>
+    <p class="specimen-note"><strong>How to judge it.</strong> Hold the page at arm&rsquo;s length. It should read as one ink on one paper, set in three voices, a serif for headlines, a plain text face for reading, a mono face for data. Colour should be almost absent. The single accent appears once on this page, in Figure 1, where it marks the one place a decision is live. The small chips in the colour table are specimens, labelled with their values. They are documentation, not decoration.</p>
   </div>
 
   <section class="band" id="type">
     <div class="section-head">
-      <span class="num">01 — Typography</span>
+      <span class="num">01 Typography</span>
       <h2>Three voices, each with one job</h2>
-      <p class="standfirst">Headlines speak in the display serif. Reading speaks in the text face. Anything the system recorded — numbers, receipts, labels — speaks in mono. If a line&rsquo;s job is unclear, its face is wrong.</p>
+      <p class="standfirst">Headlines speak in the display serif. Reading speaks in the text face, and a receipt is a record, so it speaks in the text face too. Data, numbers and labels speak in mono. If a line&rsquo;s job is unclear, its face is wrong.</p>
     </div>
     <div class="type-row">
       <span class="tag">Display · Newsreader 600 · hero</span>
@@ -55,38 +55,38 @@
     </div>
     <div class="type-row">
       <span class="tag">Display italic · Newsreader 400 italic · pull line</span>
-      <div style="font-family:var(--font-display);font-style:italic;font-weight:400;font-size:var(--text-lg);line-height:var(--leading-body)">What did the team believe on this date — and on what evidence?</div>
+      <div style="font-family:var(--font-display);font-style:italic;font-weight:400;font-size:var(--text-lg);line-height:var(--leading-body)">What did the team believe on this date, and on what evidence?</div>
     </div>
     <div class="type-row">
       <span class="tag">Text · Source Sans 3 400 · body at 17px / 1.6</span>
-      <p style="margin:0">An agent proposes a memory; it never writes directly. A decision gate scores the proposal and answers with one of three words — approve, reject, or escalate — and escalate always exists. Approved memories land in the truth store with their provenance attached, so a later reader can always ask why the team believes something, and get an answer from the record rather than from memory of memory.</p>
+      <p style="margin:0">An agent proposes a memory. It never writes directly. A decision gate scores the proposal and answers with one of three words, approve, reject, or escalate, and escalate always exists. Approved memories land in the truth store with their provenance attached, so a later reader can always ask why the team believes something, and get an answer from the record rather than from memory of memory.</p>
     </div>
     <div class="type-row" style="border-bottom:none">
-      <span class="tag">Mono · IBM Plex Mono 400/500 · data, labels, receipts</span>
-      <div class="mono" style="font-size:var(--text-sm);line-height:var(--leading-data)">record demo-g4 · fusion score 0.931 · recorded 12 Oct 2026 · valid 12 Oct 2026 → still held<br>gate record — decision approve · calibrated score 0.982 · raw 0.971</div>
+      <span class="tag">Mono · IBM Plex Mono 400/500 · data, labels</span>
+      <div class="mono" style="font-size:var(--text-sm);line-height:var(--leading-data)">fusion score 0.931 · calibrated score 0.982 · raw score 0.971<br>spend $0.0033 · 186 calls · 42 questions</div>
     </div>
   </section>
 
   <section class="band" id="colour">
     <div class="section-head">
-      <span class="num">02 — Colour</span>
+      <span class="num">02 Colour</span>
       <h2>One ink, one paper, one accent</h2>
-      <p class="standfirst">Every value in the system. There is no second accent, no status colour and no decorative colour: standing is carried by word, marker shape and weight, as the badges in section 03 show.</p>
+      <p class="standfirst">Every value in the system. There is no second accent, no status colour and no decorative colour. Standing is carried by word, marker shape and weight, as the badges in section 03 show.</p>
     </div>
     <div class="card" style="padding:6px 14px">
       <div class="table-wrap">
       <table class="data swatches">
         <thead><tr><th>Specimen</th><th>Token</th><th>Value</th><th>Job</th></tr></thead>
         <tbody>
-          <tr><td><span class="chip" style="background:var(--paper)"></span></td><td class="mono">--paper</td><td class="num">#F7F3EB</td><td>Page ground — warm paper</td></tr>
-          <tr><td><span class="chip" style="background:var(--paper-sunken)"></span></td><td class="mono">--paper-sunken</td><td class="num">#EFE9DA</td><td>Recessed ground — receipts, code</td></tr>
-          <tr><td><span class="chip" style="background:var(--surface)"></span></td><td class="mono">--surface</td><td class="num">#FDFBF6</td><td>Raised ground — cards, diagram frames</td></tr>
-          <tr><td><span class="chip" style="background:var(--ink)"></span></td><td class="mono">--ink</td><td class="num">#1D1A15</td><td>Text and full-strength rules</td></tr>
-          <tr><td><span class="chip" style="background:var(--ink-2)"></span></td><td class="mono">--ink-2</td><td class="num">#5F584A</td><td>Secondary text — captions, detail</td></tr>
-          <tr><td><span class="chip" style="background:var(--ink-3)"></span></td><td class="mono">--ink-3</td><td class="num">#8A8171</td><td>Faint marks only — never body text</td></tr>
+          <tr><td><span class="chip" style="background:var(--paper)"></span></td><td class="mono">--paper</td><td class="num">#F7F3EB</td><td>Page ground, warm paper</td></tr>
+          <tr><td><span class="chip" style="background:var(--paper-sunken)"></span></td><td class="mono">--paper-sunken</td><td class="num">#EFE9DA</td><td>Recessed ground, receipts, code</td></tr>
+          <tr><td><span class="chip" style="background:var(--surface)"></span></td><td class="mono">--surface</td><td class="num">#FDFBF6</td><td>Raised ground, cards, diagram frames</td></tr>
+          <tr><td><span class="chip" style="background:var(--ink)"></span></td><td class="mono">--ink</td><td class="num">#1D1A15</td><td>Text and rules at full strength</td></tr>
+          <tr><td><span class="chip" style="background:var(--ink-2)"></span></td><td class="mono">--ink-2</td><td class="num">#5F584A</td><td>Secondary text, captions, detail</td></tr>
+          <tr><td><span class="chip" style="background:var(--ink-3)"></span></td><td class="mono">--ink-3</td><td class="num">#8A8171</td><td>Faint marks only, never body text</td></tr>
           <tr><td><span class="chip" style="background:var(--line)"></span></td><td class="mono">--line</td><td class="num">#DAD1BB</td><td>Hairline rule</td></tr>
           <tr><td><span class="chip" style="background:var(--line-strong)"></span></td><td class="mono">--line-strong</td><td class="num">#A99B7D</td><td>Rule that must be seen at a glance</td></tr>
-          <tr><td><span class="chip" style="background:var(--accent)"></span></td><td class="mono">--accent</td><td class="num">#A63D2A</td><td>The one accent — a memory moved, or a decision is live. At most one use per view.</td></tr>
+          <tr><td><span class="chip" style="background:var(--accent)"></span></td><td class="mono">--accent</td><td class="num">#A63D2A</td><td>The one accent, a memory moved, or a decision is live. At most one use per view.</td></tr>
         </tbody>
       </table>
       </div>
@@ -95,50 +95,50 @@
 
   <section class="band" id="components">
     <div class="section-head">
-      <span class="num">03 — Components</span>
+      <span class="num">03 Components</span>
       <h2>The inventory, rendered once each</h2>
-      <p class="standfirst">Nav and hero appear at the top of this page; footer at the bottom. The rest of the inventory — section header (above), buttons, badges, ruled table, diagram frame, receipt card — is rendered here with real product content, not filler.</p>
+      <p class="standfirst">Nav and hero appear at the top of this page. Footer appears at the bottom. The rest of the inventory, section header (above), buttons, badges, ruled table, diagram frame, receipt card, is rendered here with real product content, not filler.</p>
     </div>
 
-    <h3>Buttons — rank by ink, not colour</h3>
+    <h3>Buttons, rank by ink, not colour</h3>
     <div class="btn-row" style="margin-bottom:var(--space-6)">
       <button class="btn primary" type="button">See it working</button>
       <button class="btn" type="button">Read the numbers</button>
       <button class="btn" type="button" disabled>Unavailable</button>
       <button class="btn small-btn" type="button">Pause</button>
-      <span class="small">Primary is filled ink; secondary is a hairline of ink; disabled fades. Hover deepens the ground one step. Nothing turns colour.</span>
+      <span class="small">Primary is filled ink. Secondary is a hairline of ink. Disabled fades. Hover deepens the ground one step. Nothing turns colour.</span>
     </div>
 
-    <h3>Badges — standing by word and marker</h3>
+    <h3>Badges, standing by word and marker</h3>
     <div class="badge-row" style="margin-bottom:var(--space-6)">
       <span class="badge" data-state="approved">approved</span>
       <span class="badge" data-state="pending">pending</span>
       <span class="badge" data-state="escalated">escalated · awaiting a human</span>
       <span class="badge" data-state="rejected">rejected</span>
       <span class="badge" data-state="superseded">superseded</span>
-      <span class="small" style="align-self:center">Filled marker, hollow marker, half marker, cross, dotted marker — shape and word carry the state.</span>
+      <span class="small" style="align-self:center">Filled marker, hollow marker, half marker, cross, dotted marker. Shape and word carry the state.</span>
     </div>
 
-    <h3>Ruled table — real check results</h3>
+    <h3>Ruled table, real check results</h3>
     <div class="card" style="padding:6px 14px;margin-bottom:var(--space-6)">
       <div class="table-wrap">
       <table class="data">
         <thead><tr><th>Check</th><th>Result</th><th>What it proves</th><th>What it does not prove</th></tr></thead>
         <tbody>
-          <tr><td>MCP tool surface — all tools, gate flow, cold start</td><td class="num">37 / 37</td><td>The surface behaves end to end</td><td>Behaviour under production load</td></tr>
-          <tr><td>Write-gate behaviour — approve, reject, escalate, fail closed</td><td class="num">19 / 19</td><td>Every gate path fires as designed</td><td>Decision quality on real-world ambiguity</td></tr>
-          <tr><td>Two-plane memory — rebuild, receipts, decay</td><td class="num">22 / 22</td><td>The recall index rebuilds from truth alone</td><td>Recall ranking quality on a large corpus</td></tr>
-          <tr><td>Settings — resolution order, masked read-back, store</td><td class="num">46 / 46</td><td>Keys resolve and stay masked</td><td>Anything about hosted deployment</td></tr>
+          <tr><td>MCP tool surface, all tools, gate flow, cold start</td><td class="num">37 / 37</td><td>The surface behaves end to end</td><td>Behaviour under production load</td></tr>
+          <tr><td>Write gate behaviour, approve, reject, escalate, fail closed</td><td class="num">19 / 19</td><td>Every gate path fires as designed</td><td>Decision quality on ambiguity in the real world</td></tr>
+          <tr><td>Two plane memory, rebuild, receipts, decay</td><td class="num">22 / 22</td><td>The recall index rebuilds from truth alone</td><td>Recall ranking quality on a large corpus</td></tr>
+          <tr><td>Settings, resolution order, masked read-back, store</td><td class="num">46 / 46</td><td>Keys resolve and stay masked</td><td>Anything about hosted deployment</td></tr>
         </tbody>
       </table>
       </div>
     </div>
 
-    <h3>Diagram frame — one diagram per hard idea</h3>
+    <h3>Diagram frame, one diagram per hard idea</h3>
     <figure class="fig" style="margin-bottom:var(--space-6)">
-      <div class="fig-head"><span>Fig. 1 — The live loop</span><span>diagram</span></div>
+      <div class="fig-head"><span>Fig. 1, The live loop</span><span>diagram</span></div>
       <div class="fig-body">
-        <svg viewBox="0 0 520 150" style="width:100%;height:auto;display:block" role="img" aria-label="Diagram of the live loop: an agent proposes, the gate decides, approved memories land in truth, recall answers with a receipt">
+        <svg viewBox="0 0 520 150" style="width:100%;height:auto;display:block" role="img" aria-label="Diagram of the live loop. An agent proposes, the gate decides, approved memories land in truth, recall answers with a receipt">
           <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d1a15"/></marker></defs>
           <g font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">
             <rect x="8" y="52" width="80" height="44" rx="4" fill="#f7f3eb" stroke="#1d1a15"/>
@@ -150,7 +150,7 @@
             <path d="M242,74 L272,74" stroke="#1d1a15" fill="none" marker-end="url(#arr)"/>
             <rect x="276" y="52" width="84" height="44" rx="4" fill="#efe9da" stroke="#1d1a15"/>
             <text x="318" y="70" text-anchor="middle">truth</text>
-            <text x="318" y="88" text-anchor="middle" fill="#5f584a" font-size="10">append-only</text>
+            <text x="318" y="88" text-anchor="middle" fill="#5f584a" font-size="10">append only</text>
             <path d="M360,74 L390,74" stroke="#1d1a15" fill="none" marker-end="url(#arr)"/>
             <rect x="394" y="52" width="118" height="44" rx="4" fill="#fdfbf6" stroke="#1d1a15"/>
             <text x="453" y="70" text-anchor="middle">recall</text>
@@ -160,32 +160,40 @@
           </g>
         </svg>
       </div>
-      <figcaption><b>Proves:</b> the shape of the system — every write crosses the gate, every read carries a receipt. The accent appears here, on the gate, because the gate is where a decision is live; nowhere else on this page. <b>Does not prove:</b> that the gate&rsquo;s decisions are right — that is what the calibration numbers are for.</figcaption>
+      <figcaption><b>Proves.</b> The shape of the system, every write crosses the gate, every read carries a receipt. The accent appears here, on the gate, because the gate is where a decision is live. Nowhere else on this page. <b>Does not prove.</b> That the gate&rsquo;s decisions are right, that is what the calibration numbers are for.</figcaption>
     </figure>
 
-    <h3>Receipt card — the record, in mono</h3>
-    <div class="receipt-card">receipt — record demo-g4 · by grok via proposal-gate · recorded 12 Oct 2026
-text — The Lantern demo rig runs firmware 2.4.1 on the bench unit.
-rests on — demo-g2, demo-g3 · valid 12 Oct 2026 → still held
-<span class="verdict">verdict — ● approved</span> · gate record: decision approve · calibrated score 0.982
-<span style="color:var(--ink-2)">From the fictional Project Lantern demo corpus — the same record the console&rsquo;s recall view returns.</span></div>
+    <h3>The record, one fact per part</h3>
+    <article class="record receipt" aria-label="Receipt record example">
+      <p class="record-text">The Lantern demo rig runs firmware 2.4.1 on the bench unit.</p>
+      <dl class="record-list">
+        <div class="record-fact"><dt class="record-label">Record</dt><dd class="record-value">demo-g4</dd></div>
+        <div class="record-fact"><dt class="record-label">Written by</dt><dd class="record-value">grok</dd></div>
+        <div class="record-fact"><dt class="record-label">How it arrived</dt><dd class="record-value">Through a proposal</dd></div>
+        <div class="record-fact"><dt class="record-label">Recorded</dt><dd class="record-value">15 Oct 2026</dd></div>
+        <div class="record-fact"><dt class="record-label">Valid from</dt><dd class="record-value">15 Oct 2026</dd></div>
+        <div class="record-fact"><dt class="record-label">Valid to</dt><dd class="record-value">Still held</dd></div>
+        <div class="record-fact wide"><dt class="record-label">Rests on</dt><dd class="record-value"><span class="record-id">demo-g2</span><span class="record-id">demo-g3</span></dd></div>
+      </dl>
+      <p class="record-note">From the fictional Project Lantern demo corpus, the same record the console recall view returns.</p>
+    </article>
   </section>
 
   <section class="band" id="motion">
     <div class="section-head">
-      <span class="num">04 — Motion</span>
+      <span class="num">04 Motion</span>
       <h2>Sophisticated, or absent</h2>
-      <p class="standfirst">Three timings exist: 120ms for hover and focus feedback, 240ms for state changes, 600ms for a reveal that happens once. Motion is a status channel — it reports that something changed — never decoration. Under reduced-motion settings every animation on this page is switched off and content is simply present.</p>
+      <p class="standfirst">Three timings exist. 120ms for hover and focus feedback, 240ms for state changes, 600ms for a reveal that happens once. Motion is a status channel, it reports that something changed, never decoration. Under reduced motion settings every animation on this page is switched off and content is simply present.</p>
     </div>
     <div class="card reveal" id="revealCard">
       <h3>A reveal, once</h3>
-      <p style="margin:0">This card faded and settled by eight pixels as it entered the viewport — the only entrance motion the system allows. Scroll away and back: it does not repeat. If your system asks for reduced motion, it never moved at all.</p>
+      <p style="margin:0">This card faded and settled by eight pixels as it entered the viewport, the only entrance motion the system allows. Scroll away and back. It does not repeat. If your system asks for reduced motion, it never moved at all.</p>
     </div>
-    <p class="small" style="margin-top:var(--space-4)">The one ambient motion in the product — the memory graph&rsquo;s playhead — is driven by the data itself: it sweeps the corpus timeline and memories appear at the moment they were recorded. It can be paused, and it stops under reduced motion.</p>
+    <p class="small" style="margin-top:var(--space-4)">The one ambient motion in the product, the memory graph&rsquo;s playhead, is driven by the data itself. It sweeps the corpus timeline and memories appear at the moment they were recorded. It can be paused, and it stops under reduced motion.</p>
   </section>
 
   <footer class="site-foot">
-    <p>MemoryLoom — one shared, auditable memory brain for agent teams. Data lives in one Postgres store on the user&rsquo;s machine; the demonstration corpus is fictional. Design tokens v2 · style tile · not a product page.</p>
+    <p>MemoryLoom, one shared, auditable memory brain for agent teams. Data lives in one Postgres store on the user&rsquo;s machine. The demonstration corpus is fictional. Design tokens v2 · style tile · not a product page.</p>
   </footer>
 </div>
 <script>

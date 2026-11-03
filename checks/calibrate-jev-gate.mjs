@@ -23,6 +23,10 @@
  * Usage: node checks/calibrate-jev-gate.mjs
  * Writes: checks/out/calibration-jev-gate.json,
  *         docs/calibration-jev-gate.md
+ * Owning file: checks/calibrate-jev-gate.mjs
+ * Accountable layer: Decision layer
+ * Provider need: Live Jev
+ * Declared mode: Runs only inside its owning card
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -41,7 +45,12 @@ const results = [];
 for (const item of ITEMS) {
   let got;
   try {
-    const scored = await evaluateGate({ proposal: item.proposal, evidence: item.evidence });
+    const scored = await evaluateGate({
+      proposal: item.proposal,
+      evidence: item.evidence,
+      spendClass: 'gate_calibration',
+      iteration: 'calibrate-jev-gate',
+    });
     got = { decision: scored.decision, raw: scored.raw, calibrated: scored.calibrated };
   } catch (e) {
     got = { decision: 'ERROR', error: String(e.message || e) };

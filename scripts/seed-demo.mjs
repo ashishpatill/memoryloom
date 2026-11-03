@@ -95,7 +95,11 @@ export async function seedDemo(pool, { namespace = DEMO_NAMESPACE } = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const url = resolveDatabaseUrl();
+  // The deliberate seed entry point passes its operation identity
+  // to the resolver in code (Section 10.4). Throwaway targets pass
+  // on the allowlist. A hosted target also needs the operation
+  // record and the named environment signal.
+  const url = resolveDatabaseUrl({ operation: 'hosted-seed' });
   if (!url) {
     console.error('DATABASE_URL missing');
     process.exit(1);

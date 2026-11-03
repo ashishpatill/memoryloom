@@ -11,16 +11,25 @@
  *
  *   DATABASE_URL=postgres://… npm run check:web
  * (run scripts/init-db.mjs against the same URL first)
+ * Owning file: checks/web.mjs
+ * Accountable layer: Backend HTTP layer and browser layer
+ * Provider need: None in the verify run, its gate paths assert the fail closed states
+ * Declared mode: Keyless
  */
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import http from 'node:http';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
+import pg from 'pg';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 
 let failures = 0;
 function assert(cond, label, extra = '') {
@@ -35,13 +44,23 @@ const run = (cmd, args, env = {}) => new Promise((resolve, reject) => {
   p.on('close', (code) => (code === 0 ? resolve(out) : reject(new Error(`${cmd} ${args.join(' ')} exited ${code}: ${out.slice(-400)}`))));
 });
 
+// The suite's premise is a configured Jev key with the decision
+// cache answering identical questions (live Jev behaviour is the
+// jev-gate suite's job, not this one's). The key lives in a temp
+// store owned by this suite. Checks never read or write the real
+// store (Iteration 6.1 correction: the gate flows in this suite
+// once passed only because a dummy key sat in the real store and
+// unlocked the decision cache).
+const suiteStore = join(mkdtempSync(join(tmpdir(), 'memoryloom-web-')), 'settings.env');
+writeFileSync(suiteStore, 'TYPESAFE_API_KEY=<redacted>\n', { mode: 0o600 });
+
 // Seed through the documented path.
-await run(process.execPath, ['scripts/seed-web-demo.mjs'], { DATABASE_URL });
+await run(process.execPath, ['scripts/seed-web-demo.mjs'], { DATABASE_URL, MEMORYLOOM_SETTINGS_FILE: suiteStore });
 
 const PORT = 4300 + Math.floor(Math.random() * 400);
 const server = spawn(process.execPath, ['web/server.mjs'], {
   cwd: root,
-  env: { ...process.env, DATABASE_URL, WEB_PORT: String(PORT) },
+  env: { ...process.env, DATABASE_URL, WEB_PORT: String(PORT), MEMORYLOOM_SETTINGS_FILE: suiteStore },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 const base = `http://localhost:${PORT}`;
@@ -154,7 +173,10 @@ try {
 
   const spend = await get('/api/spend');
   assert(spend.body.budgets_usd.meta.total === 150, 'provider panel carries the Meta budget');
-  assert(spend.body.router.every((r) => ['meta', 'jev'].includes(r.provider)), 'spend panel lists only providers that did work (meta + jev)', JSON.stringify([...new Set(spend.body.router.map((r) => r.provider))]));
+  // Since Iteration 6.1 (2026-10-31) Baseten has done real, logged
+  // work (the Tier 0 calibration), so the honest expectation is
+  // meta + jev + baseten: the panel lists only providers that did work.
+  assert(spend.body.router.every((r) => ['meta', 'jev', 'baseten'].includes(r.provider)), 'spend panel lists only providers that did work (meta + jev + baseten)', JSON.stringify([...new Set(spend.body.router.map((r) => r.provider))]));
   assert(spend.body.router.some((r) => r.provider === 'jev' && r.task === 'gate_decision'), 'gate decisions appear in the spend log as jev rows');
   assert(spend.body.jev_decisions_in_namespace >= 1, 'gate verdicts are counted in the namespace');
 
@@ -182,6 +204,49 @@ try {
 
   const missing = await fetch(base + '/api/nope');
   assert(missing.status === 404, 'unknown API route returns 404');
+
+  // ---- File proposals, the decide route guard, stable errors (card S3b) ----
+  console.log('file proposals + decide route guard:');
+  const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 2 });
+  const FILE_PID = 'web-file-prop-1';
+  await pool.query(`DELETE FROM file_chunks WHERE proposal_id = $1`, [FILE_PID]);
+  await pool.query(`DELETE FROM proposals WHERE id = $1`, [FILE_PID]);
+  await pool.query(
+    `INSERT INTO proposals (id, namespace, type, scope, text, importance, strength, pinned,
+                            grounding_ids, provenance, route_reason, source_file_name, chunk_count)
+     VALUES ($1, 'memoryloom-demo', 'semantic', 'global', 'console-notes.md: two chunks about the console', 5, 5.0, false,
+             '{}', '{"author":"grok","origin":"ingest_file"}'::jsonb, 'ingest-file-queued', 'console-notes.md', 2)`,
+    [FILE_PID]
+  );
+  await pool.query(`INSERT INTO file_chunks (proposal_id, chunk_index, text) VALUES ($1, 0, 'first chunk text about the console'), ($1, 1, 'second chunk text about the console')`, [FILE_PID]);
+  const props2 = await get('/api/proposals');
+  const fp = props2.body.proposals.find((p) => p.id === FILE_PID);
+  assert(fp && fp.source_file_name === 'console-notes.md' && fp.chunk_count === 2, 'proposals payload returns the source file name and the chunk count (card S3b)');
+  assert(fp && Array.isArray(fp.chunks) && fp.chunks.length === 2 && fp.chunks[0].chunk_index === 0 && fp.chunks[0].text.includes('first chunk') && fp.chunks[1].chunk_index === 1 && fp.chunks[1].text.includes('second chunk'), 'proposals payload returns the chunk texts in chunk index order (card S3b)');
+  // The decide route refuses a non local request, in the same way
+  // the Settings routes refuse one. A raw request carries the
+  // forged Host, because fetch will not send one.
+  const rawDecide = await new Promise((resolve, reject) => {
+    const req = http.request(
+      { host: '127.0.0.1', port: PORT, path: `/api/proposals/${FILE_PID}/decide`, method: 'POST', headers: { host: 'preview.example.com', 'content-type': 'application/json' } },
+      (res) => { let b = ''; res.on('data', (d) => (b += d)); res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(b) })); }
+    );
+    req.on('error', reject);
+    req.end(JSON.stringify({ decision: 'approve' }));
+  });
+  assert(rawDecide.status === 403 && rawDecide.body.error === 'FORBIDDEN', 'the decide route guard test: a non local decide is refused (card S3b)', JSON.stringify(rawDecide.body));
+  const fpAfter = await pool.query(`SELECT status FROM proposals WHERE id = $1`, [FILE_PID]);
+  assert(fpAfter.rows[0].status === 'pending', 'the refused decide changed no proposal state');
+  // A malformed body reaches the failure path and returns the
+  // stable error name shape, never a raw error message.
+  const badBodyRes = await fetch(base + '/api/propose', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{not json' });
+  const badBody = await badBodyRes.json();
+  assert(badBodyRes.status === 500 && badBody.status === 'error' && badBody.error === 'VALIDATION' && typeof badBody.detail === 'string', 'the stable error name test: a malformed body returns a stable error name (card S3b)', JSON.stringify(badBody));
+  // The loopback decide on the file proposal still works, and the
+  // approval creates one memory per chunk.
+  const fpDecide = await post(`/api/proposals/${FILE_PID}/decide`, { decision: 'approve' });
+  assert(fpDecide.body.status === 'ok' && Array.isArray(fpDecide.body.created_memory_ids) && fpDecide.body.created_memory_ids.length === 2, 'console approval of a file proposal creates one memory per chunk (card S3b)', JSON.stringify(fpDecide.body).slice(0, 200));
+  await pool.end();
 
   // ---- Settings view: the real console.js against a stubbed settings
   // API. A minimal DOM stands in for the browser and fetch is stubbed,
@@ -234,6 +299,10 @@ try {
     }
     get innerHTML() { return this._innerHTML; }
     addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+    // Real elements all carry focus(). The settings focus rules
+    // (Section 6.10) call it after a save, a remove and a test, so
+    // the fake records the call instead of throwing on it.
+    focus() { this.focused = true; }
     async click() { for (const fn of this.listeners.click || []) await fn({ target: this }); }
     querySelectorAll() { return []; }
     querySelector() { return null; }
@@ -279,7 +348,7 @@ try {
   assert(emptyHtml.includes('No provider keys configured') && emptyHtml.includes('runs locally without keys'), 'settings empty state: explains that MemoryLoom runs locally without keys');
   assert(emptyHtml.includes('Meta Model API') && emptyHtml.includes('Baseten') && emptyHtml.includes('Jev (TypeSafe)'), 'settings empty state: all three provider sections render');
   assert(emptyHtml.includes('dev.meta.ai') && emptyHtml.includes('Baseten workspace settings') && emptyHtml.includes('from TypeSafe'), 'settings empty state: where to get each key, in plain words');
-  assert(emptyHtml.includes('Baseten lane is parked'), 'settings empty state: Baseten unlocks copy states the lane is parked (no product path)');
+  assert(emptyHtml.includes('operations tier') && emptyHtml.includes('can be tested here'), 'settings empty state: Baseten unlocks copy states the calibrated operations tier honestly (no product path yet)');
   assert(!emptyHtml.includes('hosted model calls through Baseten') && !emptyHtml.includes('Baseten for hosted model calls'), 'settings empty state: Baseten copy does NOT promise hosted model calls');
   assert((emptyHtml.match(/Not configured/g) || []).length >= 3, 'settings empty state: every provider is marked not configured');
   assert(emptyHtml.includes('type="password"'), 'settings view: key inputs are password fields');
@@ -338,6 +407,74 @@ try {
   await flushUi();
   const savedTest = uiCalls.find((c) => c.path === '/api/settings/meta/test');
   assert(Boolean(savedTest) && !('api_key' in savedTest.body), 'settings test: with the field empty, the configured key is tested (no candidate sent)');
+
+  // ---- Live loop view: a file proposal renders its chunks in
+  // chunk index order (card S3b). The stubbed payload hands the
+  // chunks over out of order on purpose. The view sorts them, so
+  // the rendered row reads in file order. This harness collects
+  // appended children, because the settings harness above does
+  // not need them and drops them.
+  console.log('live loop view (stubbed API):');
+  const loopRegistry = new Map();
+  class LoopEl {
+    constructor(id = '') {
+      this.id = id; this.listeners = {}; this.value = ''; this.disabled = false;
+      this.textContent = ''; this.className = ''; this.dataset = {}; this.style = {}; this._innerHTML = ''; this.children = [];
+    }
+    set innerHTML(v) {
+      this._innerHTML = String(v);
+      if (this._isMain) {
+        for (const key of [...loopRegistry.keys()]) if (key !== 'main') loopRegistry.delete(key);
+        for (const mm of this._innerHTML.matchAll(/id="([^"]+)"/g)) loopRegistry.set(mm[1], new LoopEl(mm[1]));
+      }
+    }
+    get innerHTML() { return this._innerHTML; }
+    addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+    querySelectorAll() { return []; }
+    querySelector() { return null; }
+    appendChild(child) { this.children.push(child); return child; }
+  }
+  const loopMain = new LoopEl('main');
+  loopMain._isMain = true;
+  loopRegistry.set('main', loopMain);
+  const loopFileProposal = {
+    id: 'loop-file-1', status: 'pending', type: 'semantic',
+    text: 'loop-notes.md: a two chunk file about the loop',
+    route_reason: 'ingest-file-queued', created_at: new Date().toISOString(),
+    grounding_ids: [], provenance: { author: 'grok' },
+    source_file_name: 'loop-notes.md', chunk_count: 2,
+    chunks: [
+      { chunk_index: 1, text: 'rendered chunk two text' },
+      { chunk_index: 0, text: 'rendered chunk one text' },
+    ],
+  };
+  const loopWindowListeners = {};
+  const loopSandbox = {
+    document: {
+      getElementById: (id) => loopRegistry.get(id) || null,
+      querySelectorAll: () => [],
+      createElement: () => new LoopEl(),
+    },
+    window: { addEventListener: (t, fn) => { (loopWindowListeners[t] ||= []).push(fn); } },
+    location: { hash: '#/loop' },
+    fetch: async (path) => {
+      if (path === '/api/overview') return { ok: true, status: 200, json: async () => ({ memories_by_type: [], lessons: 0, learning_events: 0 }) };
+      if (path === '/api/proposals') return { ok: true, status: 200, json: async () => ({ proposals: [loopFileProposal], daemon_review_items: [], daemon_runs: [] }) };
+      return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
+    },
+    MemoryLoomGraph: {},
+    setTimeout,
+    clearTimeout,
+  };
+  vm.runInNewContext(consoleJs.text, loopSandbox, { filename: 'console.js' });
+  await flushUi();
+  const pendingList = loopRegistry.get('pendingList');
+  assert(pendingList && pendingList.children.length === 1, 'loop view renders the file proposal row');
+  const rowHtml = pendingList && pendingList.children.length ? pendingList.children[0].innerHTML : '';
+  const firstAt = rowHtml.indexOf('rendered chunk one text');
+  const secondAt = rowHtml.indexOf('rendered chunk two text');
+  assert(firstAt >= 0 && secondAt > firstAt, 'the rendered console view shows the chunks in chunk index order (card S3b)');
+  assert(rowHtml.includes('loop-notes.md') && rowHtml.includes('2 chunks, shown in file order'), 'the rendered row names the source file and its chunk count');
 } finally {
   server.kill('SIGTERM');
 }

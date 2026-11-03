@@ -461,7 +461,10 @@ function basetenBaseUrl() {
   return String(process.env.BASETEN_BASE_URL || 'https://inference.baseten.co').replace(/\/$/, '');
 }
 
+const BASETEN_TASKS = new Set(['prescreen', 'consolidate', 'narrate', 'explain']);
+
 function basetenPrompt(task, payload) {
+  if (!BASETEN_TASKS.has(task)) return null;
   if (task === 'prescreen') {
     const proposal = { text: payload.proposal?.text || '', type: payload.proposal?.type || null };
     const evidence = (payload.evidence || []).map((e) => ({ id: e.id || null, text: e.text || '' }));
@@ -489,6 +492,11 @@ function basetenShapeResult(task, payload, parsed, rawText) {
   if (task === 'prescreen') {
     if (!parsed || !['approve', 'escalate', 'reject'].includes(parsed.lean)) return null;
     if (typeof parsed.grounding_ok !== 'boolean') return null;
+    // The pair (lean, grounding_ok) is the recorded signal, kept
+    // faithful to what the model returned: a lean of approve with
+    // grounding_ok false is NOT an approval, and any consumer must
+    // treat it as a disagreement that escalates (Iteration 6.2 owns
+    // that rule). The 6.1 calibration produced no such pair.
     return {
       lean: parsed.lean,
       grounding_ok: parsed.grounding_ok,
@@ -528,7 +536,7 @@ const basetenProvider = {
     if (spec.id !== BASETEN_MODEL) {
       return { ok: false, reason: `baseten: model ${spec.id} is refused — the Tier 0 lane is pinned to ${BASETEN_MODEL}`, model: spec.id };
     }
-    const effort = task === 'prescreen' ? 'low' : 'medium';
+    const effort = spec.reasoning_effort || (task === 'prescreen' ? 'low' : 'medium');
     const body = {
       model: BASETEN_MODEL,
       messages: [
@@ -542,22 +550,24 @@ const basetenProvider = {
       reasoning_effort: effort,
     };
     if (prompt.json) body.response_format = { type: 'json_object' };
-    let r = await authedFetch(this.id, `${basetenBaseUrl()}/v1/chat/completions`, body);
-    if (r.status === 400) {
-      delete body.response_format;
-      r = await authedFetch(this.id, `${basetenBaseUrl()}/v1/chat/completions`, body);
-    }
+    // Exactly one HTTP call per routed call: no silent retry, so the
+    // spend log's one-entry-per-call accounting is the whole truth.
+    // (The calibration ran with response_format accepted throughout.)
+    const r = await authedFetch(this.id, `${basetenBaseUrl()}/v1/chat/completions`, body);
     if (r.status !== 200 || !r.json) {
       return { ok: false, reason: `baseten chat HTTP ${r.status}: ${r.raw}`, model: BASETEN_MODEL };
     }
-    const text = r.json.choices?.[0]?.message?.content || '';
-    const result = basetenShapeResult(task, payload, extractJson(text), text);
-    if (!result) return { ok: false, reason: 'baseten chat: unparsable output', usage: r.json.usage || null, model: BASETEN_MODEL };
     const u = r.json.usage || {};
     const usage = {
       ...u,
       cached_input_tokens: u.prompt_tokens_details?.cached_tokens || 0,
     };
+    const text = r.json.choices?.[0]?.message?.content || '';
+    const result = basetenShapeResult(task, payload, extractJson(text), text);
+    if (!result) {
+      const fr = r.json.choices?.[0]?.finish_reason;
+      return { ok: false, reason: `baseten chat: unparsable output${fr ? ` (finish_reason=${fr})` : ''}`, usage, model: BASETEN_MODEL };
+    }
     return { ok: true, result, usage, model: BASETEN_MODEL, endpoint: 'chat' };
   },
 };
@@ -680,9 +690,11 @@ async function paidCall(provider, task, payload, opts) {
     id: opts.model || baseSpec.id,
     reasoning_effort: opts.effort || baseSpec.reasoning_effort,
     tier: opts.effort
-      ? opts.effort === 'medium'
-        ? 'wonder'
-        : 'wonder-full'
+      ? baseSpec.tier === 'tier0'
+        ? 'tier0'
+        : opts.effort === 'medium'
+          ? 'wonder'
+          : 'wonder-full'
       : baseSpec.tier,
   };
   if (!hostedEnabled()) {

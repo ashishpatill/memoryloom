@@ -1,0 +1,103 @@
+  info store records from the graph: 13
+  PASS API: the firmware question is answered by demo-g4
+  PASS API: the firmware receipt rests on demo-g2 and demo-g3
+  PASS API: firmware receipt for demo-g4 rests only on records that resolve (demo-g2)
+  PASS API: firmware receipt for demo-g4 rests only on records that resolve (demo-g3)
+  PASS API: the believed at answer for 12 Oct 2026 is demo-v1
+  FAIL API: believed at rows carry their grounding ids grounding_ids was undefined
+  PASS landing demo-v1: the belief text renders (Hall A)
+  FAIL landing demo-v1: a receipt renders 
+  FAIL landing demo-v1: the Record part names demo-v1 missing
+  FAIL landing demo-v1: Rests on shows the words No grounding record with no link missing
+  PASS landing demo-v2: the belief text renders (Hall B)
+  FAIL landing demo-v2: a receipt renders 
+  FAIL landing demo-v2: the Record part names demo-v2 missing
+  FAIL landing demo-v2: Rests on shows the words No grounding record with no link missing
+  PASS recall firmware answer: a receipt renders
+  PASS recall firmware answer: exactly the seven parts in order
+  FAIL recall firmware answer: the Record label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the Record label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the Record value is 14px on a 20px line 15px/20.25px
+  FAIL recall firmware answer: the Written by label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the Written by label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the Written by value is 14px on a 20px line 15px/20.25px
+  FAIL recall firmware answer: the How it arrived label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the How it arrived label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the How it arrived value is 14px on a 20px line 15px/20.25px
+  FAIL recall firmware answer: the Recorded label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the Recorded label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the Recorded value is 14px on a 20px line 15px/20.25px
+  FAIL recall firmware answer: the Valid from label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the Valid from label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the Valid from value is 14px on a 20px line 15px/20.25px
+  FAIL recall firmware answer: the Valid to label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the Valid to label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the Valid to value is 14px on a 20px line 15px/20.25px
+  FAIL recall firmware answer: the Rests on label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall firmware answer: the Rests on label is 11px on a 14px line 12px/19.2px
+  FAIL recall firmware answer: the Rests on value is 14px on a 20px line 15px/20.25px
+  PASS recall firmware answer: the answer receipt carries the receipt card form
+  PASS recall firmware answer: the answer and its receipt sit in one panel
+  FAIL recall firmware answer: the Record part is a link naming demo-g4 []
+  PASS recall firmware answer: Written by names the author
+  PASS recall firmware answer: How it arrived is plain words
+  FAIL recall firmware answer: Rests on names demo-g2 and demo-g3 as links []
+  PASS recall firmware answer: Valid to reads Still held for a belief still in force
+  FAIL follow walk: the receipt Record link opens the record it names (the demo-g4 trail) 
+  PASS recall wifi no answer: the refusal renders in plain words
+  PASS recall wifi no answer: near misses are listed
+  PASS recall wifi no answer near miss 1: labelled as not an answer
+  PASS recall wifi no answer near miss 1: never takes the answer label
+  FAIL recall wifi no answer near miss 1: never takes the receipt card border 
+  PASS recall wifi no answer near miss 1: a receipt renders
+  FAIL recall wifi no answer near miss 1: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  FAIL recall wifi no answer near miss 1: the Record label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall wifi no answer near miss 1: the Record label is 11px on a 14px line 12px/19.2px
+  FAIL recall wifi no answer near miss 1: the Record value is 14px on a 20px line 15px/20.25px
+  FAIL recall wifi no answer near miss 1: the Written by label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall wifi no answer near miss 1: the Written by label is 11px on a 14px line 12px/19.2px
+  FAIL recall wifi no answer near miss 1: the Written by value is 14px on a 20px line 15px/20.25px
+  FAIL recall wifi no answer near miss 1: the How it arrived label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall wifi no answer near miss 1: the How it arrived label is 11px on a 14px line 12px/19.2px
+  FAIL recall wifi no answer near miss 1: the How it arrived value is 14px on a 20px line 15px/20.25px
+  FAIL recall wifi no answer near miss 1: the Recorded label is set in the text face "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace
+  FAIL recall wifi no answer near miss 1: the Recorded label is 11px on a 14px line 12px/19.2px
+  FAIL recall wifi no answer near miss 1: the Recorded value is 14px on a 20px line 15px/20.25px
+  PASS recall wifi no answer near miss 2: labelled as not an answer
+  PASS recall wifi no answer near miss 2: never takes the answer label
+  FAIL recall wifi no answer near miss 2: never takes the receipt card border 
+  PASS recall wifi no answer near miss 2: a receipt renders
+  FAIL recall wifi no answer near miss 2: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS recall wifi no answer near miss 3: labelled as not an answer
+  PASS recall wifi no answer near miss 3: never takes the answer label
+  FAIL recall wifi no answer near miss 3: never takes the receipt card border 
+  PASS recall wifi no answer near miss 3: a receipt renders
+  FAIL recall wifi no answer near miss 3: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS recall wifi no answer near miss 4: labelled as not an answer
+  PASS recall wifi no answer near miss 4: never takes the answer label
+  FAIL recall wifi no answer near miss 4: never takes the receipt card border 
+  PASS recall wifi no answer near miss 4: a receipt renders
+  FAIL recall wifi no answer near miss 4: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS recall wifi no answer near miss 5: labelled as not an answer
+  PASS recall wifi no answer near miss 5: never takes the answer label
+  FAIL recall wifi no answer near miss 5: never takes the receipt card border 
+  PASS recall wifi no answer near miss 5: a receipt renders
+  FAIL recall wifi no answer near miss 5: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS recall wifi no answer near miss 6: labelled as not an answer
+  PASS recall wifi no answer near miss 6: never takes the answer label
+  FAIL recall wifi no answer near miss 6: never takes the receipt card border 
+  PASS recall wifi no answer near miss 6: a receipt renders
+  FAIL recall wifi no answer near miss 6: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS recall wifi no answer near miss 7: labelled as not an answer
+  PASS recall wifi no answer near miss 7: never takes the answer label
+  FAIL recall wifi no answer near miss 7: never takes the receipt card border 
+  PASS recall wifi no answer near miss 7: a receipt renders
+  FAIL recall wifi no answer near miss 7: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS recall wifi no answer near miss 8: labelled as not an answer
+  PASS recall wifi no answer near miss 8: never takes the answer label
+  FAIL recall wifi no answer near miss 8: never takes the receipt card border 
+  PASS recall wifi no answer near miss 8: a receipt renders
+  FAIL recall wifi no answer near miss 8: exactly the seven parts in order got ["Record","Written by","How it arrived","Recorded"]
+  PASS live loop: a decided row names the memory its proposal became
+  FAIL live loop: the became memory id is a link that opens that record {"found":true,"becameLink":false,"linkText":""}
+receipt-d2: 60 FAILURES

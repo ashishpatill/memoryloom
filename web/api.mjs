@@ -20,6 +20,7 @@ import { recordEvent, listEvents } from '../lib/learning.mjs';
 import { listDaemonRuns } from '../lib/daemon.mjs';
 import { readSpendLog, routerConfig } from '../router/spend.mjs';
 import { maskedSettings, providerDef, removeProviderKey, saveProviderKey, testProvider } from '../lib/config.mjs';
+import { failurePayload } from '../lib/errors.mjs';
 
 const HUMAN = 'human (console)';
 
@@ -74,6 +75,11 @@ function isLocalRequest(req) {
 
 const LOCAL_ONLY = { status: 403, payload: { error: 'settings can only be changed from the local app' } };
 
+const DECIDE_LOCAL_ONLY = {
+  status: 403,
+  payload: { status: 'error', error: 'FORBIDDEN', detail: 'decisions can only be made from the local app' },
+};
+
 export function createHandler({ pool, namespace }) {
   if (!pool) throw new Error('createHandler needs a pg pool');
   if (!namespace) throw new Error('createHandler needs a namespace');
@@ -103,6 +109,14 @@ export function createHandler({ pool, namespace }) {
        WHERE namespace = $1 AND provenance->>'author' IS NOT NULL ORDER BY 1`,
       [namespace]
     );
+    // The returned range as date strings (card S6, Section 6.7):
+    // the time travel control takes its step range from these two
+    // fields, never from a frontend conversion of the record
+    // timestamps and never scraped from an unrelated response. A
+    // date string is the UTC calendar date of the timestamp, the
+    // same day the record timestamps name. Both read null on an
+    // empty corpus.
+    const dateString = (t) => (t ? new Date(t).toISOString().slice(0, 10) : null);
     return {
       namespace,
       memories_by_type: mem.rows,
@@ -112,16 +126,35 @@ export function createHandler({ pool, namespace }) {
       agents: agents.rows.map((r) => r.author),
       first_recorded_at: range.rows[0].first,
       last_recorded_at: range.rows[0].last,
+      earliest_date: dateString(range.rows[0].first),
+      latest_date: dateString(range.rows[0].last),
     };
   }
 
   async function proposals() {
     const r = await pool.query(
       `SELECT id, type, scope, text, grounding_ids, provenance, route_reason,
-              status, decided_by, decided_at, promoted_id, created_at
+              status, decided_by, decided_at, promoted_id, created_memory_ids,
+              source_file_name, chunk_count, created_at
        FROM proposals WHERE namespace = $1 ORDER BY (status = 'pending') DESC, created_at`,
       [namespace]
     );
+    // A file proposal carries its chunk texts with it, in chunk
+    // index order, so the console shows the file itself (card S3b).
+    const fileRows = r.rows.filter((p) => p.source_file_name != null);
+    if (fileRows.length) {
+      const cr = await pool.query(
+        `SELECT proposal_id, chunk_index, text FROM file_chunks
+         WHERE proposal_id = ANY($1) ORDER BY chunk_index`,
+        [fileRows.map((p) => p.id)]
+      );
+      const byProposal = new Map();
+      for (const c of cr.rows || []) {
+        if (!byProposal.has(c.proposal_id)) byProposal.set(c.proposal_id, []);
+        byProposal.get(c.proposal_id).push({ chunk_index: c.chunk_index, text: c.text });
+      }
+      for (const p of fileRows) p.chunks = byProposal.get(p.id) || [];
+    }
     const review = await reviewList(pool, { status: 'pending' });
     const daemonItems = (review.review_items || []).filter(
       (i) => (i.payload?.namespace ?? namespace) === namespace || i.payload?.namespace === undefined
@@ -221,17 +254,24 @@ export function createHandler({ pool, namespace }) {
   async function decide(id, body) {
     const decision = body.decision === 'approve' ? 'approve' : body.decision === 'reject' ? 'reject' : null;
     if (!decision) return { status: 400, payload: { error: 'decision must be approve or reject' } };
-    const opts = { proposal_id: id, decided_by: HUMAN, note: body.note ? String(body.note).slice(0, 300) : undefined };
+    // The decision event is written inside the decide transaction
+    // in lib/curator-decide.mjs (card S3b), so an event write
+    // failure rolls the state change back. No caller side event
+    // write remains on this path, and no error is swallowed here.
+    const opts = {
+      proposal_id: id,
+      decided_by: HUMAN,
+      note: body.note ? String(body.note).slice(0, 300) : undefined,
+      event: {
+        kind: decision === 'approve' ? 'human_approval' : 'human_rejection',
+        actor: HUMAN,
+        summary: `Human ${decision === 'approve' ? 'approved' : 'rejected'} proposal ${id} in the console.`,
+        evidence: { decision },
+      },
+    };
     const r = decision === 'approve' ? await promoteProposal(pool, opts) : await rejectProposal(pool, opts);
     if (r.status !== 'ok') return { status: 409, payload: r };
     await embedStaged(pool, namespace).catch(() => {});
-    await recordEvent(pool, {
-      namespace,
-      kind: decision === 'approve' ? 'human_approval' : 'human_rejection',
-      actor: HUMAN, subject_type: 'proposal', subject_id: id,
-      summary: `Human ${decision === 'approve' ? 'approved' : 'rejected'} proposal ${id} in the console.`,
-      evidence: { decision, promoted_id: r.memory_id || r.promoted_id || null },
-    }).catch(() => {});
     return { status: 200, payload: r };
   }
 
@@ -374,10 +414,21 @@ export function createHandler({ pool, namespace }) {
         return json(res, 200, r);
       }
       if (req.method === 'POST' && p === '/api/propose') { const r = await propose(await readBody(req)); return json(res, r.status, r.payload); }
-      if (req.method === 'POST' && (m = p.match(/^\/api\/proposals\/(.+)\/decide$/))) { const r = await decide(decodeURIComponent(m[1]), await readBody(req)); return json(res, r.status, r.payload); }
+      if (req.method === 'POST' && (m = p.match(/^\/api\/proposals\/(.+)\/decide$/))) {
+        // The decide route is local only, guarded in the same way
+        // as the Settings routes (card S3b, Section 10.7). The
+        // hosted preview can show the queue, and no decision can
+        // be taken from it.
+        if (!isLocalRequest(req)) return json(res, DECIDE_LOCAL_ONLY.status, DECIDE_LOCAL_ONLY.payload);
+        const r = await decide(decodeURIComponent(m[1]), await readBody(req));
+        return json(res, r.status, r.payload);
+      }
       return json(res, 404, { error: 'not found', path: p });
     } catch (e) {
-      return json(res, 500, { error: String(e.message || e) });
+      // One structured failure shape with a stable error name
+      // (card S3b). The raw error stays in the server log.
+      console.error('[web] request failed:', e);
+      return json(res, 500, failurePayload(e));
     }
   };
 }

@@ -16,6 +16,10 @@
  * spendClass=calibration, so spend is logged and cached.
  * Usage: node checks/calibrate-spark-open.mjs
  * Writes: checks/out/calibration-spark-open.json
+ * Owning file: checks/calibrate-spark-open.mjs
+ * Accountable layer: Router layer
+ * Provider need: Live Baseten
+ * Declared mode: Runs only inside its owning card
  */
 process.env.MEMORYLOOM_ROUTER_MODE = 'live';
 

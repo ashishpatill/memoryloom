@@ -1,0 +1,113 @@
+  FAIL API: the overview returns earliest_date as a date string got undefined
+  FAIL API: the overview returns latest_date as a date string got undefined
+  FAIL API: earliest_date is the UTC calendar date of the first recorded record undefined against first_recorded_at 2026-04-12T09:00:00.000Z
+  FAIL API: latest_date is the UTC calendar date of the last recorded record undefined against last_recorded_at 2026-11-01T04:16:01.662Z
+  PASS API: earliest_date is not after latest_date
+  info returned range: 2026-04-12 .. 2026-11-01
+  PASS run condition: the returned range covers the named walk dates, 12 and 25 October 2026
+  PASS API: believed on 2026-10-12 holds Hall A and not Hall B
+  PASS API: believed on 2026-10-25 holds Hall B and not Hall A
+  PASS API: believed before the corpus is an honest empty set
+  PASS rest at the last returned date: the control renders
+  FAIL rest at the last returned date: a date input is present 
+  FAIL rest at the last returned date: the date input holds the selected date 2026-11-01 no date input
+  PASS rest at the last returned date: the handle rests on 2026-11-01
+  PASS rest at the last returned date: the readout names 1 Nov 2026
+  FAIL rest at the last returned date: the aria value text is the selected date string 2026-11-01 got "1 Nov 2026"
+  PASS rest: the slider steps are calendar days from the earliest returned date to the latest returned date
+  FAIL rest: the date input label is Believed at date no date input
+  FAIL rest: the slider label is Believed at date slider "Believed on"
+  FAIL rest: the two controls carry distinct programmatic names date input null, slider null
+  FAIL rest: the readout is set in the mono face at 14px "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif at 17px
+  PASS rest: the first and last returned dates label the track ends
+  PASS rest: the page does not overflow sideways at 1280
+  PASS exact returned date 2026-10-12: the control renders
+  FAIL exact returned date 2026-10-12: a date input is present 
+  FAIL exact returned date 2026-10-12: the date input holds the selected date 2026-10-12 no date input
+  FAIL exact returned date 2026-10-12: the handle rests on 2026-10-12 got 2026-11-01 (value 1793491200000)
+  FAIL exact returned date 2026-10-12: the readout names 12 Oct 2026 got 1 Nov 2026
+  FAIL exact returned date 2026-10-12: the aria value text is the selected date string 2026-10-12 got "1 Nov 2026"
+  FAIL exact returned date 2026-10-12: the list holds the Hall A belief and omits Hall B 
+  FAIL exact returned date 2026-10-12: the list heading names the selected date 10 beliefs held on 1 Nov 2026:
+          grokepisodicvalid from 12 Apr 2026, still held
+          Th
+  PASS date between returned dates 2026-10-21: the control renders
+  FAIL date between returned dates 2026-10-21: a date input is present 
+  FAIL date between returned dates 2026-10-21: the date input holds the selected date 2026-10-21 no date input
+  FAIL date between returned dates 2026-10-21: the handle rests on 2026-10-21 got 2026-11-01 (value 1793491200000)
+  FAIL date between returned dates 2026-10-21: the readout names 21 Oct 2026 got 1 Nov 2026
+  FAIL date between returned dates 2026-10-21: the aria value text is the selected date string 2026-10-21 got "1 Nov 2026"
+  PASS date between returned dates 2026-10-21: the belief in force is Hall B
+  PASS date between returned dates 2026-10-21: the record date stays visible on the belief shown
+  PASS date before the first returned record 2026-04-01: the control renders
+  FAIL date before the first returned record 2026-04-01: a date input is present 
+  FAIL date before the first returned record 2026-04-01: the date input holds the selected date 2026-04-01 no date input
+  FAIL date before the first returned record 2026-04-01: the handle rests on 2026-04-12 got 2026-11-01 (value 1793491200000)
+  FAIL date before the first returned record 2026-04-01: the readout names 1 Apr 2026 got 1 Nov 2026
+  FAIL date before the first returned record 2026-04-01: the aria value text is the selected date string 2026-04-01 got "1 Nov 2026"
+  FAIL before the first returned record: the view states that no belief was recorded in force on that date 10 beliefs held on 1 Nov 2026:
+          grokepisodicvalid from 12 Apr 2026, still held
+          The old fairground site hosted the very fi
+  PASS before the first returned record: the view names the first returned date
+  FAIL before the first returned record: no belief is presented as current for that date 10 rows
+  PASS date after the last returned record 2026-12-01: the control renders
+  FAIL date after the last returned record 2026-12-01: a date input is present 
+  FAIL date after the last returned record 2026-12-01: the date input holds the selected date 2026-12-01 no date input
+  PASS date after the last returned record 2026-12-01: the handle rests on 2026-11-01
+  FAIL date after the last returned record 2026-12-01: the readout names 1 Dec 2026 got 1 Nov 2026
+  FAIL date after the last returned record 2026-12-01: the aria value text is the selected date string 2026-12-01 got "1 Nov 2026"
+  FAIL after the last returned record: the view states that no later returned record exists in the returned range 10 beliefs held on 1 Nov 2026:
+          grokepisodicvalid from 12 Apr 2026, still held
+          The old fairground site hosted the very fi
+  PASS after the last returned record: the API still returns the beliefs in force
+  FAIL after the last returned record: the list shows the latest beliefs as the belief in force 10 rows against 12 from the API
+  PASS slider driven to 2026-10-25: the control renders
+  FAIL slider driven to 2026-10-25: a date input is present 
+  FAIL slider driven to 2026-10-25: the date input holds the selected date 2026-10-25 no date input
+  PASS slider driven to 2026-10-25: the handle rests on 2026-10-25
+  PASS slider driven to 2026-10-25: the readout names 25 Oct 2026
+  FAIL slider driven to 2026-10-25: the aria value text is the selected date string 2026-10-25 got "25 Oct 2026"
+  PASS slider driven to 2026-10-25: the list holds the Hall B belief and omits Hall A
+  info keyboard walk: focus "asof", start 2026-04-12, ArrowRight undefined, ArrowLeft undefined, End undefined, Home undefined
+  PASS keyboard walk: the slider takes focus
+  PASS keyboard walk at the earliest returned date: the control renders
+  FAIL keyboard walk at the earliest returned date: a date input is present 
+  FAIL keyboard walk at the earliest returned date: the date input holds the selected date 2026-04-12 no date input
+  FAIL keyboard walk at the earliest returned date: the handle rests on 2026-04-12 got 2026-11-01 (value 1793491200000)
+  FAIL keyboard walk at the earliest returned date: the readout names 12 Apr 2026 got 1 Nov 2026
+  FAIL keyboard walk at the earliest returned date: the aria value text is the selected date string 2026-04-12 got "1 Nov 2026"
+  PASS keyboard walk after one ArrowRight: the control renders
+  FAIL keyboard walk after one ArrowRight: a date input is present 
+  FAIL keyboard walk after one ArrowRight: the date input holds the selected date 2026-04-13 no date input
+  FAIL keyboard walk after one ArrowRight: the handle rests on 2026-04-13 got 2026-11-01 (value 1793491200000)
+  FAIL keyboard walk after one ArrowRight: the readout names 13 Apr 2026 got 1 Nov 2026
+  FAIL keyboard walk after one ArrowRight: the aria value text is the selected date string 2026-04-13 got "1 Nov 2026"
+  PASS keyboard walk after one ArrowLeft: the control renders
+  FAIL keyboard walk after one ArrowLeft: a date input is present 
+  FAIL keyboard walk after one ArrowLeft: the date input holds the selected date 2026-04-12 no date input
+  FAIL keyboard walk after one ArrowLeft: the handle rests on 2026-04-12 got 2026-10-31 (value 1793404800000)
+  FAIL keyboard walk after one ArrowLeft: the readout names 12 Apr 2026 got 31 Oct 2026
+  FAIL keyboard walk after one ArrowLeft: the aria value text is the selected date string 2026-04-12 got "31 Oct 2026"
+  PASS keyboard walk after End: the control renders
+  FAIL keyboard walk after End: a date input is present 
+  FAIL keyboard walk after End: the date input holds the selected date 2026-11-01 no date input
+  PASS keyboard walk after End: the handle rests on 2026-11-01
+  PASS keyboard walk after End: the readout names 1 Nov 2026
+  FAIL keyboard walk after End: the aria value text is the selected date string 2026-11-01 got "1 Nov 2026"
+  PASS keyboard walk after Home: the control renders
+  FAIL keyboard walk after Home: a date input is present 
+  FAIL keyboard walk after Home: the date input holds the selected date 2026-04-12 no date input
+  PASS keyboard walk after Home: the handle rests on 2026-04-12
+  PASS keyboard walk after Home: the readout names 12 Apr 2026
+  FAIL keyboard walk after Home: the aria value text is the selected date string 2026-04-12 got "12 Apr 2026"
+  FAIL failed request: the failure was injected against a rendered control {"before":"10 beliefs held on 1 Nov 2026:\n          grokepisodicvalid from 12 A
+  FAIL failed request: the list held the Hall A belief before the failure 
+  FAIL failed request: the failure is announced with role alert null
+  PASS failed request: the previous list stays in place, word for word
+  FAIL failed request: the selected date stays in place on both controls date input null, readout "1 Nov 2026"
+  FAIL API: on an empty corpus earliest_date and latest_date read back as null got undefined and undefined
+  PASS empty corpus: no slider and no date input are bound
+  PASS empty corpus: the designed empty state renders
+  PASS empty corpus: nothing on the page binds to 1 January 1970
+  PASS empty corpus: no earliest returned date is claimed when none is returned
+time-travel-d3: 65 FAILURES

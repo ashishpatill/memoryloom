@@ -15,6 +15,10 @@
  * The call is spend-logged like every paid call (provider 'baseten',
  * spend class 'calibration'). Published Baseten prices for this model:
  * $0.30 / 1M input, $1.20 / 1M output.
+ * Owning file: checks/probe-baseten.mjs
+ * Accountable layer: Router layer
+ * Provider need: Live Baseten
+ * Declared mode: Runs only inside its owning card
  */
 import { resolveProviderKey } from '../lib/config.mjs';
 import { logSpend } from '../router/spend.mjs';

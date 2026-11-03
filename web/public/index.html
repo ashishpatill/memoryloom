@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MemoryLoom — one shared, auditable memory brain for agent teams</title>
-<meta name="description" content="MemoryLoom is one shared, auditable memory for a team of AI agents: every agent writes through a review gate, recall always shows its evidence, and the team can answer what it believed on any date.">
+<title>MemoryLoom, one memory for every AI agent you run</title>
+<meta name="description" content="MemoryLoom gives every AI agent you run the same memory. Answers show where they came from, a correction is made once and seen by every agent, and what the team believed on any past date can be read back.">
 <link rel="stylesheet" href="/tokens.css">
 <style>
   /* Landing-page layout helpers only. Every colour, face, size and
@@ -37,7 +37,8 @@
   @media (max-width: 700px) { .step-row { grid-template-columns: 1fr; gap: var(--space-1); } }
   .step-row .step-kind { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2); padding-top: 3px; }
   .step-row p { margin: 0 0 var(--space-1); }
-  .step-row .evidence-line { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--ink-2); line-height: var(--leading-data); word-break: break-word; }
+  .step-row .evidence-line { font-size: var(--text-sm); color: var(--ink-2); line-height: var(--leading-body); word-break: break-word; background: var(--paper-sunken); border: var(--rule); border-radius: var(--radius); padding: var(--space-2) var(--space-3); }
+  .step-row .evidence-label { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: var(--tracking-label); text-transform: uppercase; color: var(--ink-2); margin-right: var(--space-2); }
   .asked { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
   @media (max-width: 700px) { .asked { grid-template-columns: 1fr; } }
   .asked .card p { margin: 0; }
@@ -47,72 +48,126 @@
   table.data td.wrap-num { font-family: var(--font-mono); white-space: normal; }
   .empty-state { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-5); text-align: center; color: var(--ink-2); background: var(--surface); }
   .empty-state h3 { color: var(--ink); }
+  /* S7: hero corpus label, contract lines in the section 01 cards,
+     the section 04 live strip and the section 05 sub table head.
+     Arrangement only; every value comes from tokens.css. */
+  .corpus-note { margin: var(--space-3) 0 0; max-width: var(--measure); }
+  .contract { margin-top: var(--space-4); border-top: var(--rule); padding-top: var(--space-3); display: grid; gap: var(--space-2); }
+  .contract p { margin: 0; font-size: var(--text-sm); color: var(--ink-2); line-height: var(--leading-body); }
+  .contract .fact-k { color: var(--ink); margin-right: var(--space-2); }
+  .cascade-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); border-top: var(--rule); margin-top: var(--space-4); padding-top: var(--space-3); }
+  .cascade-strip .fact-k { display: block; margin-bottom: var(--space-1); }
+  .cascade-strip .strip-value { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--ink); }
+  .sub-table-head { margin: var(--space-5) 0 var(--space-2); }
+  /* S8: skip link, still loading blocks and the hero empty title.
+     Arrangement only; every value comes from tokens.css. */
+  .skip-link {
+    position: absolute; left: var(--space-3); top: var(--space-3); z-index: 20;
+    width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+    background: var(--surface); color: var(--ink); border: var(--rule-strong); border-radius: var(--radius);
+    padding: var(--space-2) var(--space-3); font-size: var(--text-sm); text-decoration: none;
+  }
+  .skip-link:focus-visible { width: auto; height: auto; overflow: visible; clip: auto; }
+  .skeleton { display: grid; gap: var(--space-3); }
+  .skeleton .sk { height: 58px; border-radius: var(--radius); border: var(--rule); background: var(--surface); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .empty-state .empty-title { font-family: var(--font-display); font-size: var(--display-sm); font-weight: 600; color: var(--ink); margin: 0 0 var(--space-2); }
+  .view-alert {
+    font-size: var(--text-sm); line-height: var(--leading-body); color: var(--ink);
+    background: var(--paper-sunken); border: var(--rule-strong); border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); text-align: left;
+  }
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to the content</a>
 <div class="wrap">
   <header class="site-head">
     <div class="wordmark">Memory<span class="loom">Loom</span></div>
-    <nav>
-      <a href="#helps">How it helps</a>
+    <nav aria-label="Page sections">
+      <a href="#first-day">How to start</a>
+      <a href="#helps">Use cases</a>
       <a href="#loop">How it works</a>
-      <a href="#learning">Learning</a>
-      <a href="#providers">Providers</a>
       <a href="#proof">Proof</a>
-      <a href="#start">Get started</a>
-      <a href="/console">Open the console</a>
+      <a href="#start">For developers</a>
+      <a href="/console">Open chat</a>
     </nav>
   </header>
 
+  <main id="main" tabindex="-1">
   <div class="hero">
-    <h1>Agent teams forget. This one doesn&rsquo;t.</h1>
-    <p class="lede">MemoryLoom is one shared, auditable memory for a team of AI agents &mdash; it helps teams whose agents work across many sessions by giving every agent the same record of what the team knows, why it believes it, and what it believed before.</p>
+    <h1>One memory for every AI agent you run</h1>
+    <p class="lede">MemoryLoom gives all your AI agents the same memory, so a fact learned by one agent is known by every agent you run.</p>
+    <p style="max-width:var(--measure)">Ask what your agents know and each answer shows where it came from, so you can trust it or challenge it. Correct a fact once and every agent works from the correction, not from the old fact. It remembers what the team believed in the past as well, so you can ask what was believed on any earlier day.</p>
+    <p style="max-width:var(--measure)">MemoryLoom is for people who work with AI agents every day. It is for founders and operators and researchers and support leads and small team leads who run more than one agent and need those agents to agree on the facts.</p>
     <div class="cta-row">
-      <a class="btn primary" href="/console">See it working</a>
-      <a class="btn" href="#proof">Read the proof</a>
+      <a class="btn primary" href="/console">Open chat</a>
+      <a class="btn" href="#first-day">Read on</a>
     </div>
-    <p class="small" style="margin-top:var(--space-4)">The demonstration runs on a small fictional corpus &mdash; a community demo rig called Project Lantern, tended by two agents, grok and moose. Everything on this page that shows data is rendered live from that corpus in the database, not from a picture of it.</p>
-    <figure class="fig reveal" style="margin-top:var(--space-5)">
-      <div class="fig-head"><span>Fig. 1 &mdash; The weave, live</span><span id="heroState">loading the corpus&hellip;</span></div>
-      <div class="fig-body">
-        <svg id="heroGraph" class="graph-svg" role="img" aria-label="Animated graph of the demo corpus: two agents weaving memories over time"></svg>
-        <div class="graph-ctl">
-          <button class="btn small-btn" id="heroToggle" type="button">Pause</button>
-          <span class="small">Each thread is one author &mdash; grok on the upper thread, moose on the middle thread, and the standing lesson on the lower thread, recorded under the learning promotion&rsquo;s name and labelled &ldquo;learning&rdquo;. Threads are told apart by position and label. A knot is a memory, placed at the moment it was recorded; hollow knots are proposals still waiting for a decision, crossed knots have been superseded. The rust line is the playhead: it sweeps the corpus timeline, and it is the one use of the accent on this page, because it marks the moment a memory moved.</span>
-        </div>
-      </div>
-      <figcaption><b>Proves:</b> the graph on this page is rendered from the same records the console queries &mdash; dates, authors, grounding and supersession all come from the store. <b>Does not prove:</b> anything about scale; this corpus is small by design.</figcaption>
-    </figure>
+    <p class="small" style="margin-top:var(--space-4)">The demonstration runs on a small fictional corpus, a community demo rig called Project Lantern, tended by two agents named grok and moose. Everything on this page that shows data is read live from that corpus in the database, not from a picture of it.</p>
+    
   </div>
+
+  <section class="band" id="first-day">
+    <div class="section-head">
+      <span class="num">How to start</span>
+      <h2>Your first day with MemoryLoom</h2>
+      <p class="standfirst">Three things, in the order you will do them. Nothing here needs setting up before your first conversation on this demo.</p>
+    </div>
+    <div class="cols3">
+      <div class="card"><h3>Talk</h3><p style="margin:0">Open chat and say things the way you would say them to a colleague. Tell it a fact about your work and it will be checked before it is kept. There is nothing to set up before your first conversation.</p></div>
+      <div class="card"><h3>Ask</h3><p style="margin:0">Ask a question in plain words and read the answer at the top. Under the answer you can open the proof and see which record the answer came from and who wrote it. If nothing solid is stored, it tells you so instead of guessing.</p></div>
+      <div class="card"><h3>Correct</h3><p style="margin:0">When a fact is wrong, say the right fact in chat. Once the correction is kept, every agent you run works from the new fact. The old fact stays readable, so you can still see what the team used to believe.</p></div>
+    </div>
+  </section>
 
   <section class="band" id="helps">
     <div class="section-head">
-      <span class="num">01 &mdash; How it helps</span>
-      <h2>Three things that stop going wrong</h2>
-      <p class="standfirst">A team of agents without a shared memory loses knowledge in three ordinary ways. MemoryLoom is built so each of them has a plain answer.</p>
+      <span class="num">Everyday use</span>
+      <h2>What it does for you, day to day</h2>
+      <p class="standfirst">Four ordinary moments, in the words of the person living them.</p>
     </div>
-    <div class="cols3">
-      <div class="card"><h3>No more cold starts</h3><p style="margin:0">Every session used to begin from nothing, so yesterday&rsquo;s hard-won fact &mdash; the rig runs firmware 2.4.1 &mdash; was re-derived, re-asked, or quietly contradicted. Here, an agent starting work recalls what the team already holds, with the record it came from.</p></div>
-      <div class="card"><h3>One memory, not many notebooks</h3><p style="margin:0">Each agent used to remember alone, in its own format, where no other agent could read it. Here there is one store, written one way, that every agent on the team reads and proposes to.</p></div>
-      <div class="card"><h3>Every belief has a &ldquo;why&rdquo;</h3><p style="margin:0">When two agents disagreed, there was no record of who claimed what, on what evidence, or who approved it. Here every memory keeps its author, its cited evidence and its decision, so the question is answered from the record, not restarted from zero.</p></div>
+    <div class="two-col">
+      <div class="card"><h3>One memory shared by every agent you run</h3><p style="margin:0">You run one agent for research and one for writing and one for support. A fact found by the research agent in the morning is known to the support agent in the afternoon. Nobody copies notes between tools.</p></div>
+      <div class="card"><h3>Ask what was decided and get the proof</h3><p style="margin:0">You ask what the team decided about a price or a date or a plan. The answer names the record it came from and the person or agent who wrote it. You can open the record and read what the answer rests on.</p></div>
+    </div>
+    <div class="two-col" style="margin-top:var(--space-5)">
+      <div class="card"><h3>Correct a fact once and every agent sees it</h3><p style="margin:0">A venue changes or a deadline moves or a name was wrong. You give the correction once in chat. From then on every agent answers with the new fact, and the old fact is kept where you can still read it.</p></div>
+      <div class="card"><h3>Rewind to any past date</h3><p style="margin:0">A client asks why a decision was made last month. You pick the date and read what the team believed on that day. You can show what was known then, even when the team believes something different now.</p></div>
     </div>
   </section>
 
   <section class="band" id="loop">
     <div class="section-head">
-      <span class="num">02 &mdash; How it works</span>
-      <h2>Nothing enters memory unexamined</h2>
-      <p class="standfirst">One loop, run the same way every time: an agent proposes, a gate decides with its reasons recorded, truth is written once, and recall answers with receipts.</p>
+      <span class="num">How it works</span>
+      <h2>How MemoryLoom works</h2>
+      <p class="standfirst">Agents suggest what they have learned. Each suggestion is checked before it can become part of the shared memory. What passes the check is written once and is never edited after that. When a fact is replaced, the old fact stays readable with its dates. Every answer shows the record it came from. The team also keeps a log of its interactions, and lessons drawn from that log go through the same check before they can guide future answers.</p>
     </div>
+    <figure class="fig reveal" style="margin-top:var(--space-5)">
+          <div class="fig-head"><span>Fig. 1, The weave, live</span><span id="heroState">loading the corpus&hellip;</span></div>
+          <div class="fig-body">
+            <div class="skeleton" id="heroLoading" role="status"><span class="sr-only">Loading the weave…</span><div class="sk" style="height:150px"></div><div class="sk" style="height:150px"></div></div>
+            <svg id="heroGraph" class="graph-svg" role="img" aria-label="Animated graph of the demo corpus: two agents weaving memories over time"></svg>
+            <div class="graph-ctl" id="heroCtl" style="display:none">
+              <button class="btn small-btn" id="heroToggle" type="button">Pause</button>
+              <span class="small">Each thread is one author. Grok runs on the upper thread, moose on the middle thread, and the standing lesson on the lower thread, recorded under the learning promotion name and labelled learning. Threads are told apart by position and label. A knot is a memory, placed at the moment it was recorded. Hollow knots are proposals still waiting for a decision, and crossed knots have been superseded. The rust line is the playhead. It sweeps the corpus timeline, and it is the one use of the accent on this page, because it marks the moment a memory moved. Dates run in order along the bottom axis. The spacing shows the order of the dates, not the time between them, and a long stretch with no records is drawn as a labelled break.</span>
+            </div>
+          </div>
+          <figcaption><b>Proves.</b> The graph on this page is rendered from the same records the console queries. Dates, authors, grounding and supersession all come from the store. <b>Does not prove.</b> Anything about scale. This corpus is small by design.</figcaption>
+        </figure>
+        <p class="small corpus-note">The corpus woven above is a synthetic demo corpus. Every record in it is fictional, written for this demonstration.</p>
     <div class="two-col">
       <div>
-        <p>An agent <strong>proposes</strong> a memory; it never writes directly. The <strong>gate</strong> &mdash; the Jev decision service, see <a href="#providers">Providers</a> &mdash; scores the proposal and answers with one fixed choice: <strong>approve, reject, or escalate</strong> to a human. Escalate always exists, and on any gate failure the proposal queues for a human instead of being approved. The gate&rsquo;s reasons are kept with the record.</p>
-        <p>An approved memory is <strong>written once</strong> into the truth store: an append-only record carrying who proposed it, the evidence it cites, and the dates it is believed between. Nothing edits it afterwards; a belief that changes is superseded by a new record, and the old one stays readable. The recall index is derived from truth and can be rebuilt from it at any time, so a rebuild is routine, not an incident.</p>
-        <p>When an agent asks a question, <strong>recall answers with receipts</strong>: each result names the record it came from, who wrote it, and what it rests on. A result that cannot produce its receipt is dropped before the agent sees it.</p>
-        <p><a href="/console#/loop">Watch proposals move through the gate in the console &rarr;</a></p>
+        <h3>Suggestions and the check</h3>
+        <p>An agent or a person suggests a fact. The check accepts it or turns it away or passes it to a person to decide. Only accepted facts become part of the shared memory. The check is the Jev decision service, and its reasons are kept with the record. When the check cannot be reached, nothing is approved in its place, and the suggestion waits for a person instead.</p>
+        <h3>Written once</h3>
+        <p>An accepted fact is written as one record and the record is never edited. When the team learns better, a new record takes its place. The old record stays as it was written.</p>
+        <h3>Proof with every answer</h3>
+        <p>Every answer carries its proof. The proof names the record the answer came from and who wrote it and what it rests on. An answer with no proof behind it is not shown as an answer.</p>
+        <p><a href="/console">Try it in chat, or watch suggestions move through the check in the console &rarr;</a></p>
       </div>
       <figure class="fig reveal">
-        <div class="fig-head"><span>Fig. 2 &mdash; The loop</span><span>diagram</span></div>
+        <div class="fig-head"><span>Fig. 2, The loop</span><span>diagram</span></div>
         <div class="fig-body">
           <svg viewBox="0 0 520 268" class="graph-svg" role="img" aria-label="Diagram of the loop: an agent proposes, the gate decides approve, reject or escalate, approved memories are written once to truth, recall answers with a receipt">
             <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1d1a15"/></marker></defs>
@@ -141,117 +196,160 @@
             </g>
           </svg>
         </div>
-        <figcaption><b>Proves:</b> the shape of the system &mdash; every write crosses the gate, every read carries a receipt. <b>Does not prove:</b> that the gate&rsquo;s decisions are right; that is what the calibration numbers in <a href="#proof">Proof</a> are for.</figcaption>
+        <figcaption><b>Proves.</b> The shape of the system. Every write crosses the check, and every read carries a receipt. <b>Does not prove.</b> That the decisions of the check are right. That is what the calibration numbers in <a href="#proof">Proof</a> are for.</figcaption>
       </figure>
     </div>
 
-    <h3 style="margin-top:var(--space-7)">The words, defined once</h3>
-    <p class="small" style="max-width:var(--measure)">These seven nouns are spelled the same way here, in the console and in the README. Everything else on this page is built from them.</p>
+    <h3 style="margin-top:var(--space-7)">Words we use</h3>
+    <p class="small" style="max-width:var(--measure)">Seven words carry the whole page. Each one is spelled the same way here, in the console and in the README.</p>
     <div class="card" style="padding:6px 14px">
       <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Noun</th><th>What it is</th></tr></thead>
+        <thead><tr><th scope="col">Word</th><th scope="col">What it means</th></tr></thead>
         <tbody>
-          <tr><td class="mono">memory</td><td>One recorded belief: its text, who proposed it, the evidence it cites, and the dates it was believed between.</td></tr>
-          <tr><td class="mono">proposal</td><td>A memory an agent asks to add. It is not in the store until the gate approves it, or a human approves an escalation.</td></tr>
-          <tr><td class="mono">gate</td><td>The decision step every proposal crosses. It answers approve, reject, or escalate, and its reasons are recorded with the outcome.</td></tr>
-          <tr><td class="mono">receipt</td><td>The proof attached to a recalled memory: the record it came from, who wrote it, and what it rests on. No receipt, no answer.</td></tr>
-          <tr><td class="mono">recall</td><td>Asking the store a question. It searches the index derived from truth and returns memories with their receipts.</td></tr>
-          <tr><td class="mono">namespace</td><td>One team&rsquo;s separate memory space inside the store. The demo corpus lives in its own namespace, apart from any real work.</td></tr>
-          <tr><td class="mono">playbook</td><td>The standing lessons the team has earned. A lesson is a memory like any other &mdash; proposed, gated, recalled, and decayed the same way (see <a href="#learning">Learning</a>).</td></tr>
+          <tr><td class="mono">memory</td><td>The facts the team holds and can answer from.</td></tr>
+          <tr><td class="mono">belief</td><td>A fact the team holds as true for a stretch of time.</td></tr>
+          <tr><td class="mono">proposal</td><td>A fact put forward to be checked before it can be kept.</td></tr>
+          <tr><td class="mono">gate</td><td>The check that accepts a proposal or turns it away or passes it to a person.</td></tr>
+          <tr><td class="mono">record</td><td>One fact written once and kept as it was written.</td></tr>
+          <tr><td class="mono">receipt</td><td>The proof under an answer that names the record it came from and who wrote it and what it rests on.</td></tr>
+          <tr><td class="mono">lesson</td><td>A teaching drawn from the log of past interactions and put through the same check as any proposal.</td></tr>
         </tbody>
       </table>
       </div>
     </div>
 
-    <h3 style="margin-top:var(--space-7)">What did the team believe on this date?</h3>
-    <p style="max-width:var(--measure)">Because every memory carries the dates it was believed between, the store can answer for a past date &mdash; from the record, not from what happens to be true now. In the demo corpus the venue changed: Hall A was believed until 20 October, Hall B from 20 October. Both answers below are read live from the store as this page loads.</p>
-    <div class="asked">
-      <div class="card"><span class="when">Asked as of 12 Oct 2026</span><p id="believed12">reading the store&hellip;</p></div>
-      <div class="card"><span class="when">Asked as of 25 Oct 2026</span><p id="believed25">reading the store&hellip;</p></div>
+    <h3 style="margin-top:var(--space-7)">Old beliefs stay readable</h3>
+    <p style="max-width:var(--measure)">When a belief is replaced, the replaced belief stays readable with the dates it held for. You can ask what the team believed on any past date and get the beliefs of that day. In the demo corpus the venue changed. Hall A was believed until 20 October, and Hall B from 20 October. Both answers below are read live from the store as this page loads.</p>
+    <div class="asked" id="believedPanel">
+      <div class="card" aria-live="polite"><span class="when">Asked as of 12 Oct 2026</span><div class="skeleton believed-loading"><div class="sk" style="height:20px"></div></div><p id="believed12"></p></div>
+      <div class="card" aria-live="polite"><span class="when">Asked as of 25 Oct 2026</span><div class="skeleton believed-loading"><div class="sk" style="height:20px"></div></div><p id="believed25"></p></div>
     </div>
-    <p class="small" style="margin-top:var(--space-3)">Try other dates in the <a href="/console#/time">console&rsquo;s time-travel view</a>. <b>Proves:</b> supersession keeps both beliefs and their dates. <b>Does not prove:</b> that the newer belief is correct &mdash; only that it is the one the team held.</p>
+    <p class="small" style="margin-top:var(--space-3)">Try other dates in the <a href="/console#/time">console time travel view</a>. <b>Proves.</b> A replaced belief keeps its dates, so both beliefs stay readable. <b>Does not prove.</b> That the newer belief is correct, only that it is the one the team held.</p>
   </section>
 
   <section class="band" id="learning">
     <div class="section-head">
-      <span class="num">03 &mdash; Learning</span>
-      <h2>The app itself gets better, on the record</h2>
-      <p class="standfirst">MemoryLoom does not just store what agents know. It keeps a record of how the team worked, and turns that record into standing lessons &mdash; carefully, in the open, and only through the same gate as everything else.</p>
+      <span class="num">Learning</span>
+      <h2>Learning from the log</h2>
+      <p class="standfirst">Interactions are logged as they happen. Lessons drawn from the log are suggested in the same way as any other fact. A lesson guides future answers only after it passes the same check.</p>
     </div>
-    <p style="max-width:var(--measure)">Every interaction is logged as a <strong>provenance event</strong>: a proposal, a gate verdict, a correction made in the same turn, a recall that hit or missed. The log is append-only &mdash; events are never edited or deleted, so the story of an improvement can always be re-read. When an episode teaches something general, a <strong>lesson is proposed from it and gated like a memory</strong>: the Jev gate decides whether it becomes a standing playbook lesson, and a lesson written in by any other route is caught by audit and quarantined. An approved lesson is a memory, so the next agent <strong>recalls it by receipt</strong> and behaves differently; and because it is a memory, a lesson that stops being used <strong>decays</strong> on the same schedule as everything else, with the gate deciding keep or drop. Improvement here is not asserted &mdash; it is shown, event by event, below.</p>
+    <div class="steps" role="list" aria-label="The five mechanics of the learning loop">
+      <div class="step-row" role="listitem">
+        <span class="step-kind">Provenance</span>
+        <p>Every interaction is logged as an event in an append only log. Events are never edited or deleted, so the story of any improvement can always be read again.</p>
+      </div>
+      <div class="step-row" role="listitem">
+        <span class="step-kind">The gate</span>
+        <p>When an episode teaches something general, a lesson is proposed from it and decided by the same gate as a memory. Only a gate decision can make it a standing lesson.</p>
+      </div>
+      <div class="step-row" role="listitem">
+        <span class="step-kind">Audit</span>
+        <p>A lesson written in by any other route is caught by the audit and quarantined. It never stands as approved.</p>
+      </div>
+      <div class="step-row" role="listitem">
+        <span class="step-kind">Recall</span>
+        <p>An approved lesson is a memory like any other. The next agent recalls it by receipt and works differently because of it.</p>
+      </div>
+      <div class="step-row" role="listitem">
+        <span class="step-kind">Decay</span>
+        <p>A lesson that stops being used decays on the same schedule as every other memory, and the gate decides whether it is kept or dropped.</p>
+      </div>
+    </div>
     <figure class="fig reveal">
-      <div class="fig-head"><span>Fig. 3 &mdash; One lesson, earned in the open</span><span id="learningState">reading the record&hellip;</span></div>
+      <div class="fig-head"><span>Fig. 3, One lesson, earned in the open</span><span id="learningState">reading the record&hellip;</span></div>
       <div class="fig-body">
-        <div id="learningSteps"><p class="small">Loading the recorded events from the demo corpus&hellip;</p></div>
+        <div id="learningSteps"><div class="skeleton" role="status"><span class="sr-only">Loading the learning record…</span><div class="sk" style="height:44px"></div><div class="sk" style="height:44px"></div><div class="sk" style="height:44px"></div></div></div>
         <div id="lessonCard" style="margin-top:var(--space-4)"></div>
         <p class="small" id="learningAudit" style="margin-top:var(--space-3)"></p>
       </div>
-      <figcaption><b>Proves:</b> the sequence in this figure is the recorded one &mdash; every line is an event or a verdict read live from the store, with its evidence, for the seeded task of lodging a global claim. <b>Recorded when:</b> the demo is seeded with a Jev key configured in Settings (or set in the environment) &mdash; the gate that promotes the lesson needs it, and seeded without one the seed prints a notice that the story was not recorded and this figure shows its empty state instead. The corpus, recall, the graph and time travel need no key. <b>Does not prove:</b> that lessons keep helping as they accumulate; the record so far is one lesson, and it says so. Read the full stream in the <a href="/console#/learning">console&rsquo;s learning view</a>.</figcaption>
+      <figcaption><b>Proves.</b> The sequence in this figure is the recorded one. Every line is an event or a verdict read live from the store, with its evidence, for the seeded task of lodging a global claim. <b>Recorded when.</b> The demo is seeded with a Jev key configured in Settings or set in the environment. The gate that promotes the lesson needs it. Seeded without one, the seed prints a notice that the story was not recorded and this figure shows its empty state instead. The corpus, recall, the graph and time travel need no key. <b>Does not prove.</b> That lessons keep helping as they accumulate. The record so far is one lesson, and it says so. Read the full stream in the <a href="/console#/learning">console learning view</a>.</figcaption>
     </figure>
-    <p class="small" style="margin-top:var(--space-3)">In plain terms: grok lodged a claim citing no evidence and was escalated; the correction was written down in the same turn; the episode became a lesson only after the gate approved it; and moose, a different agent, then lodged a claim of the same kind and was approved first try &mdash; because the lesson was recalled, with its receipt, before acting.</p>
+    <p class="small" style="margin-top:var(--space-3)">In plain terms. Grok lodged a claim citing no evidence and was escalated. The correction was written down in the same turn. The episode became a lesson only after the gate approved it. Moose, a different agent, then lodged a claim of the same kind and was approved first try, because the lesson was recalled, with its receipt, before acting.</p>
   </section>
 
   <section class="band" id="providers">
     <div class="section-head">
-      <span class="num">04 &mdash; Providers</span>
-      <h2>Two working parts, named honestly</h2>
-      <p class="standfirst">MemoryLoom&rsquo;s own code holds the memory, the gate logic and the record. Two outside services do the model work and the deciding, and each is named for exactly what it does &mdash; no more.</p>
+      <span class="num">Providers</span>
+      <h2>Who does the work</h2>
+      <p class="standfirst">Model work runs in steps. Cheap first pass work is done cheaply. The check decides every decision that can be listed in advance, and disagreements move up to the strongest step. Every name, count and figure in the table is read from the router records when the page loads.</p>
     </div>
     <div class="card" style="padding:6px 14px">
       <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Provider</th><th>What it does here</th><th>Without its key</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Meta Model API</strong><br><span class="small">model <span class="mono">muse-wonder-1.0</span> &mdash; the only Meta model this build uses</span></td><td>Thinking work, in two tiers of the same model: Wonder Full (high effort) writes consolidations, narrates recall answers and explains contradictions; Wonder (medium effort) handles triage and implementation passes. Every call goes through the router, is spend-logged and content-hash cached.</td><td>The local provider covers model work offline. The demo, recall, the graph and time travel all run with no key at all.</td></tr>
-          <tr><td><strong>Jev</strong><br><span class="small">TypeSafe decision API, <span class="mono">jev-1.13.0</span></span></td><td>Deciding work: every decision that has a fixed set of answers goes to Jev &mdash; the write gate (approve / reject / escalate), consolidation accept, decay keep / drop, and lesson promotion. Its scores are calibrated before thresholds go live, and its reasons are recorded.</td><td>There is no local fallback that approves. With no key, or on any Jev failure, the gate fails closed and proposals queue for a human.</td></tr>
+        <thead><tr><th scope="col">Tier</th><th scope="col">Work</th><th scope="col">Run on</th><th scope="col">Decides</th><th scope="col">Refuses</th></tr></thead>
+        <tbody id="cascadeBody">
+          <tr><td colspan="5"><div class="skeleton"><div class="sk" style="height:16px"></div><div class="sk" style="height:16px"></div></div></td></tr>
         </tbody>
       </table>
       </div>
+      <div class="cascade-strip" id="cascadeStrip"></div>
+      <p class="small" style="margin-top:var(--space-4)">A part appears here only when the router has logged work for it. Fireworks and Modal did no work in this build and do not appear.</p>
+      <p class="small" style="margin-top:var(--space-2)"><b>Proves.</b> Model work ran in a priced cascade, and the deciding stayed with the gate at every tier. <b>Does not prove.</b> That the cheap tier is careful. It is never given a decision to be careful with.</p>
     </div>
-    <p class="small" style="margin-top:var(--space-3)">And the parts that are <em>not</em> working parts, stated plainly: a Baseten key can be stored and tested in Settings, but the Baseten lane is parked &mdash; its grant key serves only a model this build does not use &mdash; so no product path calls Baseten and its spend is $0. Fireworks and Modal have no role in this build.</p>
   </section>
 
   <section class="band" id="proof">
     <div class="section-head">
-      <span class="num">05 &mdash; Proof</span>
+      <span class="num">Proof</span>
       <h2>Checked, not claimed</h2>
-      <p class="standfirst">Every number below is traced to a record in the repository, named beside it. Small numbers, honestly labelled: they prove the mechanics behave as designed. They do not prove quality at scale, and the table says where each one stops.</p>
+      <p class="standfirst">Every number below is traced to a record in the repository, named beside it. Small numbers, honestly labelled. They prove the mechanics behave as designed. They do not prove quality at scale, and the table says where each one stops.</p>
     </div>
     <div class="card" style="padding:6px 14px">
       <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Check</th><th>Result</th><th>Source</th><th>What it does not prove</th></tr></thead>
+        <thead><tr><th scope="col">Check</th><th scope="col">Result</th><th scope="col">Source</th><th scope="col">What it does not prove</th></tr></thead>
         <tbody>
-          <tr><td>Write-gate calibration &mdash; a fixed golden set of 40 synthetic proposals scored through the production gate path</td><td class="num">40 / 40<br>0 unsafe approvals</td><td class="small"><span class="mono">docs/calibration-jev-gate.md</span> (run 30 Oct 2026, jev-1.13.0). Thresholds went live only after this passed.</td><td>That unseen proposal classes are safe &mdash; escalation exists for those.</td></tr>
-          <tr><td>Core-reasoning calibration &mdash; 36 synthetic items: consolidation, recall narration, contradiction explanation</td><td class="num">36 / 36<br>both tiers</td><td class="small"><span class="mono">docs/calibration-meta-core-reasoning.md</span> (Wonder Full and Wonder, muse-wonder-1.0).</td><td>Anything about public benchmarks &mdash; this is a private golden set.</td></tr>
-          <tr><td>Recall evaluation, LongMemEval-style &mdash; 42 questions over a 120-memory haystack (Project Kestrel, six dated sessions)</td><td class="num">recall@5 27/29 (93%)<br>recall@10 29/29 (100%)</td><td class="small"><span class="mono">docs/eval-longmem.md</span>, harness <span class="mono">checks/eval-longmem.mjs</span>, scored deterministically, no model judge.</td><td>Recall quality at scale. The weak spots are measured, not hidden: knowledge-update 6/10, abstention 3/8 &mdash; both are explained in the source.</td></tr>
-          <tr><td>Check suites, run fresh on new databases</td><td class="wrap-num" id="suiteCounts">surface 37/37 &middot; router 11/11 &middot; gate 21/21 &middot; two-plane 22/22 &middot; graph+daemon 44/44 &middot; learning 36/36 &middot; learning demo 8/8 &middot; settings 46/46 &middot; web 89/89</td><td class="small">The suites under <span class="mono">checks/</span> in this repository, re-run for this page&rsquo;s build; the iteration report carries the fresh counts.</td><td>Behaviour under production load.</td></tr>
-          <tr><td>Spend to date, all providers</td><td class="num" id="spendLive">reading the spend log&hellip;</td><td class="small"><span class="mono">router/spend-log.jsonl</span>, read live through the console&rsquo;s spend view. The log is the record and the figure at left is its current total &mdash; nothing on this page is typed in. Baseten, Fireworks, Modal: $0 (no calls, ever, in this build).</td><td>&mdash;</td></tr>
+          <tr><td>Write gate calibration. A fixed golden set of 40 synthetic proposals scored through the production gate path</td><td class="num">40 / 40<br>0 unsafe approvals</td><td class="small"><span class="mono">docs/calibration-jev-gate.md</span> (run 30 Oct 2026, jev-1.13.0). Thresholds went live only after this passed.</td><td>That unseen proposal classes are safe. Escalation exists for those.</td></tr>
+          <tr><td>Core reasoning calibration. 36 synthetic items covering consolidation, recall narration and contradiction explanation</td><td class="num">36 / 36<br>both tiers</td><td class="small"><span class="mono">docs/calibration-meta-core-reasoning.md</span> (Wonder Full and Wonder, muse-wonder-1.0).</td><td>Anything about public benchmarks. This is a private golden set.</td></tr>
+          <tr><td>Recall evaluation in the LongMemEval style. 42 questions over a 120 memory haystack (Project Kestrel, six dated sessions)</td><td class="num">recall@5 27/29 (93%)<br>recall@10 29/29 (100%)</td><td class="small"><span class="mono">docs/eval-longmem.md</span>, harness <span class="mono">checks/eval-longmem.mjs</span>, scored deterministically, no model judge.</td><td>Recall quality at scale. The weak spots are measured, not hidden. Knowledge update 6/10 and abstention 3/8, both explained in the source.</td></tr>
+          <tr><td>Check suites, run fresh on new databases</td><td class="wrap-num" id="suiteCounts">surface 37/37 &middot; router 11/11 &middot; gate 21/21 &middot; two-plane 22/22 &middot; graph+daemon 44/44 &middot; learning 36/36 &middot; learning demo 8/8 &middot; settings 46/46 &middot; web 89/89</td><td class="small">The suites under <span class="mono">checks/</span> in this repository, run again for this page build. The iteration report carries the fresh counts.</td><td>Behaviour under production load.</td></tr>
+          <tr><td>Spend to date, all providers</td><td class="num" id="spendLive"><div class="skeleton"><div class="sk" style="height:16px"></div></div></td><td class="small"><span class="mono">router/spend-log.jsonl</span>, read live through the console spend view. The log is the record and the figure at left is its current total. Nothing on this page is typed in. Fireworks and Modal stand at $0, with no calls in this build. The Baseten share of the total at left comes from the same log and covers the operations tier calibration recorded in docs/spark-open-calibration.md.</td><td>The log is the whole claim.</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+    <h3 class="sub-table-head">The cascade behind these numbers</h3>
+    <p class="small" style="max-width:var(--measure)">One row for every group the router has logged, read from the same spend records as the table in Providers above. Cached calls are free and are counted apart from charged calls.</p>
+    <div class="card" style="padding:6px 14px">
+      <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th scope="col">Tier</th><th scope="col">Work</th><th scope="col">Run on</th><th scope="col">Calls</th><th scope="col">Cached, free</th><th scope="col">Spend</th></tr></thead>
+        <tbody id="cascadeSubBody">
+          <tr><td colspan="6"><div class="skeleton"><div class="sk" style="height:16px"></div><div class="sk" style="height:16px"></div></div></td></tr>
         </tbody>
       </table>
       </div>
     </div>
   </section>
 
+  <section class="band" id="limits">
+    <div class="section-head">
+      <span class="num">Limits</span>
+      <h2>What MemoryLoom does not do</h2>
+    </div>
+    <p style="max-width:var(--measure)">MemoryLoom answers from the records it holds. When nothing solid is stored, it says so instead of guessing. It does not settle arguments between records on its own, and a person decides the proposals the check passes on. The public demo runs on a small set of records about Project Lantern, so demo answers show the shape of the product rather than the size of a real team memory.</p>
+  </section>
+
   <section class="band" id="start">
     <div class="section-head">
-      <span class="num">06 &mdash; Get started</span>
+      <span class="num">For developers</span>
       <h2>Run it, then paste your keys in Settings</h2>
-      <p class="standfirst">You need Node 22+ and a Postgres 16 database with the pgvector extension. Setup is done once; after that, one command starts the whole app &mdash; this site at <span class="mono">/</span>, the console at <span class="mono">/console</span>.</p>
+      <p class="standfirst">You need Node 22 or later and Postgres 16 with pgvector. Copy the example settings file to your local settings file and set your database address there. Then install and prepare and seed and start with the commands below. Setup is done once. After that, one command starts the whole app, this site at <span class="mono">/</span> and the console at <span class="mono">/console</span>.</p>
     </div>
     <pre class="code">cp .env.example .env.local   # set DATABASE_URL (Postgres 16 + pgvector)
 npm install
 npm run db:init                                  # schema + migrations
 DATABASE_URL=postgres://&hellip; npm run seed:web   # the Project Lantern demo corpus + its learning story
 DATABASE_URL=postgres://&hellip; npm run web       # the one command: site + console</pre>
-    <p style="max-width:var(--measure)"><strong>Provider keys, the standard way.</strong> MemoryLoom runs with no keys at all &mdash; the demo corpus, recall, the graph and time travel all work on your machine. One part is recorded, not live: the learning story in Fig. 3 is recorded at seed time, and recording it needs the gate &mdash; seed with a Jev key configured in Settings (or set in the environment) and the full story is recorded; seed without one and the seed prints a notice saying the story was not recorded, while everything else still works. To switch on the hosted providers, open the console, go to <strong>Settings</strong>, and paste your own key for each provider: a Meta Model API key from <span class="mono">dev.meta.ai</span>, a Jev key from TypeSafe, a Baseten key from the Baseten workspace settings. Use <strong>Test connection</strong> on each one before you rely on it.</p>
-    <p style="max-width:var(--measure)"><strong>Where the keys live.</strong> Keys pasted into Settings are stored in <span class="mono">.env.local</span> in the app folder, on your machine only, with file permissions 0600. The file is git-ignored and never committed; Settings shows only the last four characters of a saved key; and keys are never written to any log. An environment variable (<span class="mono">META_MODEL_API_KEY</span>, <span class="mono">TYPESAFE_API_KEY</span>, <span class="mono">BASETEN_API_KEY</span>) can be set instead and wins over Settings. Settings can only be changed from the local app &mdash; a hosted deployment cannot change them.</p>
-    <p class="small">Agents connect over MCP (<code class="inline">npm run mcp</code>) and speak the same propose / recall / review surface the console renders. The console displays decisions; it never makes or overrides one.</p>
+    <p style="max-width:var(--measure)"><strong>Provider keys, the standard way.</strong> MemoryLoom runs with no keys at all. The demo corpus, recall, the graph and time travel all work on your machine. One part is recorded, not live. The learning story in Fig. 3 is recorded at seed time, and recording it needs the gate. Seed with a Jev key configured in Settings or set in the environment and the full story is recorded. Seed without one and the seed prints a notice saying the story was not recorded, while everything else still works. To switch on the hosted providers, open the console, go to <strong>Settings</strong>, and paste your own key for each provider. A Meta Model API key comes from <span class="mono">dev.meta.ai</span>, a Jev key from TypeSafe, and a Baseten key from the Baseten workspace settings. Use <strong>Test connection</strong> on each one before you rely on it.</p>
+    <p style="max-width:var(--measure)"><strong>Where the keys live.</strong> Keys pasted into Settings are stored in <span class="mono">.env.local</span> in the app folder, on your machine only, with file permissions 0600. The file is git ignored and never committed. Settings shows only the last four characters of a saved key, and keys are never written to any log. An environment variable (<span class="mono">META_MODEL_API_KEY</span>, <span class="mono">TYPESAFE_API_KEY</span>, <span class="mono">BASETEN_API_KEY</span>) can be set instead and wins over Settings. Settings can only be changed from the local app. A hosted deployment cannot change them.</p>
+    <p class="small">Agents connect over MCP (<code class="inline">npm run mcp</code>) and speak the same propose, recall and review surface the console renders. The console displays decisions. It never makes or overrides one.</p>
   </section>
+  </main>
 
   <footer class="site-foot">
-    <p>MemoryLoom &mdash; one shared, auditable memory brain for agent teams. Data lives in one Postgres store on your own machine; the demonstration corpus (Project Lantern) is fictional, written for this demo, and no real data appears anywhere on this site or in the console.</p>
+    <p>MemoryLoom. One memory for every AI agent you run, with the proof kept for every answer. Data lives in one Postgres store on your own machine. The demonstration corpus, Project Lantern, is fictional, written for this demo, and no real data appears anywhere on this site or in the console.</p>
   </footer>
 </div>
 <script src="/graph.js"></script>

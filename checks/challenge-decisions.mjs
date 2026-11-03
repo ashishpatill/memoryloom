@@ -24,6 +24,10 @@
  * HTTP 403), so this harness refuses to spend and reports the
  * deferral. It runs live only when router/config.json
  * baseten_probe.verdict records a cleared probe.
+ * Owning file: checks/challenge-decisions.mjs
+ * Accountable layer: Decision layer
+ * Provider need: None while the probe record stands
+ * Declared mode: Keyless refusal, runs only inside its owning card
  */
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

@@ -1,0 +1,71 @@
+
+> memoryloom@0.1.0 verify
+> node checks/verify-all.mjs
+
+== Step 0: startup protections and preflight ==
+startup settings guard: PASS (no inherited settings file value names the real store)
+preflight node: 24.22.1 (major 24)
+preflight postgres: PostgreSQL 16.15 at 127.0.0.1:5433 (PostgreSQL 16 confirmed)
+preflight pgvector: available
+preflight database rights: create and drop confirmed on a scratch database
+preflight provider cache state: 439 files, 80993 bytes in router/cache (recorded, not cleared)
+preflight: PASS
+== Step 1: forbidden-string scan ==
+forbidden strings: PASS (no matches)
+== Step 2: architecture check ==
+named exceptions (debt, owned):
+  web/api.mjs -> ../router/spend.mjs: the console API reads the spend log and router config to render the providers view; it holds no provider key and calls no provider
+  lib/jev.mjs: the Jev decision client: the decision layer predates the router interface and is called by the gate; moving it behind the router is owned by Iteration 6.2, which reworks the decisions/escalation path
+  lib/decisions.mjs: the decision-backend challenger adapters call the Baseten System One endpoint directly; they are spend-logged and probe-gated, and their relocation is owned by Iteration 6.2 with the decisions path
+  lib/config.mjs: the configuration service test probe: one harmless models-list read per provider so Settings can test a key; the config service is the sanctioned owner of provider reachability tests and never returns a key or a provider body
+  PASS frontend (web/public) imports no router or provider code
+  PASS web server allowlisted read: web/api.mjs imports ../router/spend.mjs — the console API reads the spend log and router config to render the providers view; it holds no provider key and calls no provider
+  PASS backend (lib/, mcp/, api/) imports the AI layer only through router/router.mjs or the spend ledger
+  PASS backend direct provider calls are limited to the named exceptions
+  PASS allowlist entry still real: lib/jev.mjs
+  PASS allowlist entry still real: lib/decisions.mjs
+  PASS allowlist entry still real: lib/config.mjs
+  PASS allowlist entry still real: web/api.mjs imports ../router/spend.mjs
+ALL GREEN
+architecture: PASS (exit=0)
+== Step 3: lint/format ==
+lint/format: none configured in this repo (no eslint/prettier/biome dependency or script) — skipped, not invented
+== Step 4: suites on fresh databases ==
+stub lifecycle: started checks/stub-server-v1.mjs (jev stub on 4711, meta stub on 4712)
+-- backend --
+backend / settings.mjs: PASS=48 FAIL=0 exit=0 mode=stub-internal store=/tmp/ml-verify-settings-7uUxbm/settings.env
+  ALL GREEN
+backend / test-surface.mjs: PASS=76 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-7uUxbm/test-surface.env
+  [memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)
+backend / two-plane.mjs: PASS=22 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-7uUxbm/two-plane.env
+  ALL GREEN
+backend / graph-daemon.mjs: PASS=44 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-7uUxbm/graph-daemon.env
+  ALL GREEN
+backend / learning.mjs: PASS=36 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-7uUxbm/learning.env
+  [memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)
+backend / learning-demo.mjs: PASS=8 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-7uUxbm/learning-demo.env
+  ALL GREEN
+backend / jev-gate.mjs: PASS=21 FAIL=0 exit=0 mode=stub store=/tmp/ml-verify-settings-7uUxbm/jev-gate.env
+  [memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)
+backend / db-gate.mjs: PASS=46 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-7uUxbm/db-gate.env
+  db-gate: 46 passed, 0 failed
+-- frontend --
+frontend / web.mjs: PASS=89 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-7uUxbm/web.env
+  ALL GREEN
+-- AI layer --
+AI layer / router-smoke.mjs: PASS=20 FAIL=0 exit=0 mode=keyless store=/tmp/ml-verify-settings-7uUxbm/router-smoke.env
+  ALL GREEN
+AI layer / architecture.mjs: PASS=8 FAIL=0 exit=0 - see step 2 (PASS)
+stub lifecycle: stopped
+real settings store byte-identical across the run: PASS
+VERIFY SUMMARY
+real settings store untouched: PASS
+forbidden strings: PASS
+architecture: PASS (PASS=8 FAIL=0 exit=0)
+lint/format: PASS (skipped, none configured)
+backend suites: PASS (PASS=301 FAIL=0)
+frontend suites: PASS (PASS=89 FAIL=0)
+AI layer suites: PASS (PASS=28 FAIL=0)
+run duration: 142 seconds
+VERIFY: PASS
+exit=0

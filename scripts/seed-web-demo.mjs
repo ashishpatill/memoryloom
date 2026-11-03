@@ -34,7 +34,9 @@ async function runDaemonOnce(pool, namespace) {
   console.log('daemon cycle:', JSON.stringify(run.emitted || run));
 }
 
-const url = resolveDatabaseUrl();
+// The deliberate seed entry point passes its operation identity
+// to the resolver in code (Section 10.4).
+const url = resolveDatabaseUrl({ operation: 'hosted-seed' });
 if (!url) { console.error('DATABASE_URL missing'); process.exit(1); }
 const namespace = process.argv[2] || DEMO_NAMESPACE;
 const pool = new pg.Pool({ connectionString: url, max: 3 });

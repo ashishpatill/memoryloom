@@ -23,6 +23,10 @@
  *
  * Usage: DATABASE_URL=postgres://… node checks/eval-longmem.mjs
  * Writes: checks/out/eval-longmem.json, docs/eval-longmem.md
+ * Owning file: checks/eval-longmem.mjs
+ * Accountable layer: Recall eval layer
+ * Provider need: None
+ * Declared mode: Keyless, separate dated command in the runbook
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -30,11 +34,13 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { embedStaged, recallWithReceipts } from '../lib/planes.mjs';
 import { believedAt } from '../lib/graph.mjs';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const NS = 'memoryloom-longmem-eval';
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 
 // ---- dataset -----------------------------------------------------------------
 

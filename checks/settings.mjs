@@ -17,6 +17,10 @@
  *   DATABASE_URL=postgres://… node checks/settings.mjs
  * (the URL is only needed because web/server.mjs requires one; the
  * settings routes themselves never touch the database)
+ * Owning file: checks/settings.mjs
+ * Accountable layer: Backend HTTP layer and the Settings store
+ * Provider need: Stub server for connection tests, live only for real key claims
+ * Declared mode: Stub, with its stub server run inside the suite
  */
 import { spawn, execFileSync } from 'node:child_process';
 import { createServer, request as httpRequest } from 'node:http';
@@ -33,10 +37,12 @@ import {
   saveProviderKey,
   testProvider,
 } from '../lib/config.mjs';
+import { preflightOrExit } from './db-preflight.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) { console.error('DATABASE_URL missing'); process.exit(1); }
+preflightOrExit();
 
 let failures = 0;
 let passes = 0;
@@ -119,49 +125,33 @@ assert(badProbe.ok === false && badProbe.http_status === 401 && /HTTP 401/.test(
 assert(!JSON.stringify(badProbe).includes(BAD), 'probe result never carries the key');
 assert(seenAuth.every((a) => a.startsWith('Bearer ')), 'probe sends the key as a bearer token only');
 
-// ------------------------------------------------------- git: store untracked
-console.log('git hygiene (real repo store, dummy key only):');
+// ------------------------------------------------- git: store untracked + real store untouched
+// Checks only ever use temporary store paths; the real store is read
+// for a byte comparison and never written (a dummy key left in the
+// real store once made Settings read as configured when it was not
+// — Iteration 6.1 correction).
 const realStore = join(root, '.env.local');
-const existedBefore = existsSync(realStore);
-// When MEMORYLOOM_SETTINGS_FILE points somewhere else, saves and
-// removes without opts act on THAT store, not the repo file — so
-// this section must not write to or delete the repo store at all
-// (Iteration 5.3 closure: a run under an override once removed a
-// line from the override store and then threw unlinking a repo
-// file it had never created). Assert git hygiene only, same count.
-const overrideActive = Boolean(process.env.MEMORYLOOM_SETTINGS_FILE)
-  && join(process.env.MEMORYLOOM_SETTINGS_FILE) !== realStore;
-if (overrideActive) {
-  let ignored = true;
-  try { execFileSync('git', ['check-ignore', '-q', '.env.local'], { cwd: root }); } catch { ignored = false; }
-  assert(ignored, 'git check-ignore confirms .env.local is ignored (store override active)');
-  const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
-  assert(!status.split('\n').some((l) => l.includes('.env.local')), 'git status stays clean for .env.local (store override active)');
-  assert(existsSync(realStore) === existedBefore, 'repo store untouched while a store override is active');
-} else if (!existedBefore) {
-  saveProviderKey('meta', DUMMY_META);
-  const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
-  assert(!status.split('\n').some((l) => l.includes('.env.local')), 'git status stays clean after a save to .env.local');
-  let ignored = true;
-  try { execFileSync('git', ['check-ignore', '-q', '.env.local'], { cwd: root }); } catch { ignored = false; }
-  assert(ignored, 'git check-ignore confirms .env.local is ignored');
-  removeProviderKey('meta');
-  unlinkSync(realStore); // the check created this file; leave the repo as found
-  assert(!existsSync(realStore), 'cleanup: the dummy-only store file the check created is removed');
-} else {
-  // A pre-existing store (the demo machine's real keys) must be left
-  // exactly as found — but the branch still prints the same number
-  // of assertions as the no-store branch above. Before Iteration
-  // 5.3 (Finding F) this branch printed one assertion where the
-  // other printed three, so the suite totalled 44 on a machine with
-  // a store and 46 on one without, while the docs quoted 46.
-  let ignored = true;
-  try { execFileSync('git', ['check-ignore', '-q', '.env.local'], { cwd: root }); } catch { ignored = false; }
-  assert(ignored, 'git check-ignore confirms .env.local is ignored (pre-existing store)');
-  const status = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
-  assert(!status.split('\n').some((l) => l.includes('.env.local')), 'git status stays clean with a pre-existing .env.local');
-  assert(existsSync(realStore), 'pre-existing store left untouched by the check');
+const realStoreBefore = existsSync(realStore) ? readFileSync(realStore) : null;
+if (!process.env.MEMORYLOOM_SETTINGS_FILE) {
+  process.env.MEMORYLOOM_SETTINGS_FILE = join(tmp, 'git-section.env.local');
 }
+let envLocalIgnored = false;
+try {
+  execFileSync('git', ['check-ignore', '-q', '.env.local'], { cwd: root });
+  envLocalIgnored = true;
+} catch {
+  envLocalIgnored = false;
+}
+assert(envLocalIgnored, 'git check-ignore confirms .env.local is ignored');
+saveProviderKey('meta', DUMMY_META);
+const gitStatusAfterSave = execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' });
+assert(!gitStatusAfterSave.split('\n').some((line) => line.includes('.env.local')), 'git status stays clean after a save (temp store override)');
+removeProviderKey('meta');
+const tempStoreContents = existsSync(process.env.MEMORYLOOM_SETTINGS_FILE) ? readFileSync(process.env.MEMORYLOOM_SETTINGS_FILE, 'utf8') : '';
+assert(!tempStoreContents.includes('META_MODEL_API_KEY'), 'save and remove without opts act on the temp store, never the repo store');
+const realStoreAfter = existsSync(realStore) ? readFileSync(realStore) : null;
+assert((realStoreBefore === null && realStoreAfter === null) || (realStoreBefore !== null && realStoreAfter !== null && realStoreBefore.equals(realStoreAfter)), 'real repo store is byte-identical after the git section');
+assert(existsSync(realStore) === (realStoreBefore !== null), 'real repo store existence unchanged by the check');
 
 // ---------------------------------------------------------------- HTTP level
 console.log('settings API (real web server, stub provider):');

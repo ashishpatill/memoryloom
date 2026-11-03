@@ -12,6 +12,7 @@
   "name": "memoryloom",
   "private": true,
   "scripts": {
+    "verify": "node checks/verify-all.mjs",
     "check:recall": "node checks/recall_smoke.mjs",
     "check:roundtrip": "node checks/roundtrip.mjs",
     "check:router": "node checks/router-smoke.mjs",
@@ -19,6 +20,7 @@
     "db:init": "node scripts/init-db.mjs",
     "mcp": "node mcp/index.mjs",
     "check:jev": "node checks/jev-gate.mjs",
+    "check:hardening": "node checks/backend-hardening.mjs",
     "check:planes": "node checks/two-plane.mjs",
     "check:challenge": "node checks/challenge-decisions.mjs",
     "check:graph": "node checks/graph-daemon.mjs",

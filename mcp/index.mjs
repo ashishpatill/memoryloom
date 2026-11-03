@@ -1,22 +1,52 @@
 /**
- * memory-mcp (P1.M4) — stdio MCP exposing the IDL §12 tool surface
- * against Postgres + pgvector (schema v1.sql + migrations).
- *
- * Bot-facing: store / recall (hybrid RRF) / list_namespaces / ingest_file
- * IDL:        get / propose (routing stub per write gates)
+ * memory-mcp — stdio MCP exposing the ten tool surface against
+ * Postgres + pgvector (schema v1.sql + migrations).
  *
  * Run:  DATABASE_URL=... node mcp/index.mjs
  *
- * store: INSERT staged memory (embedding NULL, index_status=staged,
- *        approval=live) with provenance jsonb; sync_log is trigger-appended.
- * recall: RRF-fused hybrid — keyword leg (tsvector/ts_rank_cd, staged+indexed)
- *         + vector leg (halfvec cosine, indexed only); RRF k=60 (A0 winner).
+ * The gate contract (frozen master plan, Section 5, card S3a). No
+ * MCP path writes truth directly. The store, propose and
+ * ingest_file tools all route through the decision gate in
+ * lib/gate.mjs, and approval by local rules is forbidden in every
+ * backend state.
+ *
+ * store and propose follow one contract exactly. The gate scores
+ * the proposal with the resolved grounding records. An approve
+ * verdict stores the record as live truth. A reject verdict stores
+ * nothing. An escalate verdict, and every backend failure, queues
+ * the proposal for a human. The grounding rules sit inside the
+ * gate. Episodic and node local proposals can approve. Procedural
+ * and pinned proposals always queue. A global claim needs at
+ * least two cited grounding records that resolve in the store to
+ * approve, and otherwise queues.
+ *
+ * In the state where no Jev backend is configured, the gate fails
+ * closed on every call, so store and propose queue every proposal
+ * and nothing becomes live without a human decision. In the state
+ * where the Jev backend is configured, the Jev verdict governs,
+ * subject to the grounding rules above.
+ *
+ * ingest_file creates one queued proposal per file. The chunk
+ * texts are held in the file chunks table, the proposal row
+ * carries the source file name and the chunk count, and nothing
+ * from a file becomes live at ingest in either state.
+ *
+ * The request id rule (card S3b). store, propose and ingest_file
+ * each require a request id argument. The first call writes its
+ * whole outcome as one transaction in lib/gatepath.mjs and stores
+ * its first result in the request records table. A retry returns
+ * the stored first result and writes nothing twice. A reuse of
+ * the request id with a different payload is refused. Every
+ * failure returns a plain detail with a stable error name from
+ * lib/errors.mjs, never a raw error message.
+ *
+ * recall routes through the library receipt path in
+ * lib/planes.mjs. Every result dereferences to a truth record and
+ * carries its receipt, results that cannot dereference are
+ * dropped with a reason, and the payload states whether the best
+ * fusion score clears the answer threshold.
+ *
  * get: fetch one memory by id.
- * ingest_file: base64 file → paragraph chunks → one staged memory per chunk.
- * propose: write-gate routing — episodic/node-local auto-approve (stored);
- *          procedural/pinned → human-always; global semantic auto-approves
- *          iff grounding_ids >= 2 (IDL min_evidence_auto), else queued in
- *          proposals table for curator/human review.
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,8 +58,9 @@ import {
   reviewDecide,
   CURATOR_IDENTITY,
 } from '../lib/curator-decide.mjs';
-import { decideGate } from '../lib/gate.mjs';
 import { recordEvent } from '../lib/learning.mjs';
+import { coveredStoreOrPropose, coveredIngestFile } from '../lib/gatepath.mjs';
+import { failurePayload } from '../lib/errors.mjs';
 import dotenv from 'dotenv';
 import pg from 'pg';
 import { z } from 'zod';
@@ -37,6 +68,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { PgBoss } from 'pg-boss';
 import { buildRecallContract } from '../lib/cold-start-contract.mjs';
+import { recallAnswers, recallWithReceipts } from '../lib/planes.mjs';
+import { evaluateDbGate } from '../lib/db-gate.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') });
@@ -50,6 +83,16 @@ const MEMORY_SCOPES = new Set(['global', 'node_local', 'edge']);
 if (!DATABASE_URL) {
   console.error('[mcp] DATABASE_URL missing');
   process.exit(1);
+}
+{
+  // The MCP entry reads the database setting directly, so the pre
+  // run database gate from Section 10.4 is enforced here, before
+  // any pool exists. The hosted entry never reaches this file.
+  const gate = evaluateDbGate({ url: DATABASE_URL });
+  if (!gate.allowed) {
+    console.error(`[mcp] db gate refusal: ${gate.reason}`);
+    process.exit(1);
+  }
 }
 
 /** Lazy pooled client — one connection reused for the stdio session. */
@@ -67,10 +110,13 @@ function getPool() {
 }
 
 /**
- * Learning capture (Block 5): every tool outcome that teaches the
- * team something is recorded as an append-only learning event.
- * Best-effort by design — a learning-table failure is logged to
- * stderr and never breaks the tool that produced the outcome.
+ * Learning capture for recall outcomes (Block 5). Recall hits and
+ * misses are recorded as append-only learning events, best effort,
+ * because they annotate a read and never carry a write. The write
+ * path events are not best effort. They are written inside the
+ * write transaction in lib/gatepath.mjs and
+ * lib/curator-decide.mjs, where a failed event write rolls the
+ * write back (card S3b).
  */
 async function learn(event) {
   try {
@@ -78,39 +124,6 @@ async function learn(event) {
   } catch (e) {
     console.error('[mcp] learning capture failed:', e.message);
   }
-}
-
-/** Namespace lookup for review outcomes, whose results carry no namespace. */
-async function namespaceOf(table, id) {
-  try {
-    const r = await getPool().query(`SELECT namespace FROM ${table} WHERE id = $1`, [id]);
-    return r.rows[0]?.namespace || null;
-  } catch {
-    return null;
-  }
-}
-
-/** Lazy MiniLM-L6-v2 embedder (384-dim, matches halfvec(384)). Loaded on
- *  first hybrid recall; the ~90MB model download happens once. */
-let embedder = null;
-async function getEmbedder() {
-  if (!embedder) {
-    const { pipeline } = await import('@xenova/transformers');
-    embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
-  }
-  return embedder;
-}
-
-function halfvecLiteral(arr) {
-  const parts = new Array(arr.length);
-  for (let i = 0; i < arr.length; i++) parts[i] = Number(arr[i]).toFixed(6);
-  return '[' + parts.join(',') + ']';
-}
-
-async function embedText(text) {
-  const ex = await getEmbedder();
-  const out = await ex(text, { pooling: 'mean', normalize: true });
-  return halfvecLiteral(Array.from(out.data));
 }
 
 async function enqueueEmbed(memoryId) {
@@ -150,134 +163,85 @@ function validationError(detail) {
   };
 }
 
+
 /**
- * Shared staged-memory insert (store + propose auto-path).
- * Returns { ok:true, id, namespace, index_status, approval, embed_job_id, enqueue_error, created_at }
- * or { ok:false, ...validationError }.
+ * Shape a covered call outcome into the tool response. The fresh
+ * result and the stored first result take the same path, so a
+ * retry reads exactly like the first call, apart from the live
+ * embed job id on a fresh store approval.
  */
-async function insertMemory(namespace, text, metadata = {}) {
-  const type = metadata.type || 'semantic';
-  const scope = metadata.scope || 'global';
-  const author = metadata.author || 'mcp';
-  const origin = metadata.origin || 'mcp-store';
-  const source_session = metadata.source_session || `mcp-${Date.now()}`;
-  const importance = metadata.importance ?? 5;
-  const strength = metadata.strength ?? 5.0;
-  const pinned = Boolean(metadata.pinned);
-  const id = metadata.id || randomUUID(); // TEXT PK
-  const createdAt = new Date().toISOString();
-
-  const provenance = {
-    source_session,
-    author,
-    origin,
-    created_at: createdAt,
-    embedding_model: null,
-  };
-  if (metadata.bot_id) provenance.bot_id = metadata.bot_id;
-  if (metadata.caller_node_id) provenance.caller_node_id = metadata.caller_node_id;
-  if (metadata.trajectory_ref) provenance.trajectory_ref = metadata.trajectory_ref;
-  if (metadata.evidence_refs) provenance.evidence_refs = metadata.evidence_refs;
-  if (metadata.import_batch) provenance.import_batch = metadata.import_batch;
-  if (metadata.filename) provenance.filename = metadata.filename;
-
-  if (!MEMORY_TYPES.has(type)) {
-    return { ok: false, response: validationError(`type must be one of ${[...MEMORY_TYPES].join(',')}`) };
-  }
-  if (!MEMORY_SCOPES.has(scope)) {
-    return { ok: false, response: validationError(`scope must be one of ${[...MEMORY_SCOPES].join(',')}`) };
-  }
-  if (typeof importance !== 'number' || importance < 1 || importance > 10) {
-    return { ok: false, response: validationError('importance must be 1..10') };
-  }
-  // Resolved citations only (Iteration 5.3, Finding A): ids that do
-  // not dereference to a stored record are dropped before the row is
-  // written, so no record's grounding — and therefore no recall
-  // receipt — ever lists a citation that does not exist.
-  let grounding_ids = Array.isArray(metadata.grounding_ids) ? metadata.grounding_ids : [];
-  if (grounding_ids.length) {
-    const er = await getPool().query('SELECT id FROM memories WHERE id = ANY($1)', [grounding_ids]);
-    const found = new Set(er.rows.map((r) => r.id));
-    grounding_ids = grounding_ids.filter((id) => found.has(id));
-  }
-
-  const client = await getPool().connect();
-  try {
-    await client.query('BEGIN');
-    // sync_log is appended by AFTER INSERT trigger — do not INSERT manually.
-    const ins = await client.query(
-      `INSERT INTO memories (
-         id, namespace, type, scope, text, importance, strength, pinned,
-         index_status, approval, grounding_ids, provenance
-       ) VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8,
-         'staged', 'live', $10, $9::jsonb
-       ) RETURNING id, namespace, index_status, approval, created_at`,
-      [id, namespace, type, scope, text, importance, strength, pinned, JSON.stringify(provenance), grounding_ids]
-    );
-    const row = ins.rows[0];
-    await client.query('COMMIT');
-
-    let jobId = null;
-    let enqueue_error = null;
-    try {
-      jobId = await enqueueEmbed(row.id);
-    } catch (e) {
-      enqueue_error = String(e.message || e);
-    }
+function coveredResponse(outcome, shape) {
+  if (outcome.outcome === 'reused') {
     return {
-      ok: true,
-      id: row.id,
-      namespace: row.namespace,
-      index_status: row.index_status,
-      approval: row.approval,
-      embed_job_id: jobId,
-      enqueue_error,
-      created_at: row.created_at,
+      isError: true,
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            status: 'error',
+            error: 'REQUEST_ID_REUSED',
+            detail: 'this request id was already used with a different payload',
+          }),
+        },
+      ],
     };
-  } catch (e) {
-    await client.query('ROLLBACK').catch(() => {});
-    return { ok: false, response: { isError: true, content: [{ type: 'text', text: JSON.stringify({ status: 'error', error: String(e.message || e) }) }] } };
-  } finally {
-    client.release();
   }
+  if (outcome.outcome === 'invalid') return validationError(outcome.detail);
+  if (outcome.outcome === 'failed') {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: JSON.stringify(outcome.failure) }],
+    };
+  }
+  const r = outcome.result;
+  const payload =
+    shape === 'propose'
+      ? r.decision === 'auto_approved'
+        ? { status: r.status, decision: r.decision, reason: r.reason, backend: r.backend, id: r.id }
+        : r.decision === 'queued_for_review'
+          ? { status: r.status, decision: r.decision, reason: r.reason, backend: r.backend, proposal_id: r.proposal_id }
+          : { status: r.status, decision: r.decision, reason: r.reason, backend: r.backend }
+      : r;
+  return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
 }
 
 server.registerTool(
   'store',
   {
     description:
-      'Store a memory fact in a namespace. Writes staged row (embedding NULL, index_status=staged, approval=live) with provenance jsonb; sync_log is trigger-appended. Enqueues an embed job. Returns the new memory id.',
+      'Propose a memory fact through the write gate. The gate decides approve, reject or escalate. Approved records are stored as live truth with the gate verdict in provenance. Escalated proposals, including every proposal made while no decision backend is configured, are queued for a human and nothing becomes live. Rejected proposals store nothing. A request id is required. A retry with the same request id and the same arguments returns the first result and writes nothing twice.',
     inputSchema: {
       namespace: z.string().describe('Canonical namespace, e.g. preferences, project-foo, feature-auth'),
       text: z.string().describe('Atomic fact / learning text'),
+      request_id: z.string().describe('A unique id for this call. Retries of the same call reuse it'),
       metadata: z
         .record(z.string(), z.any())
         .optional()
-        .describe('Optional metadata: type, scope, author, origin, source_session, importance, strength, bot_id (folded into provenance)'),
+        .describe('Optional metadata: type, scope, pinned, grounding_ids, author, origin, source_session, importance, strength, bot_id (folded into provenance)'),
     },
   },
-  async ({ namespace, text, metadata = {} }) => {
-    const r = await insertMemory(namespace, text, metadata);
-    if (!r.ok) return r.response;
-    await learn({
-      namespace, kind: 'proposal', actor: metadata.author || 'mcp',
-      subject_type: 'memory', subject_id: r.id,
-      summary: `Memory stored via store: ${String(text).slice(0, 200)}`,
-      evidence: { tool: 'store', type: metadata.type || 'semantic' },
+  async ({ namespace, text, metadata = {}, request_id }) => {
+    if (!request_id) return validationError('request_id is required for store');
+    const outcome = await coveredStoreOrPropose({
+      db: getPool(), tool: 'store', namespace, text, metadata,
+      requestId: request_id, args: { namespace, text, metadata },
     });
-    const payload = {
-      status: 'ok',
-      id: r.id,
-      namespace: r.namespace,
-      index_status: r.index_status,
-      approval: r.approval,
-      embedding: null,
-      embed_job_id: r.embed_job_id,
-      enqueue_error: r.enqueue_error,
-      created_at: r.created_at,
-    };
-    return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
+    if (outcome.outcome === 'approved') {
+      // The embed job is queued after the write commits. The job
+      // id is an operational extra on the live response only, and
+      // the stored first result keeps it null.
+      let jobId = null;
+      let enqueueError = null;
+      try {
+        jobId = await enqueueEmbed(outcome.memory_id);
+      } catch (e) {
+        enqueueError = 'the embed job could not be queued';
+        console.error('[mcp] embed enqueue failed:', e);
+      }
+      const payload = { ...outcome.result, embed_job_id: jobId, enqueue_error: enqueueError };
+      return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
+    }
+    return coveredResponse(outcome, 'store');
   }
 );
 
@@ -285,7 +249,7 @@ server.registerTool(
   'recall',
   {
     description:
-      'Recall top-k memories in a namespace (hybrid RRF: keyword tsvector leg + halfvec vector leg, RRF k=60). Staged rows contribute keyword-only. Filters approval=live. Returns cold_start|thin|ok plus contract {index,daemon,last_seq,replica_lag} (P1.M9).',
+      'Recall top-k memories in a namespace through the library receipt path. Hybrid recall proposes candidates, and every candidate is dereferenced to a truth record before it is returned. Each result carries a receipt with its author, origin and grounding records. Results that cannot dereference are dropped with a reason. The payload states whether the best fusion score clears the answer threshold, as answerable and no_answer. Returns cold_start, thin or ok plus the cold start contract.',
     inputSchema: {
       namespace: z.string().describe('Namespace to search within'),
       query: z.string().describe('Search query'),
@@ -293,70 +257,26 @@ server.registerTool(
     },
   },
   async ({ namespace, query, k = 8 }) => {
-    const client = await getPool().connect();
     try {
-      // Vector leg needs a query embedding; embed failures degrade to keyword-only.
-      let qEmb = null;
-      try {
-        qEmb = await embedText(query);
-      } catch (e) {
-        console.error('[mcp] embed failed, keyword-only recall:', e.message);
-      }
+      // One recall path only (card S3a). The library path in
+      // lib/planes.mjs owns the hybrid query, the provenance drop
+      // rule and the receipts, so the MCP surface and the console
+      // can never diverge on what recall returns.
+      const out = await recallWithReceipts(getPool(), {
+        namespace, query, k,
+        onRecall: async ({ results, dropped }) => {
+          await learn({
+            namespace, kind: results.length ? 'recall_hit' : 'recall_miss', actor: 'mcp',
+            subject_type: 'task', subject_id: null,
+            summary: results.length
+              ? `Recall hit: "${String(query).slice(0, 120)}" returned ${results.length} memories.`
+              : `Recall miss: "${String(query).slice(0, 120)}" returned nothing.`,
+            evidence: { tool: 'recall', query, count: results.length, result_ids: results.map((x) => x.id), dropped: dropped.length },
+          });
+        },
+      });
 
-      let rows;
-      const legs = { keyword: 0, vector: 0 };
-      if (qEmb) {
-        const r = await client.query(
-          `WITH kw AS (
-             SELECT id, row_number() OVER (ORDER BY ts_rank_cd(text_tsv, plainto_tsquery('english', $2)) DESC) AS rnk
-             FROM memories
-             WHERE namespace = $1 AND approval = 'live'
-               AND index_status IN ('indexed','staged')
-               AND text_tsv @@ plainto_tsquery('english', $2)
-             LIMIT 50
-           ),
-           vec AS (
-             SELECT id, row_number() OVER (ORDER BY embedding <=> $3::halfvec) AS rnk
-             FROM memories
-             WHERE namespace = $1 AND approval = 'live' AND index_status = 'indexed'
-               AND embedding IS NOT NULL
-             ORDER BY embedding <=> $3::halfvec
-             LIMIT 50
-           ),
-           fused AS (
-             SELECT COALESCE(kw.id, vec.id) AS id,
-                    COALESCE(1.0/(60+kw.rnk),0) + COALESCE(1.0/(60+vec.rnk),0) AS rrf,
-                    kw.rnk AS kw_rnk, vec.rnk AS vec_rnk
-             FROM kw FULL OUTER JOIN vec ON kw.id = vec.id
-           )
-           SELECT m.id, m.namespace, m.text, m.index_status, m.approval, m.type,
-                  m.importance, m.created_at, f.rrf, f.kw_rnk, f.vec_rnk
-           FROM fused f JOIN memories m ON m.id = f.id
-           ORDER BY f.rrf DESC
-           LIMIT $4`,
-          [namespace, query, qEmb, k]
-        );
-        rows = r.rows;
-        legs.keyword = rows.filter((x) => x.kw_rnk != null).length;
-        legs.vector = rows.filter((x) => x.vec_rnk != null).length;
-      } else {
-        const r = await client.query(
-          `SELECT id, namespace, text, index_status, approval, type, importance, created_at,
-                  ts_rank_cd(text_tsv, plainto_tsquery('english', $2)) AS rrf,
-                  NULL::int AS kw_rnk, NULL::int AS vec_rnk
-           FROM memories
-           WHERE namespace = $1 AND approval = 'live'
-             AND index_status IN ('indexed','staged')
-             AND text_tsv @@ plainto_tsquery('english', $2)
-           ORDER BY ts_rank_cd(text_tsv, plainto_tsquery('english', $2)) DESC, created_at DESC
-           LIMIT $3`,
-          [namespace, query, k]
-        );
-        rows = r.rows;
-        legs.keyword = rows.length;
-      }
-
-      const meta = await client.query(
+      const meta = await getPool().query(
         `SELECT
            (SELECT count(*)::int FROM memories
              WHERE namespace = $1 AND approval = 'live'
@@ -371,7 +291,7 @@ server.registerTool(
       );
       const m = meta.rows[0];
       let status = 'ok';
-      if (rows.length === 0) {
+      if (out.results.length === 0) {
         status = m.live === 0 ? 'cold_start' : 'thin';
       }
 
@@ -383,42 +303,34 @@ server.registerTool(
         replicaLag: null,
       });
 
-      await learn({
-        namespace, kind: rows.length ? 'recall_hit' : 'recall_miss', actor: 'mcp',
-        subject_type: 'task', subject_id: null,
-        summary: rows.length
-          ? `Recall hit: "${String(query).slice(0, 120)}" returned ${rows.length} memories.`
-          : `Recall miss: "${String(query).slice(0, 120)}" returned nothing (status ${status}).`,
-        evidence: { tool: 'recall', query, count: rows.length, result_ids: rows.map((x) => x.id), status },
-      });
+      const answerable = recallAnswers(out.results);
       const payload = {
         status,
         namespace,
         query,
         k,
-        legs,
-        hybrid: Boolean(qEmb),
-        count: rows.length,
+        count: out.results.length,
         contract,
-        results: rows.map((row) => ({
+        answerable,
+        no_answer: out.results.length > 0 && !answerable,
+        dropped: out.dropped,
+        results: out.results.map((row) => ({
           id: row.id,
           text: row.text,
-          index_status: row.index_status,
-          approval: row.approval,
           type: row.type,
           importance: row.importance,
-          rrf: Number(row.rrf),
-          created_at: row.created_at,
+          rrf: row.rrf,
+          created_at: row.receipt.record_created_at,
+          receipt: row.receipt,
         })),
       };
       return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
     } catch (e) {
+      console.error('[mcp] recall failed:', e);
       return {
         isError: true,
-        content: [{ type: 'text', text: JSON.stringify({ status: 'error', error: String(e.message || e) }) }],
+        content: [{ type: 'text', text: JSON.stringify(failurePayload(e)) }],
       };
-    } finally {
-      client.release();
     }
   }
 );
@@ -446,9 +358,10 @@ server.registerTool(
       };
       return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
     } catch (e) {
+      console.error('[mcp] list_namespaces failed:', e);
       return {
         isError: true,
-        content: [{ type: 'text', text: JSON.stringify({ status: 'error', error: String(e.message || e) }) }],
+        content: [{ type: 'text', text: JSON.stringify(failurePayload(e)) }],
       };
     } finally {
       client.release();
@@ -483,9 +396,10 @@ server.registerTool(
       }
       return { content: [{ type: 'text', text: JSON.stringify({ status: 'ok', memory: r.rows[0] }, null, 2) }] };
     } catch (e) {
+      console.error('[mcp] get failed:', e);
       return {
         isError: true,
-        content: [{ type: 'text', text: JSON.stringify({ status: 'error', error: String(e.message || e) }) }],
+        content: [{ type: 'text', text: JSON.stringify(failurePayload(e)) }],
       };
     } finally {
       client.release();
@@ -518,15 +432,17 @@ server.registerTool(
   'ingest_file',
   {
     description:
-      'File-drop path (Moose): decode a base64 file, split into paragraph chunks (<=2000 chars), store one staged memory per chunk with provenance.filename. Returns chunk ids.',
+      'File drop path. Decodes a base64 file and splits it into paragraph chunks of at most 2000 characters, then creates one queued proposal for the whole file. The chunk texts are stored in the file chunks table for the deciding human, and the proposal row carries the source file name and the chunk count. Nothing from a file becomes live at ingest, in any backend state. A request id is required. A retry with the same request id and the same arguments returns the first result and writes nothing twice. Returns the proposal id, the queued state and the chunk count.',
     inputSchema: {
-      namespace: z.string().describe('Namespace to store chunks in'),
-      filename: z.string().describe('Original filename (recorded in provenance)'),
+      namespace: z.string().describe('Namespace to queue the file proposal in'),
+      filename: z.string().describe('Original filename (recorded on the proposal)'),
       content_base64: z.string().describe('File content, base64-encoded (UTF-8 text)'),
-      metadata: z.record(z.string(), z.any()).optional().describe('Optional metadata: type (default semantic), author, source_session, importance'),
+      request_id: z.string().describe('A unique id for this call. Retries of the same call reuse it'),
+      metadata: z.record(z.string(), z.any()).optional().describe('Optional metadata: type (default semantic), scope, author, source_session, importance'),
     },
   },
-  async ({ namespace, filename, content_base64, metadata = {} }) => {
+  async ({ namespace, filename, content_base64, metadata = {}, request_id }) => {
+    if (!request_id) return validationError('request_id is required for ingest_file');
     let text;
     try {
       text = Buffer.from(content_base64, 'base64').toString('utf8');
@@ -534,221 +450,46 @@ server.registerTool(
       return validationError('content_base64 is not valid base64');
     }
     if (!text.trim()) return validationError('decoded file is empty');
+    const type = metadata.type || 'semantic';
+    const scope = metadata.scope || 'global';
+    if (!MEMORY_TYPES.has(type)) return validationError(`type must be one of ${[...MEMORY_TYPES].join(',')}`);
+    if (!MEMORY_SCOPES.has(scope)) return validationError(`scope must be one of ${[...MEMORY_SCOPES].join(',')}`);
     const chunks = chunkText(text);
-    const ids = [];
-    const errors = [];
-    let n = 0;
-    for (const chunk of chunks) {
-      n += 1;
-      const r = await insertMemory(namespace, chunk, {
-        ...metadata,
-        type: metadata.type || 'semantic',
-        origin: 'ingest_file',
-        filename,
-        source_session: metadata.source_session || `ingest-${Date.now()}`,
-        import_batch: metadata.import_batch || `file:${filename}`,
-      });
-      if (r.ok) ids.push(r.id);
-      else errors.push({ chunk: n, error: r.response });
-      if (errors.length > 5) break;
-    }
-    await learn({
-      namespace, kind: 'proposal', actor: metadata.author || 'mcp',
-      subject_type: 'ingest', subject_id: null,
-      summary: `File ingested: ${filename} became ${ids.length} memories.`,
-      evidence: { tool: 'ingest_file', filename, chunks: chunks.length, stored: ids.length },
+    if (!chunks.length) return validationError('decoded file produced no chunks');
+    // The gate scores the file proposal and its verdict is kept as
+    // provenance, exactly as on the other write paths. The outcome
+    // at ingest is always the queue. A file becomes truth only when
+    // a human approves the proposal.
+    const outcome = await coveredIngestFile({
+      db: getPool(), namespace, filename, chunks, metadata,
+      requestId: request_id, args: { namespace, filename, content_base64, metadata },
     });
-    const payload = {
-      status: errors.length ? 'partial' : 'ok',
-      filename,
-      chunks: chunks.length,
-      stored: ids.length,
-      ids,
-      errors: errors.slice(0, 5),
-    };
-    return { content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }] };
+    return coveredResponse(outcome, 'ingest');
   }
 );
-
-const MIN_EVIDENCE_AUTO = 2; // IDL §12 config: min_evidence_auto
 
 server.registerTool(
   'propose',
   {
     description:
-      'Propose a memory through the write gates (IDL §12): episodic/node_local auto-approve (stored immediately); procedural or pinned → human-always (queued in proposals); global semantic auto-approves iff grounding_ids >= 2, else queued for curator/human review.',
+      'Propose a memory through the write gate. The gate decides approve, reject or escalate with a fixed choice set. Approved proposals are stored as live truth with the gate verdict in provenance. Escalated proposals, including every proposal made while no decision backend is configured, are queued for a human. Rejected proposals store nothing. Local rules never approve a proposal. A request id is required. A retry with the same request id and the same arguments returns the first result and writes nothing twice.',
     inputSchema: {
       namespace: z.string().describe('Canonical namespace'),
       text: z.string().describe('Atomic fact / learning text'),
+      request_id: z.string().describe('A unique id for this call. Retries of the same call reuse it'),
       metadata: z
         .record(z.string(), z.any())
         .optional()
         .describe('Optional metadata: type, scope, pinned, grounding_ids, author, importance, strength'),
     },
   },
-  async ({ namespace, text, metadata = {} }) => {
-    const type = metadata.type || 'semantic';
-    const scope = metadata.scope || 'global';
-    const pinned = Boolean(metadata.pinned);
-    const cited_ids = Array.isArray(metadata.grounding_ids) ? metadata.grounding_ids : [];
-    if (!MEMORY_TYPES.has(type)) return validationError(`type must be one of ${[...MEMORY_TYPES].join(',')}`);
-    if (!MEMORY_SCOPES.has(scope)) return validationError(`scope must be one of ${[...MEMORY_SCOPES].join(',')}`);
-
-    // Resolved citations only (Iteration 5.3, Finding A): every
-    // routing rule below — the Jev gate and the rules gate alike —
-    // counts records that actually resolve in the store. Two
-    // invented id strings are, structurally, no evidence at all.
-    let grounding_ids = cited_ids;
-    let evidence = [];
-    if (cited_ids.length) {
-      const ec = await getPool().connect();
-      try {
-        const er = await ec.query('SELECT id, text FROM memories WHERE id = ANY($1)', [cited_ids]);
-        evidence = er.rows;
-      } finally { ec.release(); }
-      const found = new Set(evidence.map((r) => r.id));
-      grounding_ids = cited_ids.filter((id) => found.has(id));
-    }
-    const unresolved_ids = cited_ids.filter((id) => !grounding_ids.includes(id));
-
-    // Gate 0 (optional Jev backend, MEMORYLOOM_GATE_BACKEND=jev): the
-    // Jev decision layer decides approve | reject | escalate with the
-    // grounding evidence fetched by id. Fail closed — a Jev failure or
-    // an escalate decision queues the proposal; it never auto-approves.
-    let jevRouteReason = null;
-    let jevScore = null;
-    if (process.env.MEMORYLOOM_GATE_BACKEND === 'jev') {
-      const d = await decideGate({ proposal: { text, type, scope, pinned, grounding_ids }, evidence });
-      jevScore = d;
-      if (d.decision === 'approve') {
-        const r = await insertMemory(namespace, text, {
-          ...metadata,
-          origin: metadata.origin || 'propose-jev',
-        });
-        if (!r.ok) return r.response;
-        await learn({
-          namespace, kind: 'proposal', actor: metadata.author || 'mcp',
-          subject_type: 'memory', subject_id: r.id,
-          summary: `Proposal approved by the Jev gate: ${String(text).slice(0, 200)}`,
-          evidence: { tool: 'propose' },
-        });
-        await learn({
-          namespace, kind: 'gate_verdict', actor: 'jev',
-          subject_type: 'memory', subject_id: r.id,
-          summary: `Gate verdict: approve (${d.reason}).`,
-          evidence: { decision: d },
-        });
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: d.reason, backend: 'jev', id: r.id }, null, 2) }],
-        };
-      }
-      if (d.decision === 'reject') {
-        await learn({
-          namespace, kind: 'gate_verdict', actor: 'jev',
-          subject_type: 'proposal', subject_id: null,
-          summary: `Gate verdict: reject (${d.reason}).`,
-          evidence: { decision: d, text: String(text).slice(0, 200) },
-        });
-        return {
-          content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'rejected', reason: d.reason, backend: 'jev' }, null, 2) }],
-        };
-      }
-      jevRouteReason = d.failed ? 'jev-unavailable-fail-closed' : 'jev-escalate';
-    }
-
-    // Gate 1: episodic / node-local → automatic
-    if (!jevRouteReason && (type === 'episodic' || scope === 'node_local')) {
-      const r = await insertMemory(namespace, text, { ...metadata, origin: metadata.origin || 'propose-auto' });
-      if (!r.ok) return r.response;
-      await learn({
-        namespace, kind: 'proposal', actor: metadata.author || 'mcp',
-        subject_type: 'memory', subject_id: r.id,
-        summary: `Proposal auto-approved (episodic/node-local): ${String(text).slice(0, 200)}`,
-        evidence: { tool: 'propose' },
-      });
-      await learn({
-        namespace, kind: 'gate_verdict', actor: 'rules-gate',
-        subject_type: 'memory', subject_id: r.id,
-        summary: 'Gate verdict: approve (episodic-or-node_local rule).',
-        evidence: { decision: { decision: 'approve', backend: 'rules', reason: 'episodic-or-node_local' } },
-      });
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: 'episodic-or-node_local', id: r.id }, null, 2) }],
-      };
-    }
-
-    // Gate 2: procedural / pinned → human-always
-    let route_reason = jevRouteReason;
-    if (!route_reason) {
-      if (type === 'procedural') route_reason = 'procedural-human-always';
-      else if (pinned) route_reason = 'pinned-human-always';
-      else if (grounding_ids.length < MIN_EVIDENCE_AUTO) route_reason = 'low-evidence';
-    }
-
-    // Gate 3: global semantic with enough cited grounding → auto-approve
-    if (!route_reason) {
-      const r = await insertMemory(namespace, text, { ...metadata, origin: metadata.origin || 'propose-auto' });
-      if (!r.ok) return r.response;
-      await learn({
-        namespace, kind: 'proposal', actor: metadata.author || 'mcp',
-        subject_type: 'memory', subject_id: r.id,
-        summary: `Proposal auto-approved (grounding rule): ${String(text).slice(0, 200)}`,
-        evidence: { tool: 'propose' },
-      });
-      await learn({
-        namespace, kind: 'gate_verdict', actor: 'rules-gate',
-        subject_type: 'memory', subject_id: r.id,
-        summary: `Gate verdict: approve (grounding_ids>=${MIN_EVIDENCE_AUTO} rule).`,
-        evidence: { decision: { decision: 'approve', backend: 'rules', reason: `grounding_ids>=${MIN_EVIDENCE_AUTO}` } },
-      });
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'auto_approved', reason: `grounding_ids>=${MIN_EVIDENCE_AUTO}`, id: r.id }, null, 2) }],
-      };
-    }
-
-    // Queue for curator/human review (proposals table, migration 002)
-    const id = metadata.id || randomUUID();
-    const provenance = {
-      source_session: metadata.source_session || `propose-${Date.now()}`,
-      author: metadata.author || 'mcp',
-      origin: metadata.origin || 'propose',
-      created_at: new Date().toISOString(),
-      embedding_model: null,
-    };
-    if (jevScore) provenance.jev = jevScore;
-    if (unresolved_ids.length) provenance.unresolved_citations = unresolved_ids;
-    const client = await getPool().connect();
-    try {
-      await client.query(
-        `INSERT INTO proposals (id, namespace, type, scope, text, importance, strength,
-                                pinned, grounding_ids, provenance, route_reason)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11)`,
-        [id, namespace, type, scope, text, metadata.importance ?? 5, metadata.strength ?? 5.0,
-         pinned, grounding_ids, JSON.stringify(provenance), route_reason]
-      );
-      await learn({
-        namespace, kind: 'proposal', actor: metadata.author || 'mcp',
-        subject_type: 'proposal', subject_id: id,
-        summary: `Proposal queued for review (${route_reason}): ${String(text).slice(0, 200)}`,
-        evidence: { tool: 'propose', route_reason },
-      });
-      await learn({
-        namespace, kind: 'gate_verdict', actor: jevScore ? 'jev' : 'rules-gate',
-        subject_type: 'proposal', subject_id: id,
-        summary: `Gate verdict: escalate (${route_reason}).`,
-        evidence: { decision: jevScore || { decision: 'escalate', backend: 'rules', reason: route_reason } },
-      });
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ status: 'ok', decision: 'queued_for_review', reason: route_reason, proposal_id: id }, null, 2) }],
-      };
-    } catch (e) {
-      return {
-        isError: true,
-        content: [{ type: 'text', text: JSON.stringify({ status: 'error', error: String(e.message || e) }) }],
-      };
-    } finally {
-      client.release();
-    }
+  async ({ namespace, text, metadata = {}, request_id }) => {
+    if (!request_id) return validationError('request_id is required for propose');
+    const outcome = await coveredStoreOrPropose({
+      db: getPool(), tool: 'propose', namespace, text, metadata,
+      requestId: request_id, args: { namespace, text, metadata },
+    });
+    return coveredResponse(outcome, 'propose');
   }
 );
 
@@ -771,9 +512,10 @@ server.registerTool(
       const result = await reviewList(getPool(), { status });
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (e) {
+      console.error('[mcp] review_list failed:', e);
       return {
         isError: true,
-        content: [{ type: 'text', text: JSON.stringify({ status: 'error', error: String(e.message || e) }) }],
+        content: [{ type: 'text', text: JSON.stringify(failurePayload(e)) }],
       };
     }
   }
@@ -791,20 +533,20 @@ server.registerTool(
     },
   },
   async ({ proposal_id, decided_by, note }) => {
+    // The decision event is written inside the decide transaction
+    // in lib/curator-decide.mjs, so a failed event write rolls the
+    // promotion back rather than leaving a silent gap.
     const result = await promoteProposal(getPool(), {
       proposal_id,
       decided_by: decided_by || CURATOR_IDENTITY,
       note,
-    });
-    if (result.status === 'ok') {
-      await learn({
-        namespace: (await namespaceOf('proposals', proposal_id)) || 'unknown', kind: 'human_approval',
+      event: {
+        kind: 'human_approval',
         actor: decided_by || CURATOR_IDENTITY,
-        subject_type: 'proposal', subject_id: proposal_id,
         summary: `Proposal ${proposal_id} approved and promoted${note ? `: ${note}` : ''}.`,
-        evidence: { tool: 'promote', promoted_id: result.promoted_id || null, note: note || null },
-      });
-    }
+        evidence: { tool: 'promote', note: note || null },
+      },
+    });
     const isError = result.status === 'error';
     return {
       isError,
@@ -828,16 +570,13 @@ server.registerTool(
       proposal_id,
       decided_by: decided_by || CURATOR_IDENTITY,
       note,
-    });
-    if (result.status === 'ok') {
-      await learn({
-        namespace: (await namespaceOf('proposals', proposal_id)) || 'unknown', kind: 'human_rejection',
+      event: {
+        kind: 'human_rejection',
         actor: decided_by || CURATOR_IDENTITY,
-        subject_type: 'proposal', subject_id: proposal_id,
         summary: `Proposal ${proposal_id} rejected${note ? `: ${note}` : ''}.`,
         evidence: { tool: 'reject_proposal', note: note || null },
-      });
-    }
+      },
+    });
     return {
       isError: result.status === 'error',
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -859,34 +598,23 @@ server.registerTool(
     },
   },
   async ({ target, id, decision, decided_by, note }) => {
+    const kind =
+      decision === 'reject' ? 'human_rejection'
+      : decision === 'resolve' && note ? 'human_correction'
+      : 'human_approval';
     const result = await reviewDecide(getPool(), {
       target,
       id,
       decision,
       decided_by: decided_by || CURATOR_IDENTITY,
       note,
-    });
-    if (result.status === 'ok') {
-      const kind =
-        decision === 'reject' ? 'human_rejection'
-        : decision === 'resolve' && note ? 'human_correction'
-        : 'human_approval';
-      const ns = target === 'proposal'
-        ? await namespaceOf('proposals', id)
-        : (await (async () => {
-            try {
-              const r = await getPool().query(`SELECT payload->>'namespace' AS ns FROM review_items WHERE id = $1`, [id]);
-              return r.rows[0]?.ns || null;
-            } catch { return null; }
-          })());
-      await learn({
-        namespace: ns || 'unknown', kind,
+      event: {
+        kind,
         actor: decided_by || CURATOR_IDENTITY,
-        subject_type: target === 'proposal' ? 'proposal' : 'review_item', subject_id: id,
         summary: `Review decision '${decision}' on ${target} ${id}${note ? `: ${note}` : ''}.`,
         evidence: { tool: 'review_decide', decision, note: note || null },
-      });
-    }
+      },
+    });
     return {
       isError: result.status === 'error',
       content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -899,7 +627,7 @@ async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // stderr only — stdout is MCP JSON-RPC
-  console.error('[memory-mcp] stdio ready (store, recall[hybrid], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)');
+  console.error('[memory-mcp] stdio ready (store, recall[receipts], list_namespaces, get, ingest_file, propose, review_list, promote, reject_proposal, review_decide)');
 }
 
 main().catch((e) => {

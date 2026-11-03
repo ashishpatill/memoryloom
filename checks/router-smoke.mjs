@@ -5,6 +5,10 @@
  * in live mode with a dummy key from a temp settings file against a
  * local HTTP stub, so no real key or network is needed. No database.
  * Run: node checks/router-smoke.mjs
+ * Owning file: checks/router-smoke.mjs
+ * Accountable layer: Router layer
+ * Provider need: None
+ * Declared mode: Keyless
  */
 import { route, providerStatus } from '../router/router.mjs';
 import { spawnSync } from 'node:child_process';
