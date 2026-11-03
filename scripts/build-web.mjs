@@ -23,7 +23,8 @@ const check = (ok, label) => {
 };
 
 const jsFiles = [
-  'web/api.mjs', 'web/server.mjs', 'api/index.mjs',
+  'web/api.mjs', 'web/server.mjs', 'api/index.mjs', 'api/mcp.mjs',
+  'mcp/index.mjs', 'mcp/server.mjs', 'mcp/http.mjs',
   'web/public/console.js', 'web/public/graph.js', 'web/public/landing.js',
   'scripts/seed-web-demo.mjs', 'checks/web.mjs',
 ];

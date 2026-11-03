@@ -331,6 +331,24 @@ export function createHandler({ pool, namespace }) {
     };
   }
 
+  async function events() {
+    // The engine feed's event source (step D2): the namespace's
+    // learning events, newest first, capped, with no transformation
+    // beyond field selection. Read only.
+    const rows = await listEvents(pool, { namespace, limit: 120, order: 'desc' });
+    const picked = rows.map((e) => ({
+      id: e.id, kind: e.kind, actor: e.actor, subject_type: e.subject_type,
+      subject_id: e.subject_id, summary: e.summary, evidence: e.evidence,
+      created_at: e.created_at,
+    }));
+    const totalRow = await pool.query(
+      `SELECT count(*)::int AS n FROM learning_events WHERE namespace = $1`,
+      [namespace]
+    );
+    const total = totalRow.rows[0] ? totalRow.rows[0].n : picked.length;
+    return { events: picked, total };
+  }
+
   async function spend() {
     const rows = readSpendLog();
     const byKey = new Map();
@@ -384,6 +402,7 @@ export function createHandler({ pool, namespace }) {
       if (req.method === 'GET' && p === '/api/proposals') return json(res, 200, await proposals());
       if (req.method === 'GET' && p === '/api/recall') { const r = await recall(url); return json(res, r.status, r.payload); }
       if (req.method === 'GET' && p === '/api/learning') return json(res, 200, await learning(url));
+      if (req.method === 'GET' && p === '/api/events') return json(res, 200, await events());
       if (req.method === 'GET' && p === '/api/spend') return json(res, 200, await spend());
       if (req.method === 'GET' && p === '/api/believed') {
         const at = url.searchParams.get('at');

@@ -1,1 +1,1 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","buildCommand":"npm run build:web","framework":null,"outputDirectory":"web/public","rewrites":[{"destination":"/console.html","source":"/console"}]}
+{"$schema":"https://openapi.vercel.sh/vercel.json","buildCommand":"npm run build:web","framework":null,"outputDirectory":"web/public","rewrites":[{"destination":"/console.html","source":"/console"},{"destination":"/api/mcp","source":"/mcp"}]}

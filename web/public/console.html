@@ -44,6 +44,7 @@
      sizes stay the ones the design already used, taken from the
      same token values the old h2 and h3 rules carried. */
   .view-title { font-size: clamp(1.7rem, 3.4vw, 2.25rem); margin-bottom: var(--space-1); }
+  .view-title:focus { outline: none; }
   .console-main h2 { font-size: var(--display-sm); }
   .skip-link {
     position: absolute; left: var(--space-3); top: var(--space-3); z-index: 20;
@@ -209,6 +210,42 @@
   .chat-composer-row input { flex: 1; }
   .chat-composer-row .btn { flex: none; }
 
+  /* chat view, three parts (step D2): the chats list, the
+     conversation and the live engine panel side by side. The
+     chat view is the one wide view in the console. Under about
+     900px the engine panel becomes a tab beside the conversation
+     instead of a squeezed third column. Tokens only. */
+  .console-main.chat-wide { max-width: none; }
+  .chat-layout { display: grid; grid-template-columns: 232px minmax(0, 1fr) 348px; gap: var(--space-5); align-items: start; }
+  .chat-panel-title { font-size: var(--display-sm); margin-bottom: var(--space-3); }
+  .chat-peers { display: grid; gap: var(--space-2); }
+  .chat-peer {
+    display: grid; gap: 2px; width: 100%; text-align: left; cursor: pointer;
+    background: var(--surface); border: var(--rule); border-radius: var(--radius);
+    padding: var(--space-3); font-family: var(--font-text); color: var(--ink);
+  }
+  .chat-peer:hover { background: var(--paper-sunken); }
+  .chat-peer.active { background: var(--paper-sunken); border-color: var(--ink); }
+  .chat-peer-name { font-weight: 600; font-size: 0.98rem; overflow-wrap: anywhere; }
+  .chat-peer-meta { font-size: var(--text-sm); color: var(--ink-2); }
+  .chat-tabs { display: none; gap: var(--space-2); margin-bottom: var(--space-4); }
+  .chat-tabs .btn[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .feed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+  .feed-row { border-bottom: var(--rule); padding-bottom: var(--space-3); }
+  .feed-row .meta { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-1); }
+  .feed-text { font-size: var(--text-sm); line-height: var(--leading-body); margin: 0; overflow-wrap: anywhere; }
+  .feed-idle { font-size: var(--text-sm); color: var(--ink-2); margin-bottom: var(--space-3); }
+  .chat-engine-graph-title { margin-top: var(--space-5); }
+  .chat-engine .fig-body { padding: var(--space-2); }
+  @media (max-width: 1180px) { .chat-layout { grid-template-columns: 200px minmax(0, 1fr) 300px; } }
+  @media (max-width: 900px) {
+    .chat-layout { grid-template-columns: 1fr; }
+    .chat-tabs { display: flex; }
+    .chat-layout[data-panel="talk"] .chat-engine { display: none; }
+    .chat-layout[data-panel="engine"] .chat-main-panel { display: none; }
+    .chat-layout[data-panel="engine"] .chat-peers-panel { display: none; }
+  }
+
   /* graph figure (tokens frame; svg voices) */
   .graph-svg { width: 100%; height: auto; display: block; }
   /* Narrow widths (5.3, Finding E): the graph keeps a legible
@@ -239,7 +276,7 @@
   <nav class="console-nav" aria-label="Console views">
     <header>
       <div class="wordmark">Memory<span class="loom">Loom</span></div>
-      <div class="small" style="margin-bottom:14px">console · demo namespace</div>
+      <div class="small" id="consoleNs" style="margin-bottom:14px">console</div>
     </header>
     <a href="#/chat" data-nav="chat">Chat</a>
     <a href="#/loop" data-nav="loop">Live loop</a>

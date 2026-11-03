@@ -34,7 +34,7 @@
     main.innerHTML = `<h1 class="view-title" tabindex="-1">${esc(title)}</h1>
       <div class="empty-state error-state"><h2>The store did not answer</h2>
       <p>${esc(err.message || err)}</p>
-      <p class="small">The console reads a seeded demo database. If this is a fresh checkout: <code class="inline">npm run db:init</code>, <code class="inline">npm run seed:web</code>, then reload.</p>
+      <p class="small">The console reads the store it is connected to.</p>
       <button class="btn" id="retryBtn" type="button">Try again</button></div>`;
     document.getElementById('retryBtn').addEventListener('click', retry);
   }
@@ -1063,17 +1063,47 @@
   }
 
   /* ---------------- Chat ----------------
-     The chat first surface (real user review revamp, design at
-     chat-first-design.md in the goal files). Chat is the primary
-     surface and the view the console opens on. A message is
-     routed by its wording to the existing backend routes only: a
-     question goes to recall, a thing to remember goes to propose,
-     a question about a named past date goes to believed. The gate
-     still decides every proposal. Chat holds no key and decides
-     nothing, and the other views stay as the proof layer. */
+     The chat surface, shaped like a real chat app (step D2). Three
+     parts on one screen. On the left, the chats list, built from
+     the running store only, one workspace conversation for the
+     whole namespace and one conversation per author the store
+     holds. In the middle, the conversation itself. The workspace
+     conversation is the working one and keeps the mechanics this
+     view has always had, a question routed to recall with its
+     receipts, a fact routed to propose through the gate, a named
+     past date routed to believed. The other conversations are
+     readable histories of what that author stored and asked. On
+     the right, the engine panel, a live feed of the learning
+     events and record changes in this namespace, polled every few
+     seconds, over the knowledge graph drawn by the shared
+     renderer from the graph endpoint. Nothing here is scripted.
+     Every row traces to a real event, proposal or memory row, and
+     the feed says plainly when nothing new has happened. */
   let chatEntries = [];
   let chatBusy = false;
-  const CHAT_STARTERS = ['what firmware does the rig run?', 'where is the demo held?', 'when does the venue open?'];
+  let chatPeer = 'workspace';
+  let chatData = null;
+  let chatDataKey = '';
+  let chatGraphKey = '';
+  let chatPollTimer = null;
+  let chatPollFailed = false;
+  const CHAT_HUMAN_AUTHORS = new Set(['Chat user', 'human (console)']);
+  const fmtClock = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+  const peerKeyOf = (author) => {
+    if (!author) return '';
+    return (CHAT_HUMAN_AUTHORS.has(author) || author === 'console') ? 'you' : 'agent:' + author;
+  };
+  function displayActor(a) {
+    if (!a) return 'Unknown';
+    if (CHAT_HUMAN_AUTHORS.has(a)) return 'This console';
+    if (a === 'console') return 'This console';
+    if (a === 'mcp') return 'A connected agent';
+    if (a === 'jev') return 'The gate';
+    return a;
+  }
+  function plainReason(r) {
+    return (typeof r === 'string' && r.length <= 220 && !/(jev|api|backend|key|token|http|_)/i.test(r)) ? r : '';
+  }
   const CHAT_MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
   function chatISODate(y, m, d) {
     const dt = new Date(Date.UTC(y, m, d));
@@ -1158,9 +1188,7 @@
   }
   function chatEmptyHTML() {
     return `<div class="empty-state chat-welcome"><h2>Welcome to MemoryLoom chat</h2>
-      <p>Ask a question and the answer will show where it came from. Give a fact and it will be checked before it is remembered.</p>
-      <p>New here. Try one of these.</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">${CHAT_STARTERS.map((q) => `<button class="btn small-btn" type="button" data-chat-starter="${esc(q)}">${esc(q)}</button>`).join('')}</div></div>`;
+      <p>Ask a question and the answer will show where it came from. Give a fact and it will be checked before it is remembered.</p></div>`;
   }
   async function chatRefreshStrip() {
     const el = document.getElementById('chatStrip');
@@ -1174,24 +1202,348 @@
       if (verdicts.length >= 2) story = `<span>Learning on record. Before. ${esc(verdicts[0].summary)} After. ${esc(verdicts[verdicts.length - 1].summary)}</span>`;
       else if ((L.lessons || []).length) story = `<span>Lessons standing, ${L.lessons.length}, from ${ov.learning_events} learning events on record.</span>`;
       else story = '<span>No lessons are standing yet. Lessons appear here when the team has learned from its work.</span>';
-      el.innerHTML = `<span>The shared memory holds ${mem} memories. ${pend} proposals are waiting for a person.</span>${story}`;
+      el.innerHTML = `<span>The shared memory holds ${mem} ${mem === 1 ? 'memory' : 'memories'}. ${pend} ${pend === 1 ? 'proposal is' : 'proposals are'} waiting for a person.</span>${story}`;
     } catch { el.innerHTML = ''; }
   }
+
+  /* ---- The three parts, all fed by the running store ---- */
+  async function chatLoadData() {
+    const [ov, mem, prop, ev, graph] = await Promise.all([
+      api('/api/overview'), api('/api/memories'), api('/api/proposals'), api('/api/events'), api('/api/graph'),
+    ]);
+    return {
+      overview: ov,
+      memories: mem.memories || [],
+      proposals: prop.proposals || [],
+      events: ev.events || [],
+      eventsTotal: typeof ev.total === 'number' ? ev.total : (ev.events || []).length,
+      graph,
+    };
+  }
+  function chatDataFingerprint(data) {
+    return JSON.stringify([
+      data.memories.map((m) => m.id + '|' + m.approval + '|' + (m.superseded_by || '') + '|' + (m.valid_to || '') + '|' + (m.text ? m.text.length : 0)),
+      data.proposals.map((p) => p.id + '|' + p.status + '|' + (p.decided_by || '')),
+      data.events.map((e) => e.id),
+      data.overview.agents,
+    ]);
+  }
+  /* The chats list. The workspace entry counts every record in
+     the namespace. A person or agent entry appears only when the
+     store holds a memory or a proposal under that exact author
+     string, and its count and last activity come from those rows
+     and from the events that author acted in. */
+  function chatPeers(data) {
+    const map = new Map();
+    const touch = (author, at) => {
+      if (!author) return;
+      const key = peerKeyOf(author);
+      let p = map.get(key);
+      if (!p) {
+        p = { key, label: CHAT_HUMAN_AUTHORS.has(author) ? 'This console' : (author === 'console' ? 'This console' : displayActor(author)), count: 0, lastAt: null };
+        map.set(key, p);
+      }
+      p.count += 1;
+      if (at && (!p.lastAt || new Date(at) > new Date(p.lastAt))) p.lastAt = at;
+    };
+    const touchEvent = (author, at) => {
+      if (!author) {
+        // An event with no actor still belongs to the workspace and
+        // does not invent a named chat entry.
+        return;
+      }
+      const key = peerKeyOf(author);
+      let p = map.get(key);
+      if (!p) {
+        p = { key, label: CHAT_HUMAN_AUTHORS.has(author) ? 'This console' : (author === 'console' ? 'This console' : displayActor(author)), count: 0, lastAt: null };
+        map.set(key, p);
+      }
+      p.count += 1;
+      if (at && (!p.lastAt || new Date(at) > new Date(p.lastAt))) p.lastAt = at;
+    };
+    for (const m of data.memories) touch(m.provenance?.author, m.created_at);
+    for (const p of data.proposals) touch(p.provenance?.author, p.created_at);
+    for (const e of data.events) touchEvent(e.actor, e.created_at);
+    let lastAt = null;
+    for (const r of [...data.memories, ...data.proposals, ...data.events]) {
+      if (r.created_at && (!lastAt || new Date(r.created_at) > new Date(lastAt))) lastAt = r.created_at;
+    }
+    const workspace = {
+      key: 'workspace', label: 'Workspace',
+      count: data.memories.length + data.proposals.length + data.events.length,
+      lastAt,
+    };
+    const rest = [...map.values()].sort((a, b) => {
+      const at = a.lastAt ? new Date(a.lastAt).getTime() : 0;
+      const bt = b.lastAt ? new Date(b.lastAt).getTime() : 0;
+      if (bt !== at) return bt - at;
+      return String(a.label).localeCompare(String(b.label));
+    });
+    return [workspace, ...rest];
+  }
+  function chatRenderPeers() {
+    const box = document.getElementById('chatPeers');
+    if (!box || !chatData) return;
+    box.innerHTML = chatPeers(chatData).map((p) => `<button type="button" class="chat-peer${p.key === chatPeer ? ' active' : ''}" data-chat-peer="${esc(p.key)}" aria-pressed="${p.key === chatPeer}">
+      <span class="chat-peer-name">${esc(p.label)}</span>
+      <span class="chat-peer-meta">${p.count} ${p.count === 1 ? 'record' : 'records'}</span>
+      <span class="chat-peer-meta">Last activity ${p.lastAt ? fmtTs(p.lastAt) : 'none yet'}</span>
+    </button>`).join('');
+  }
+  /* One conversation, in time order. A workspace conversation
+     holds every record. A person or agent conversation holds
+     only what that author proposed, stored or did. */
+  function historyMemoryHTML(m) {
+    const author = m.provenance?.author;
+    const state = m.superseded_by
+      ? '<span class="badge" data-state="superseded">replaced</span>'
+      : m.approval === 'live'
+        ? '<span class="badge" data-state="approved">remembered</span>'
+        : `<span class="badge">${esc(m.approval || 'record')}</span>`;
+    return `<div class="row-item"><div class="meta">${state}<span class="badge">${esc(m.type)}</span>${agentBadge(author)}<span class="small">${fmtClock(m.created_at)}</span></div>
+      <div class="text">${esc(m.text)}</div>
+      ${m.superseded_by ? '<div class="detail">A newer memory replaced this one.</div>' : ''}</div>`;
+  }
+  function historyProposalHTML(p) {
+    const author = p.provenance?.author;
+    return `<div class="row-item"><div class="meta"><span class="badge">proposal</span>${verdictBadge(p.status)}${agentBadge(author)}<span class="small">${fmtClock(p.created_at)}</span></div>
+      <div class="text">${esc(p.text)}</div>
+      ${p.status === 'pending' ? '<div class="detail">Waiting for a person to decide.</div>' : ''}
+      ${p.decided_by ? `<div class="detail">Decided by ${esc(displayActor(p.decided_by))}.</div>` : ''}</div>`;
+  }
+  function chatTimeline(data, key) {
+    const match = (author) => key === 'workspace' || peerKeyOf(author) === key;
+    const items = [];
+    for (const m of data.memories) if (match(m.provenance?.author)) items.push({ at: m.created_at, html: historyMemoryHTML(m) });
+    for (const p of data.proposals) if (match(p.provenance?.author)) items.push({ at: p.created_at, html: historyProposalHTML(p) });
+    items.sort((a, b) => new Date(a.at) - new Date(b.at) || 0);
+    return items;
+  }
+  function chatRenderHistory() {
+    const box = document.getElementById('chatHistory');
+    if (!box || !chatData) return;
+    const peer = chatPeers(chatData).find((p) => p.key === chatPeer) || chatPeers(chatData)[0];
+    const title = document.getElementById('chatConvTitle');
+    if (title) title.textContent = peer.key === 'workspace' ? 'Workspace' : peer.label;
+    const items = chatTimeline(chatData, peer.key);
+    let html = '';
+    if (peer.key !== 'workspace') {
+      html += `<p class="small" style="margin-bottom:12px">This is what ${esc(peer.label)} stored and asked, in the order it happened. You can read it here. New messages go in the workspace chat.</p>`;
+    }
+    html += items.length
+      ? items.map((i) => i.html).join('')
+      : `<div class="empty-state"><h3>Nothing here yet</h3><p>${peer.key === 'workspace' ? 'This workspace holds no records yet. Ask a question or give a fact below and the first records will appear here.' : 'This conversation has no messages yet. When something is stored or asked under this name, it will appear here.'}</p></div>`;
+    box.innerHTML = html;
+    const log = document.getElementById('chatLog');
+    if (log) {
+      log.style.display = peer.key === 'workspace' ? '' : 'none';
+      if (peer.key === 'workspace') log.innerHTML = chatEntries.length ? chatEntries.map(chatEntryHTML).join('') : (items.length ? '' : chatEmptyHTML());
+    }
+    const form = document.getElementById('chatForm');
+    if (form) form.style.display = peer.key === 'workspace' ? '' : 'none';
+    const strip = document.getElementById('chatStrip');
+    if (strip) strip.style.display = peer.key === 'workspace' ? '' : 'none';
+  }
+  /* The engine feed. Every row is written from one real event
+     row, or from a real proposal or memory row that no event
+     covers, and every row carries that row's time. The words are
+     plain descriptions of what the row records. */
+  function chatFeedText(e) {
+    const actor = displayActor(e.actor);
+    const d = (e.evidence && e.evidence.decision) || {};
+    const reason = plainReason(d.reason);
+    switch (e.kind) {
+      case 'proposal':
+        return e.subject_type === 'memory'
+          ? `${actor} proposed a fact and the gate approved it, so it was stored as a memory.`
+          : `${actor} proposed a new memory. It went to the gate for a decision.`;
+      case 'gate_verdict':
+        if (d.failed === true || d.fail_closed === true) return 'The decision service could not be reached and the proposal went to a person to decide.';
+        if (d.decision === 'approve') return `The gate approved the proposal.${reason ? ' The gate said this. ' + reason : ''}`;
+        if (d.decision === 'reject') return `The gate did not accept the proposal, so nothing was stored.${reason ? ' The gate said this. ' + reason : ''}`;
+        if (d.decision === 'escalate') return 'The gate sent the proposal to a person to decide.';
+        return 'The gate gave its verdict on a proposal.';
+      case 'human_approval':
+        return `${actor} approved a proposal, and it was stored as a memory.`;
+      case 'human_rejection':
+        return `${actor} did not approve a proposal, so it was not stored.`;
+      case 'human_correction':
+        return `${actor} corrected a record in the shared memory.`;
+      case 'recall_hit': {
+        const ev = e.evidence || {};
+        const hits = Array.isArray(ev.hits) ? ev.hits.length : (typeof ev.count === 'number' ? ev.count : null);
+        const q = ev.query ? String(ev.query) : '';
+        if (hits != null && q) return `${actor} asked a question and ${hits} matching ${hits === 1 ? 'memory' : 'memories'} came back, and the question was "${q}".`;
+        if (hits != null) return `${actor} asked a question and ${hits} matching ${hits === 1 ? 'memory' : 'memories'} came back.`;
+        if (q) return `${actor} asked a question and matching memories came back, and the question was "${q}".`;
+        return `${actor} asked a question and matching memories came back.`;
+      }
+      case 'recall_miss': {
+        const ev = e.evidence || {};
+        const q = ev.query ? String(ev.query) : '';
+        return q
+          ? `${actor} asked a question and nothing in the memory matched it, and the question was "${q}".`
+          : `${actor} asked a question and nothing in the memory matched it.`;
+      }
+      case 'promotion_decision':
+        return 'The gate decided whether a lesson would stand in the memory.';
+      case 'lesson_applied':
+        return 'A standing lesson was used in the work.';
+      case 'eval_outcome':
+        return 'A check on the memory finished and its result was recorded.';
+      case 'in_turn_correction':
+        return `${actor} was corrected while working, and the correction was recorded.`;
+      default:
+        return `${kindPlain(e.kind)} recorded by ${actor}.`;
+    }
+  }
+  function chatFeedRows(data) {
+    const rows = [];
+    for (const e of data.events) {
+      rows.push({ at: e.created_at, kind: e.kind, text: chatFeedText(e), isEvent: true });
+    }
+    const covered = new Set(data.events.filter((e) => e.kind === 'proposal' && e.subject_id).map((e) => e.subject_id));
+    for (const p of data.proposals) {
+      if (p.status === 'pending' && !covered.has(p.id)) {
+        rows.push({ at: p.created_at, kind: 'proposal', text: `${displayActor(p.provenance?.author)} proposed a memory. It is waiting for a decision.` });
+      }
+    }
+    for (const m of data.memories) {
+      if (m.superseded_by) {
+        rows.push({ at: m.valid_to || m.created_at, kind: 'superseded', text: `A memory from ${displayActor(m.provenance?.author)} was replaced by a newer memory.` });
+      }
+    }
+    rows.sort((a, b) => new Date(b.at) - new Date(a.at));
+    return rows.slice(0, 40);
+  }
+  function chatRenderFeed() {
+    const box = document.getElementById('chatFeed');
+    if (!box || !chatData) return;
+    const rows = chatFeedRows(chatData);
+    if (!rows.length) {
+      box.innerHTML = chatPollFailed
+        ? '<p class="feed-idle">This panel could not check just now and is showing the last activity it received.</p>'
+        : '<p class="feed-idle">Nothing has happened in this workspace yet.</p>';
+      return;
+    }
+    const latestEventAt = (chatData.events || []).reduce((acc, e) => (e.created_at && (!acc || new Date(e.created_at) > new Date(acc)) ? e.created_at : acc), null);
+    const shownEvents = rows.filter((r) => r.isEvent).length;
+    const totalEvents = typeof chatData.eventsTotal === 'number' ? chatData.eventsTotal : (chatData.events || []).length;
+    const header = chatPollFailed
+      ? '<p class="feed-idle">This panel could not check just now and is showing the last activity it received.</p>'
+      : (latestEventAt ? `<p class="feed-idle">Latest activity ${fmtClock(latestEventAt)}.</p>` : '');
+    const foot = totalEvents > shownEvents
+      ? `<p class="feed-idle">Showing ${shownEvents} of ${totalEvents} events in this feed.</p>`
+      : '';
+    box.innerHTML = `${header}
+      <ul class="feed-list">${rows.map((r) => `<li class="feed-row"><div class="meta"><span class="badge">${esc(kindPlain(r.kind))}</span><span class="small">${fmtClock(r.at)}</span></div><p class="feed-text">${esc(r.text)}</p></li>`).join('')}</ul>${foot}`;
+  }
+  /* The counts under the feed, built from the graph endpoint.
+     The full drawing lives in the Memory graph view, which is
+     linked from this section. The counts update only when the
+     graph key changes, and the key covers edge endpoints so a
+     changed link cannot sit under a stale count. */
+  function chatRenderGraph() {
+    if (!chatData) return;
+    const g = chatData.graph || {};
+    const counts = g.counts || {};
+    const badge = document.getElementById('chatLiveBadge');
+    if (badge) badge.textContent = chatPollFailed ? 'paused' : 'live';
+    const key = JSON.stringify((g.nodes || []).map((n) => n.node_id + '|' + (n.recorded_at || n.created_at || '') + '|' + (n.status || ''))) + '|' + JSON.stringify((g.edges || []).map((e) => (e.from || '') + '>' + (e.to || '') + '|' + (e.type || ''))) + '|' + (counts.memory || 0) + '|' + (counts.proposal || 0) + '|' + (chatPollFailed ? 'paused' : 'live');
+    if (key === chatGraphKey) return;
+    chatGraphKey = key;
+    const countsEl = document.getElementById('chatGraphCounts');
+    if (countsEl) {
+      countsEl.textContent = `The memory holds ${counts.memory || 0} ${(counts.memory || 0) === 1 ? 'memory' : 'memories'} and ${counts.proposal || 0} ${(counts.proposal || 0) === 1 ? 'proposal' : 'proposals'}.`;
+    }
+  }
+  async function chatPoll() {
+    if (!document.getElementById('chatLayout') || !chatData) return;
+    let data;
+    try { data = await chatLoadData(); } catch {
+      chatPollFailed = true;
+      chatRenderFeed();
+      chatRenderGraph();
+      return;
+    }
+    const wasFailed = chatPollFailed;
+    chatPollFailed = false;
+    chatData = data;
+    const fp = chatDataFingerprint(data);
+    if (fp !== chatDataKey || wasFailed) {
+      chatDataKey = fp;
+      if (!chatPeers(data).some((p) => p.key === chatPeer)) chatPeer = 'workspace';
+      chatRenderPeers();
+      chatRenderHistory();
+      chatRenderFeed();
+      chatRefreshStrip();
+    }
+    chatRenderGraph();
+  }
   async function viewChat() {
+    if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
+    skeleton(3);
+    let data;
+    try { data = await chatLoadData(); } catch (e) { return errorState('Chat', e, viewChat); }
+    chatData = data;
+    chatDataKey = chatDataFingerprint(data);
+    chatGraphKey = '';
+    if (!chatPeers(data).some((p) => p.key === chatPeer)) chatPeer = 'workspace';
     main.innerHTML = `
-      ${head('Chat', 'Talk to the shared memory here. Ask a question and the answer shows where it came from. Give a fact and it is checked before it is remembered. Everything else the console shows stays one click away, as the proof of what happened here.', 'Ask, and see the proof.')}
-      <div class="chat-log" id="chatLog" aria-live="polite">${chatEntries.length ? chatEntries.map(chatEntryHTML).join('') : chatEmptyHTML()}</div>
-      <div class="chat-strip" id="chatStrip"></div>
-      <form class="chat-composer" id="chatForm">
-        <label class="f" for="chatInput">Your message</label>
-        <div class="chat-composer-row">
-          <input type="text" id="chatInput" placeholder="Ask a question, or start with remember and state a fact" autocomplete="off">
-          <button class="btn primary" type="submit" id="chatSend">Send</button>
-        </div>
-      </form>`;
+      ${head('Chat', 'Talk to the shared memory here. Ask a question and the answer shows where it came from. Give a fact and it is checked before it is remembered. The live engine panel shows the memory working as it happens.', 'Ask, and see the proof.')}
+      <div class="chat-tabs" role="group" aria-label="Chat panels">
+        <button class="btn small-btn" type="button" id="chatTabTalk" aria-pressed="true">Conversation</button>
+        <button class="btn small-btn" type="button" id="chatTabEngine" aria-pressed="false">Live engine</button>
+      </div>
+      <div class="chat-layout" id="chatLayout" data-panel="talk">
+        <section class="chat-peers-panel" aria-label="Chats">
+          <h2 class="chat-panel-title">Chats</h2>
+          <p class="small">One chat for each name that has stored, asked or decided something here.</p>
+          <div class="chat-peers" id="chatPeers"></div>
+        </section>
+        <section class="chat-main-panel" aria-label="Conversation">
+          <h2 class="chat-panel-title" id="chatConvTitle">Workspace</h2>
+          <div id="chatHistory"></div>
+          <div class="chat-log" id="chatLog" aria-live="polite"></div>
+          <div class="chat-strip" id="chatStrip"></div>
+          <form class="chat-composer" id="chatForm">
+            <label class="f" for="chatInput">Your message</label>
+            <div class="chat-composer-row">
+              <input type="text" id="chatInput" placeholder="Ask a question, or start with remember and state a fact" autocomplete="off">
+              <button class="btn primary" type="submit" id="chatSend">Send</button>
+            </div>
+          </form>
+        </section>
+        <aside class="chat-engine" aria-label="Live engine">
+          <h2 class="chat-panel-title">Happening now</h2>
+          <div id="chatFeed" aria-live="polite"></div>
+          <h2 class="chat-panel-title chat-engine-graph-title">What the memory holds</h2>
+          <p class="small"><span class="badge" id="chatLiveBadge">live</span></p>
+          <p class="small" id="chatGraphCounts" style="margin-top:8px"></p>
+          <p class="small"><a href="#/graph">See the full memory graph</a></p>
+        </aside>
+      </div>`;
+    const layout = document.getElementById('chatLayout');
     const log = document.getElementById('chatLog');
     const input = document.getElementById('chatInput');
     const sendBtn = document.getElementById('chatSend');
+    const tabTalk = document.getElementById('chatTabTalk');
+    const tabEngine = document.getElementById('chatTabEngine');
+    const setPanel = (panel) => {
+      layout.dataset.panel = panel;
+      tabTalk.setAttribute('aria-pressed', String(panel === 'talk'));
+      tabEngine.setAttribute('aria-pressed', String(panel === 'engine'));
+    };
+    tabTalk.addEventListener('click', () => setPanel('talk'));
+    tabEngine.addEventListener('click', () => setPanel('engine'));
+    document.getElementById('chatPeers').addEventListener('click', (ev) => {
+      const b = ev.target.closest('[data-chat-peer]');
+      if (!b) return;
+      chatPeer = b.dataset.chatPeer;
+      chatRenderPeers();
+      chatRenderHistory();
+      if (chatPeer === 'workspace' && input) input.focus();
+    });
     const append = (html) => {
       const welcome = log.querySelector('.chat-welcome');
       if (welcome) welcome.remove();
@@ -1205,10 +1557,7 @@
         if (body) body.hidden = open;
         t.textContent = open ? 'Show receipt' : 'Hide receipt';
         t.setAttribute('aria-expanded', String(!open));
-        return;
       }
-      const s = ev.target.closest('[data-chat-starter]');
-      if (s && !chatBusy) sendMessage(s.dataset.chatStarter);
     });
     async function sendMessage(raw) {
       const text = (raw != null ? raw : input.value).trim();
@@ -1250,7 +1599,7 @@
         thinking.remove();
         chatEntries.push(entry);
         append(chatEntryHTML(entry));
-        if (route.kind === 'propose') chatRefreshStrip();
+        if (route.kind === 'propose') { chatRefreshStrip(); chatPoll(); }
       } catch (err) {
         thinking.remove();
         const note = { kind: 'note', title: 'MemoryLoom cannot be reached', lines: ['The service cannot be reached right now. Your message has not been sent anywhere. Please try again in a little while.'] };
@@ -1262,8 +1611,26 @@
       }
     }
     document.getElementById('chatForm').addEventListener('submit', (ev) => { ev.preventDefault(); sendMessage(); });
+    chatRenderPeers();
+    chatRenderHistory();
+    chatRenderFeed();
+    chatRenderGraph();
     chatRefreshStrip();
+    chatPollTimer = setInterval(chatPoll, 4000);
     input.focus();
+  }
+
+  /* The shell namespace label, read from the overview response. */
+  let namespaceLabelDone = false;
+  async function updateNamespaceLabel() {
+    if (namespaceLabelDone) return;
+    namespaceLabelDone = true;
+    const el = document.getElementById('consoleNs');
+    if (!el) return;
+    try {
+      const ov = await api('/api/overview');
+      if (ov && ov.namespace) el.textContent = 'console \u00b7 ' + ov.namespace;
+    } catch { /* the plain console label stays */ }
   }
 
   /* ---------------- Router ---------------- */
@@ -1287,6 +1654,11 @@
   }
   async function routeOnce() {
     const name = (location.hash.replace('#/', '') || 'chat').split('?')[0];
+    // Leaving the chat view stops its engine panel polling, and
+    // the wide three part layout belongs to the chat view alone.
+    if (chatPollTimer) { clearInterval(chatPollTimer); chatPollTimer = null; }
+    if (main.classList) main.classList.toggle('chat-wide', name === 'chat');
+    updateNamespaceLabel();
     const fn = routes[name] || viewChat;
     document.querySelectorAll('[data-nav]').forEach((a) => a.classList.toggle('active', a.dataset.nav === name));
     await fn();
