@@ -13,13 +13,30 @@
  *    routing falls back to free/local.
  */
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { accessSync, appendFileSync, constants, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-export const SPEND_LOG = join(__dir, 'spend-log.jsonl');
-const CACHE_DIR = join(__dir, 'cache');
+// The spend log and the cache live beside this module in the local
+// build. A hosted bundle can be read only, so when this directory is
+// not writable the state moves to the operating system's temp area
+// instead. The rule above is unchanged: a call the router cannot
+// log does not happen, on either path.
+function stateDir() {
+  try {
+    accessSync(__dir, constants.W_OK);
+    return __dir;
+  } catch {
+    const alt = join(tmpdir(), 'memoryloom-router');
+    mkdirSync(alt, { recursive: true });
+    return alt;
+  }
+}
+const STATE_DIR = stateDir();
+export const SPEND_LOG = join(STATE_DIR, 'spend-log.jsonl');
+const CACHE_DIR = join(STATE_DIR, 'cache');
 const CONFIG = JSON.parse(readFileSync(join(__dir, 'config.json'), 'utf8'));
 
 export function routerConfig() {
