@@ -1,4 +1,4 @@
-/* Landing page behaviour — design tokens v2.
+/* Landing page behaviour, design tokens v2.
  *
  * Every figure on this page that shows data renders from the real
  * backend (web/api.mjs) against the seeded demo namespace:
@@ -11,7 +11,7 @@
  *
  * The weave follows the tokens v2 graph discipline: ink threads told
  * apart by position and label, supersession as a dashed ink arc,
- * contradiction as a dotted ink arc, sources as ink diamonds — and
+ * contradiction as a dotted ink arc, sources as ink diamonds, and
  * the single accent spent once, on the playhead, because the
  * playhead marks the moment a memory moved. The renderer itself is
  * shared with the console: web/public/graph.js (loaded before this
@@ -35,11 +35,11 @@
       if (heroLoading) heroLoading.remove();
       if (!mem) {
         // Honest empty state (Iteration 5.3, Finding I): an unseeded
-        // store is not "0 records · live" over a blank figure — it
+        // store is not "0 records · live" over a blank figure, it
         // gets the designed empty state, in the landing's voice, the
         // way the console graph already had one.
         state.textContent = 'no records yet';
-        svg.outerHTML = '<div class="empty-state" style="margin:6px"><p class="empty-title">The weave is empty</p><p>This store holds no records yet, so there is nothing to weave. Seed the demo corpus (<code class="inline">npm run seed:web</code>) and this figure draws the corpus live — threads, knots and all. Nothing here is a canned picture — that is rather the point.</p></div>';
+        svg.outerHTML = '<div class="empty-state" style="margin:6px"><p class="empty-title">The weave is empty</p><p>This store holds no records yet, so there is nothing to weave. When an approved memory lands, this figure draws it from the store. Nothing here is a canned picture.</p></div>';
         return;
       }
       state.textContent = mem + ' records · live';
@@ -51,7 +51,7 @@
       // the drawn figure (card S8, Section 6.2): the thread count,
       // the knot count and the date range, never typed in.
       const times = graph.nodes.map((n) => n.recorded_at || n.created_at).filter(Boolean).map((t) => new Date(t).getTime()).sort((a, b) => a - b);
-      if (times.length) svg.setAttribute('aria-label', 'The demo corpus as a weave. ' + svg.dataset.threadCount + ' threads and ' + svg.dataset.knotCount + ' knots, recorded from ' + fmtDate(times[0]) + ' to ' + fmtDate(times[times.length - 1]) + '.');
+      if (times.length) svg.setAttribute('aria-label', 'The live store as a weave. ' + svg.dataset.threadCount + ' threads and ' + svg.dataset.knotCount + ' knots, recorded from ' + fmtDate(times[0]) + ' to ' + fmtDate(times[times.length - 1]) + '.');
       window.__weaveCtl = ctl;
       // Reduced motion (card S8, Section 6.2): the weave settles
       // at its final state at once and the control offers Replay
@@ -66,7 +66,7 @@
       // in place, no stale figure presented as current.
       if (heroLoading) heroLoading.remove();
       state.textContent = 'could not be loaded';
-      svg.outerHTML = '<div class="empty-state" style="margin:6px"><p role="alert" style="margin:0 0 var(--space-2)"><strong>The records could not be loaded.</strong></p><p>Start the app against a seeded demo database (<code class="inline">npm run seed:web</code>, then <code class="inline">npm run web</code>) and this figure renders the corpus live. Nothing here is a canned picture — that is rather the point.</p></div>';
+      svg.outerHTML = '<div class="empty-state" style="margin:6px"><p role="alert" style="margin:0 0 var(--space-2)"><strong>The records could not be loaded.</strong></p><p>The store did not answer. Try again in a moment. Nothing here is a canned picture, so there is no honest fallback image.</p></div>';
     });
 
   /* ---- Believed-at, live ----------------------------------------- */
@@ -83,7 +83,7 @@
     propose: 'a proposal', 'propose-auto': 'an automatic proposal', 'propose-jev': 'a gated proposal',
     ingest_file: 'a file import', consolidation: 'consolidation', 'mcp-store': 'a direct store', seed: 'the seed',
   };
-  const originPlain = (o) => ORIGIN_PLAIN[o] || String(o || '—').replace(/_/g, ' ');
+  const originPlain = (o) => ORIGIN_PLAIN[o] || String(o || 'None').replace(/_/g, ' ');
   document.addEventListener('click', (e) => {
     const a = e.target.closest('a[data-record-link]');
     if (a) { try { sessionStorage.setItem('ml-open-record', a.dataset.recordLink); } catch { /* the link still lands on the graph */ } }
@@ -94,7 +94,7 @@
       : 'No grounding record';
     const facts = [
       ['Record', '<a href="/console#/graph" data-record-link="' + esc(hit.id) + '" aria-label="Open the record ' + esc(hit.id) + ' in the console memory graph">' + esc(hit.id) + '</a>'],
-      ['Written by', esc(hit.author || '—')],
+      ['Written by', esc(hit.author || 'None')],
       ['How it arrived', 'Through ' + esc(originPlain(hit.origin))],
       ['Recorded', fmtDate(hit.recorded_at)],
       ['Valid from', fmtDate(hit.valid_from)],
@@ -153,10 +153,10 @@
         if (!story.length) {
           // Connected but empty is a different truth from a dead
           // database (5.3 re-review): the store answered, it simply
-          // holds no learning story — say exactly that, and name
+          // holds no learning story, say exactly that, and name
           // the condition under which the story gets recorded.
           learnState.textContent = 'no story recorded yet';
-          learnSteps.innerHTML = '<div class="empty-state"><h3>No learning story recorded yet</h3><p>This store is connected and answering. It simply holds no learning story. The story is recorded when the demo is seeded with a Jev key configured (see For developers, below). If it is seeded without one, the corpus still lands and this figure stays honestly empty.</p></div>';
+          learnSteps.innerHTML = '<div class="empty-state"><h3>No learning story recorded yet</h3><p>This store is connected and answering. It holds no learning story yet. A story appears here when real work is recorded through the gate.</p></div>';
           const auditEl = document.getElementById('learningAudit');
           if (auditEl && data.audit) {
             auditEl.textContent = 'Lesson audit, read live. ' + data.audit.checked + ' standing lesson(s) checked, ' + data.audit.forged_lesson_ids.length + ' forged. A lesson whose record carries no gate verdict is forged by definition and is quarantined.';
@@ -185,7 +185,7 @@
             // gate verdict that followed it and count the verdicts
             // by how many records the claim cited. The old line was
             // a literal string that omitted the 1-citation
-            // escalation — on a figure captioned "every line is an
+            // escalation, on a figure captioned "every line is an
             // event or a verdict read live from the store".
             const tally = new Map();
             let cited = null;
@@ -243,7 +243,7 @@
       .catch(() => {
         // Section 6.11 failure row for the learning call.
         learnState.textContent = 'could not be loaded';
-        learnSteps.innerHTML = '<div class="empty-state"><p role="alert" style="margin:0 0 var(--space-2)"><strong>The records could not be loaded.</strong></p><p>Seed the demo corpus (<code class="inline">npm run seed:web</code>) and this figure lists the recorded events, the escalation, the correction, the gated lesson, and the second agent approved first try. The story is told from the records, so there is no honest version of it without them.</p></div>';
+        learnSteps.innerHTML = '<div class="empty-state"><p role="alert" style="margin:0 0 var(--space-2)"><strong>The records could not be loaded.</strong></p><p>The story is told from the records, so there is no honest version of it without them. When events are recorded, this figure lists them in order.</p></div>';
       });
   }
 

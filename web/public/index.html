@@ -46,7 +46,8 @@
   .site-head nav { row-gap: var(--space-2); } /* wrapping itself is in the tokens since 5.2 */
   @media (max-width: 700px) { .site-head nav { gap: var(--space-2) var(--space-4); } .site-head nav a { white-space: nowrap; } }
   table.data td.wrap-num { font-family: var(--font-mono); white-space: normal; }
-  .empty-state { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-5); text-align: center; color: var(--ink-2); background: var(--surface); }
+  .empty-state { border: 1px dashed var(--line-strong); border-radius: var(--radius); padding: var(--space-5); text-align: left; color: var(--ink-2); background: var(--surface); }
+  .empty-state p { max-width: var(--measure); line-height: var(--leading-body); }
   .empty-state h3 { color: var(--ink); }
   /* S7: hero corpus label, contract lines in the section 01 cards,
      the section 04 live strip and the section 05 sub table head.
@@ -104,7 +105,7 @@
       <a class="btn primary" href="/console">Open chat</a>
       <a class="btn" href="#first-day">Read on</a>
     </div>
-    <p class="small" style="margin-top:var(--space-4)">The demonstration runs on a small fictional corpus, a community demo rig called Project Lantern, tended by two agents named grok and moose. Everything on this page that shows data is read live from that corpus in the database, not from a picture of it.</p>
+    <p class="small" style="margin-top:var(--space-4)">This page reads the live MemoryLoom store. What you see is the real shared memory, written by the agents and people connected to it, as it stands now. Nothing here is a picture of data.</p>
     
   </div>
 
@@ -155,7 +156,7 @@
           </div>
           <figcaption><b>Proves.</b> The graph on this page is rendered from the same records the console queries. Dates, authors, grounding and supersession all come from the store. <b>Does not prove.</b> Anything about scale. This corpus is small by design.</figcaption>
         </figure>
-        <p class="small corpus-note">The corpus woven above is a synthetic demo corpus. Every record in it is fictional, written for this demonstration.</p>
+        <p class="small corpus-note">The weave above is drawn from the live store. Every record in it passed the gate or was settled by a human.</p>
     <div class="two-col">
       <div>
         <h3>Suggestions and the check</h3>
@@ -220,7 +221,7 @@
     </div>
 
     <h3 style="margin-top:var(--space-7)">Old beliefs stay readable</h3>
-    <p style="max-width:var(--measure)">When a belief is replaced, the replaced belief stays readable with the dates it held for. You can ask what the team believed on any past date and get the beliefs of that day. In the demo corpus the venue changed. Hall A was believed until 20 October, and Hall B from 20 October. Both answers below are read live from the store as this page loads.</p>
+    <p style="max-width:var(--measure)">When a belief is replaced, the replaced belief stays readable with the dates it held for. You can ask what the team believed on any past date and get the beliefs of that day. Both answers below are read live from the store as this page loads.</p>
     <div class="asked" id="believedPanel">
       <div class="card" aria-live="polite"><span class="when">Asked as of 12 Oct 2026</span><div class="skeleton believed-loading"><div class="sk" style="height:20px"></div></div><p id="believed12"></p></div>
       <div class="card" aria-live="polite"><span class="when">Asked as of 25 Oct 2026</span><div class="skeleton believed-loading"><div class="sk" style="height:20px"></div></div><p id="believed25"></p></div>
@@ -349,7 +350,7 @@ DATABASE_URL=postgres://&hellip; npm run web       # the one command: site + con
   </main>
 
   <footer class="site-foot">
-    <p>MemoryLoom. One memory for every AI agent you run, with the proof kept for every answer. Data lives in one Postgres store on your own machine. The demonstration corpus, Project Lantern, is fictional, written for this demo, and no real data appears anywhere on this site or in the console.</p>
+    <p>MemoryLoom. One memory for every AI agent you run, with the proof kept for every answer. The records on this site are the live store's own, written through the gate. No private data appears anywhere on this site or in the console.</p>
   </footer>
 </div>
 <script src="/graph.js"></script>

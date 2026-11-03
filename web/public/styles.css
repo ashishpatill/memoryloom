@@ -160,8 +160,10 @@ table.data td.num { font-family: var(--font-mono); white-space: nowrap; }
 @keyframes skmove { from { background-position: 120% 0; } to { background-position: -80% 0; } }
 .empty-state {
   border: 1.5px dashed var(--line-strong); border-radius: var(--radius);
-  padding: 28px 22px; text-align: center; color: var(--ink-2); background: var(--card);
+  padding: 24px 22px; text-align: left; color: var(--ink-2); background: var(--card);
 }
+.empty-state h2, .empty-state h3 { margin-top: 0; }
+.empty-state p { max-width: 68ch; line-height: 1.55; margin: 0; }
 .empty-state h3 { color: var(--ink); }
 .error-state { border-color: var(--bad); }
 .error-state h3 { color: var(--bad); }

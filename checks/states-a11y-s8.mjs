@@ -1020,7 +1020,7 @@ info(`corpus: ${graph.nodes.length} nodes, ${graph.edges.length} edges, range ${
   assert(tf.result === 'Baseten: network error reaching the provider', 'walk settings: a failed test reports the provider answer in plain words', String(tf.result));
   assert(tf.activeId === 'set-baseten-key', 'walk settings: after a failed test, focus stays in the password field', String(tf.activeId));
   const to = probes['g8-test-ok'] || {};
-  assert(to.result && to.result.startsWith('Connected — Jev (TypeSafe) answered'), 'walk settings: a successful test names the provider and the outcome', String(to.result));
+  assert(to.result && to.result.startsWith('Connected. Jev (TypeSafe) answered'), 'walk settings: a successful test names the provider and the outcome', String(to.result));
   assert(to.activeIsTest === true, 'walk settings: after a successful test, focus stays on the Test button', '');
   const so = probes['g8-save-ok'] || {};
   assert(so.result && so.result.startsWith('Saved.') && so.result.includes('Meta Model API') && so.result.includes('4242'),

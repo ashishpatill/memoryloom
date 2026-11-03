@@ -1,4 +1,4 @@
-/* MemoryLoom console — eight views over the real backend. Chat
+/* MemoryLoom console, eight views over the real backend. Chat
    is the primary surface; the other seven are the proof layer.
    Three states everywhere: a still skeleton while loading, a
    designed empty state when there is nothing to show, and the
@@ -7,15 +7,15 @@
    Design tokens v2 (Iteration 5.2): the console wears the same
    type, spacing, rules and motion as the landing page. Standing
    is carried by word + marker shape in ink (the tokens' badges,
-   via data-state) — never by colour; agents are told apart by
+   via data-state), never by colour; agents are told apart by
    their name, never by a hue; the accent is spent nowhere in the
    console, because no console view marks a live decision with it
-   — the gate's verdicts here are records, and records are ink. */
+  , the gate's verdicts here are records, and records are ink. */
 (function () {
   const main = document.getElementById('main');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-  const fmtTs = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not recorded';
+  const fmtTs = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Not recorded';
   // Sub-thousandth costs must not print as $0.000 in a table whose
   // purpose is cost evidence (5.3 re-review): a real charge rounded
   // to "free" is a false claim.
@@ -42,20 +42,20 @@
     // View titles match the nav labels word for word (5.2 friction
     // fix: the two used to differ on five of seven views). The
     // italic pull line is the view's one-sentence promise, set in
-    // Newsreader italic — the console is where that face is used.
+    // Newsreader italic, the console is where that face is used.
     // The title is the page h1 (card S8, Section 6): route()
     // moves focus to it on navigation, so it carries tabindex -1.
     return `<h1 class="view-title" tabindex="-1">${esc(title)}</h1>${pull ? `<p class="pull-line">${pull}</p>` : ''}<p class="view-sub">${sub}</p>`;
   }
   function verdictBadge(d) {
     // Standing by word + marker shape, in ink (tokens v2). The
-    // escalated badge keeps its full form — "escalated · awaiting
-    // a human" — wherever a status first appears: it is the
+    // escalated badge keeps its full form, "escalated · awaiting
+    // a human", wherever a status first appears: it is the
     // in-place gloss for the word (5.1 stranger-read lesson).
     if (d === 'approve' || d === 'approved' || d === 'auto_approved') return '<span class="badge" data-state="approved">approved</span>';
     if (d === 'reject' || d === 'rejected') return '<span class="badge" data-state="rejected">rejected</span>';
     if (d === 'escalate' || d === 'queued_for_review' || d === 'pending') return '<span class="badge" data-state="escalated">escalated · awaiting a human</span>';
-    return `<span class="badge">${esc(d || '—')}</span>`;
+    return `<span class="badge">${esc(d || 'None')}</span>`;
   }
   function agentBadge(a) {
     // Agents carry no hue in v2: the name is the badge.
@@ -87,26 +87,26 @@
     return DAEMON_KIND_PLAIN[key] || kindPlain(key);
   }
   const ROUTE_PLAIN = {
-    'grounding_ids>=2': 'grounding rule — at least two cited records resolved in the store',
-    'low-evidence': 'low evidence — fewer than two cited records resolved in the store',
-    'procedural-human-always': 'procedural — always decided by a human',
-    'pinned-human-always': 'pinned — always decided by a human',
+    'grounding_ids>=2': 'grounding rule, at least two cited records resolved in the store',
+    'low-evidence': 'low evidence, fewer than two cited records resolved in the store',
+    'procedural-human-always': 'procedural, always decided by a human',
+    'pinned-human-always': 'pinned, always decided by a human',
     'jev-escalate': 'the gate escalated this to a human',
-    'jev-unavailable-fail-closed': 'the gate was unavailable — failed closed to a human',
+    'jev-unavailable-fail-closed': 'the gate was unavailable. It failed closed to a human',
     'ingest-file-queued': 'a file held for a human, with its chunks shown in file order below',
-    'episodic-or-node_local': 'episodic or node-local — approved by rule',
+    'episodic-or-node_local': 'episodic or node-local, approved by rule',
   };
-  const routePlain = (r) => ROUTE_PLAIN[r] || kindPlain(r || '—');
+  const routePlain = (r) => ROUTE_PLAIN[r] || kindPlain(r || 'None');
   /* The propose banner speaks plain words too (5.3 re-review: it
-     printed the raw decision and route strings — "queued_for_review
-     — jev-unavailable-fail-closed" — directly over the row that
+     printed the raw decision and route strings, "queued_for_review
+    , jev-unavailable-fail-closed", directly over the row that
      translated them properly). */
   const DECISION_PLAIN = {
     auto_approved: 'approved by the gate',
     rejected: 'rejected by the gate',
     queued_for_review: 'sent to a human',
   };
-  const decisionPlain = (d) => DECISION_PLAIN[d] || kindPlain(d || '—');
+  const decisionPlain = (d) => DECISION_PLAIN[d] || kindPlain(d || 'None');
   /* Subject types on learning rows and record origins on receipts:
      stored as machine strings, rendered as what they mean. */
   const SUBJECT_PLAIN = { memory: 'record', learning_event: 'learning event', proposal: 'proposal' };
@@ -115,7 +115,7 @@
     propose: 'a proposal', 'propose-auto': 'an automatic proposal', 'propose-jev': 'a gated proposal',
     ingest_file: 'a file import', consolidation: 'consolidation', 'mcp-store': 'a direct store', seed: 'the seed',
   };
-  const originPlain = (o) => ORIGIN_PLAIN[o] || kindPlain(o || '—');
+  const originPlain = (o) => ORIGIN_PLAIN[o] || kindPlain(o || 'None');
   /* The record component (5.4 defect round): one fact per labelled
      part, never one cramped mono string. facts: [label, valueHTML,
      wide?] */
@@ -194,14 +194,14 @@
     if (p.summary) return String(p.summary);
     if (p.text) return String(p.text);
     const ids = [...(Array.isArray(p.memory_ids) ? p.memory_ids : []), ...(p.memory_id ? [p.memory_id] : [])];
-    const about = ids.length ? ids.join(', ') : 'the corpus';
+    const about = ids.length ? ids.join(', ') : 'the store';
     // The specific daemon_kind in the payload outranks the generic
     // review-item kind ("resolution" covers decay candidates too —
     // the first 5.2 capture summarised a decay candidate as a
     // generic resolution, which is why the order below matters).
     const kind = `${p.daemon_kind || ''} ${item.kind || ''}`;
     if (kind.includes('contradiction') || p.detector) return `Contradiction flagged between ${about}${p.detector ? ` (detector: ${p.detector})` : ''}. A human settles which belief stands.`;
-    if (kind.includes('decay')) return `Decay candidate: ${about} — recorded, not recently used. The gate decides keep or drop.`;
+    if (kind.includes('decay')) return `Decay candidate: ${about}. It was recorded and has not been used recently. The gate decides keep or drop.`;
     if (kind.includes('consolidation')) return `Consolidation candidate: ${about} may say the same thing more than once.`;
     if (kind.includes('resolution')) return `Resolution proposed for ${about}.`;
     return `Daemon proposal about ${about}.`;
@@ -259,8 +259,8 @@
             grounding_ids: document.getElementById('pGround').value.split(',').map((s) => s.trim()).filter(Boolean),
           }),
         });
-        loopFlash = `Gate: ${decisionPlain(r.decision)} — ${routePlain(r.reason)}`;
-        out.innerHTML = `Gate: <b>${esc(decisionPlain(r.decision))}</b> — ${esc(routePlain(r.reason))}. Reloading the loop…`;
+        loopFlash = `Gate: ${decisionPlain(r.decision)}, ${routePlain(r.reason)}`;
+        out.innerHTML = `Gate: <b>${esc(decisionPlain(r.decision))}</b>, ${esc(routePlain(r.reason))}. Reloading the loop…`;
         setTimeout(viewLoop, 900);
       } catch (e) {
         // Section 6.11 failure row for the gate decision call:
@@ -327,7 +327,7 @@
       ${fileChunksHtml(p)}
       ${p.grounding_ids?.length ? `<div class="detail">cites: ${p.grounding_ids.map((g) => `<code class="inline">${esc(g)}</code>`).join(' ')}</div>` : (prov.unresolved_citations?.length ? `<div class="detail">cites: nothing that resolves in this store (${prov.unresolved_citations.length} cited, none found)</div>` : '<div class="detail">cites: nothing</div>')}
       ${jevDetail(prov.jev)}
-      ${p.status !== 'pending' ? `<div class="detail">decided by ${esc(p.decided_by || '—')}${p.promoted_id ? ` · became memory ${recordLink(p.promoted_id)}` : ''}</div>` : ''}
+      ${p.status !== 'pending' ? `<div class="detail">decided by ${esc(p.decided_by || 'None')}${p.promoted_id ? ` · became memory ${recordLink(p.promoted_id)}` : ''}</div>` : ''}
       ${actionable ? `<div class="actions"><button class="btn small-btn" data-act="approve" type="button" aria-label="Approve proposal ${esc(p.id)} into truth">Approve into truth</button><button class="btn small-btn" data-act="reject" type="button" aria-label="Reject proposal ${esc(p.id)}">Reject</button><span class="small act-msg"></span></div>` : ''}
     `;
     if (actionable) {
@@ -355,7 +355,7 @@
   /* ---------------- Recall ---------------- */
   async function viewRecall(prefill) {
     main.innerHTML = `
-      ${head('Recall + receipts', 'Ask the store a question. Every answer carries its receipt — the record it came from, who wrote it, what it rests on. Anything that cannot produce a receipt is dropped, and the drop is shown too.', 'No receipt, no answer.')}
+      ${head('Recall + receipts', 'Ask the store a question. Every answer carries its receipt. The receipt names the record it came from, who wrote it, and what it rests on. Anything that cannot produce a receipt is dropped, and the drop is shown too.', 'No receipt, no answer.')}
       <div class="toolbar">
         <div><label class="f" for="q">Question</label>
           <input type="text" id="q" placeholder="e.g. what firmware does the rig run?"></div>
@@ -364,7 +364,7 @@
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
         ${['what firmware does the rig run?', 'where is the demo held?', 'when does the venue open?', 'what is the wifi password?'].map((q) => `<button class="btn small-btn chip" data-q="${esc(q)}" type="button">${esc(q)}</button>`).join('')}
       </div>
-      <div id="recallOut" aria-live="polite"><div class="empty-state"><h2>Nothing recalled yet</h2><p>Ask a question above. Ask something the corpus cannot answer — the wifi password — and the view says there is no answer: the closest records are listed underneath, labelled as records that do not answer, with their fusion scores, and anything that cannot produce a receipt is dropped in the open.</p></div></div>
+      <div id="recallOut" aria-live="polite"><div class="empty-state"><h2>Nothing recalled yet</h2><p>Ask a question above. If the memory holds no answer, this view says so in plain words. It then lists the closest records and marks them as records that do not answer. Each one shows its score. A record with no receipt is dropped, and the drop is shown.</p></div></div>
     `;
     const ask = async () => {
       const q = document.getElementById('q').value.trim();
@@ -374,7 +374,7 @@
       try {
         const r = await api('/api/recall?q=' + encodeURIComponent(q) + '&k=8');
         if (!r.results.length && !r.dropped.length) {
-          out.innerHTML = '<h2>Recall result</h2><div class="empty-state"><h3>No receipts, no answer</h3><p>The store holds nothing that answers this — and says so, instead of inventing one. That refusal is the feature.</p></div>';
+          out.innerHTML = '<h2>Recall result</h2><div class="empty-state"><h3>No receipts, no answer</h3><p>The store holds nothing that answers this. It says so instead of inventing an answer. That refusal is the feature.</p></div>';
           return;
         }
         // No-answer state (Iteration 5.3, Finding B): when the API
@@ -433,7 +433,7 @@
     // the frame and still lines in the detail panel, rendered
     // before the graph call answers.
     main.innerHTML = `
-      ${head('Memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”', 'Every belief, drawn from the record.')}
+      ${head('Memory graph', 'Truth, drawn. Threads show authorship. Arcs show grounding, supersession and contradiction. Click any knot for its provenance trail, the full answer to why this record exists.', 'Every belief, drawn from the record.')}
       <figure class="fig">
         <div class="fig-head"><span>loading the graph…</span><span></span></div>
         <div class="fig-body"><div class="skeleton" role="status" style="padding:6px"><span class="sr-only">Loading the graph…</span><div class="sk" style="height:280px"></div></div></div>
@@ -451,7 +451,7 @@
         if (fb) fb.insertAdjacentHTML('afterbegin', '<p class="view-alert" role="alert" style="margin:6px">The memory graph could not be loaded.</p>');
       } else {
         main.innerHTML = `
-          ${head('Memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”', 'Every belief, drawn from the record.')}
+          ${head('Memory graph', 'Truth, drawn. Threads show authorship. Arcs show grounding, supersession and contradiction. Click any knot for its provenance trail, the full answer to why this record exists.', 'Every belief, drawn from the record.')}
           <figure class="fig">
             <div class="fig-head"><span>graph</span><span></span></div>
             <div class="fig-body"><p class="view-alert" role="alert" style="margin:6px">The memory graph could not be loaded.</p></div>
@@ -469,17 +469,17 @@
       // Designed empty state (5.2 fix: an empty corpus used to draw
       // a blank figure captioned "0 nodes · 0 edges" and nothing else).
       main.innerHTML = `
-        ${head('Memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”', 'Every belief, drawn from the record.')}
-        <div class="empty-state"><h2>The graph is empty</h2><p>This namespace holds no records yet, so there is nothing to draw. Approved proposals will appear here as knots. Seed the demo corpus (<code class="inline">npm run seed:web</code>) or approve a proposal in the Live loop, and the weave appears here.</p></div>
+        ${head('Memory graph', 'Truth, drawn. Threads show authorship. Arcs show grounding, supersession and contradiction. Click any knot for its provenance trail, the full answer to why this record exists.', 'Every belief, drawn from the record.')}
+        <div class="empty-state"><h2>The graph is empty</h2><p>This store holds no records yet, so there is nothing to draw. Approved proposals will appear here as knots. Approve a proposal in the Live loop and the weave appears here.</p></div>
       `;
       return;
     }
     main.innerHTML = `
-      ${head('Memory graph', 'Truth, drawn. Threads are authorship; arcs are grounding, supersession and contradiction. Click any knot for its provenance trail — the full answer to “why does this exist?”', 'Every belief, drawn from the record.')}
+      ${head('Memory graph', 'Truth, drawn. Threads show authorship. Arcs show grounding, supersession and contradiction. Click any knot for its provenance trail, the full answer to why this record exists.', 'Every belief, drawn from the record.')}
       <figure class="fig">
         <div class="fig-head"><span>${graph.nodes.length} nodes · ${graph.edges.length} edges</span><span>namespace ${esc(graph.namespace || '')}</span></div>
         <div class="fig-body"><svg id="graphSvg" class="graph-svg" role="img" aria-label="The demo corpus as a graph"></svg></div>
-        <figcaption><b>Reading it:</b> threads top to bottom are grok, moose, and the learning promotion that authored the standing lesson — told apart by position and label, never by colour. Solid knots are memories; hollow dashed knots are proposals; crossed knots are superseded; ink diamonds are cited sources; the knot you clicked wears an ink ring. Dates run in order along the bottom axis. The spacing shows the order of the dates, not the time between them, and a long stretch with no records is drawn as a labelled break. This view spends no accent: nothing here is a live decision. <b>Limit:</b> a derived view — it shows only what Plane 1 holds.</figcaption>
+        <figcaption><b>Reading it.</b> Threads run top to bottom in the order the authors first appear. Position and label tell them apart, never colour. Solid knots are memories. Hollow dashed knots are proposals. Crossed knots are superseded. Ink diamonds are cited sources. The knot you clicked wears an ink ring. Dates run in order along the bottom axis. The spacing shows the order of the dates, not the time between them. A long stretch with no records is drawn as a labelled break. This view spends no accent. Nothing here is a live decision. <b>Limit.</b> A derived view. It shows only what the truth plane holds.</figcaption>
       </figure>
       <div id="trailOut" style="margin-top:16px"></div>
     `;
@@ -522,22 +522,22 @@
   }
   function showKnotNote(n, graph) {
     // Every knot answers a click (5.2 fix: proposals, sources and
-    // agent heads used to be silent dead ends — only memories
+    // agent heads used to be silent dead ends, only memories
     // responded). Each note says what the knot is and where the
     // reader acts on it.
     const out = document.getElementById('trailOut');
     if (!out) return;
     if (n.kind === 'proposal') {
-      out.innerHTML = `<div class="card"><h2>A proposal, still waiting</h2><p style="margin:0">This hollow knot is a proposal that has not entered truth. Proposals are decided in the <a href="#/loop">Live loop</a> — approved by the gate or settled by a human there, never from the graph.</p></div>`;
+      out.innerHTML = `<div class="card"><h2>A proposal, still waiting</h2><p style="margin:0">This hollow knot is a proposal that has not entered truth. Proposals are decided in the <a href="#/loop">Live loop</a>, approved by the gate or settled by a human there, never from the graph.</p></div>`;
     } else if (n.kind === 'source') {
-      out.innerHTML = `<div class="card"><h2>A cited source — <code class="inline">${esc(n.id)}</code></h2><p style="margin:0">Sources are the evidence records memories rest on. A source appears in the receipt of every memory that cites it — ask in <a href="#/recall">Recall + receipts</a> and read it there.</p></div>`;
+      out.innerHTML = `<div class="card"><h2>A cited source, <code class="inline">${esc(n.id)}</code></h2><p style="margin:0">Sources are the evidence records memories rest on. A source appears in the receipt of every memory that cites it, ask in <a href="#/recall">Recall + receipts</a> and read it there.</p></div>`;
     } else if (n.kind === 'agent') {
       const label = n.id === 'memoryloom-learning' ? 'learning' : n.id.split(' ')[0];
-      // Raw graph nodes carry no author field — authorship lives in
+      // Raw graph nodes carry no author field, authorship lives in
       // the authored_by / proposed_by edges (the same source the
       // renderer lays out from).
       const mine = graph.edges.filter((e) => (e.type === 'authored_by' || e.type === 'proposed_by') && e.to === 'agent:' + n.id).length;
-      out.innerHTML = `<div class="card"><h2>The ${esc(label)} thread</h2><p style="margin:0">Every knot on this thread was authored by ${esc(label)}${n.id === 'memoryloom-learning' ? ' — the name the standing lesson was promoted under' : ''}. ${mine} record${mine === 1 ? '' : 's'} sit${mine === 1 ? 's' : ''} on it. Click any knot on the thread for its trail.</p></div>`;
+      out.innerHTML = `<div class="card"><h2>The ${esc(label)} thread</h2><p style="margin:0">Every knot on this thread was authored by ${esc(label)}${n.id === 'memoryloom-learning' ? ', the name the standing lesson was promoted under' : ''}. ${mine} record${mine === 1 ? '' : 's'} sit${mine === 1 ? 's' : ''} on it. Click any knot on the thread for its trail.</p></div>`;
     }
   }
   async function showTrail(id) {
@@ -549,13 +549,13 @@
       const chainRows = Array.isArray(chain) ? chain : [];
       out.innerHTML = `
         <div class="card">
-          <h2>Provenance trail — <code class="inline">${esc(id)}</code></h2>
+          <h2>Provenance trail for <code class="inline">${esc(id)}</code></h2>
           <div class="row-item"><div class="meta">${agentBadge(trail.author)}<span class="badge">${esc(trail.memory.type)}</span><span class="small">via ${esc(originPlain(trail.origin))} · recorded ${fmtDate(trail.memory.recorded_at)}</span></div>
           <div class="text">${esc(trail.memory.text)}</div>
           ${trail.sources?.length ? `<div class="detail">cited sources: ${trail.sources.map((s) => `<code class="inline">${esc(s)}</code>`).join(' ')}</div>` : ''}</div>
           ${trail.grounding?.length ? `<h3 style="margin-top:14px">It rests on (${trail.grounding.length})</h3>` + trail.grounding.map((g) => `<div class="row-item"><div class="meta">${agentBadge(g.author)}<code class="inline">${esc(g.id)}</code></div><div class="text">${esc(g.text)}</div></div>`).join('') : ''}
           ${trail.decisions?.length ? `<h3 style="margin-top:14px">Decisions on its path (${trail.decisions.length})</h3>` + trail.decisions.map((d) => `<div class="row-item"><div class="meta"><span class="badge">${esc(kindPlain(d.kind))}</span><span class="small">${esc(d.status || '')} ${d.decided_by ? '· by ' + esc(d.decided_by) : ''} ${d.route_reason ? '· ' + esc(routePlain(d.route_reason)) : ''}</span></div>${d.proposal_id ? `<div class="detail">proposal <code class="inline">${esc(d.proposal_id)}</code></div>` : ''}${jevDetail(d.kind === 'consolidation' ? d : null)}</div>`).join('') : ''}
-          ${trail.superseded_by ? `<div class="detail" style="margin-top:10px">Superseded by <code class="inline">${esc(trail.superseded_by.id)}</code> — ${esc(trail.superseded_by.text)}</div>` : ''}
+          ${trail.superseded_by ? `<div class="detail" style="margin-top:10px">Superseded by <code class="inline">${esc(trail.superseded_by.id)}</code>, ${esc(trail.superseded_by.text)}</div>` : ''}
           <h3 style="margin-top:16px">Supersession chain</h3>
           ${chainRows.length > 1 ? `<div class="timeline-strip">${chainRows.map((c, i) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step"><b>${esc(c.id)}</b><br>${esc(c.text || '')}<br><span class="small">${fmtDate(c.valid_from)}${c.valid_to ? ' to ' + fmtDate(c.valid_to) : ', held now'}</span></div>`).join('')}</div>` : '<p class="small">This belief has never been superseded.</p>'}
         </div>`;
@@ -571,11 +571,11 @@
     try { ov = await api('/api/overview'); } catch (e) { return errorState('Time travel', e, viewTime); }
     if (!ov.earliest_date || !ov.latest_date) {
       // Designed empty state (5.2 fix: an empty store used to bind
-      // the slider to 1 Jan 1970 — new Date(null) — and sit on a
+      // the slider to 1 Jan 1970, new Date(null), and sit on a
       // permanent skeleton while it queried beliefs at the epoch).
       main.innerHTML = `
-        ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then — answered from the record, not from what is true now.', 'What did the team believe on this date — and on what evidence?')}
-        <div class="empty-state"><h2>There is no past to travel to yet</h2><p>Nothing has been recorded in this namespace, so no date has beliefs attached to it. Seed the demo corpus (<code class="inline">npm run seed:web</code>) and the slider covers the recorded dates.</p></div>
+        ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then. The answer comes from the record, not from what is true now.', 'What did the team believe on this date, and on what evidence?')}
+        <div class="empty-state"><h2>There is no past to travel to yet</h2><p>Nothing has been recorded in this store yet, so no date has beliefs attached to it. When records land, the slider covers their dates.</p></div>
       `;
       return;
     }
@@ -612,7 +612,7 @@
     const span = Math.max(1, maxDay - minDay);
     const marks = markDays.map((s) => `<span class="time-mark" style="left:${(((dayMs(s) - minDay) / span) * 100).toFixed(2)}%"></span>`).join('');
     main.innerHTML = `
-      ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then — answered from the record, not from what is true now.', 'What did the team believe on this date — and on what evidence?')}
+      ${head('Time travel', 'Every fact carries the dates it was believed between. Drag the date and ask the store what the team believed then. The answer comes from the record, not from what is true now.', 'What did the team believe on this date, and on what evidence?')}
       <section class="time-travel">
         <p class="time-help">Move the handle or type a date to see what was believed on another day. The date can sit outside the returned range, and the handle then rests at the nearest end while the answer follows the rule for that side.</p>
         <div class="time-field">
@@ -757,7 +757,7 @@
       // kept in place where one exists, focus unchanged.
       if (lastSpend) { renderProviders(lastSpend.s, lastSpend.escalations, true); return; }
       main.innerHTML = `
-        ${head('Providers', 'Only providers that actually did work appear here. Every paid call went through the router — spend-logged, cached, refused past the 80% stop-loss. Decisions are not model calls; the gate&rsquo;s record is below.', 'Who did the work, and what did it cost?')}
+        ${head('Providers', 'Only providers that actually did work appear here. Every paid call went through the router. Each one is logged, cached, and refused past the 80 percent stop loss. Decisions are not model calls. The gate record is below.', 'Who did the work, and what did it cost?')}
         <p class="view-alert" role="alert">Provider records could not be loaded.</p>`;
       return;
     }
@@ -794,7 +794,7 @@
       : escalations.length ? `<ol class="esc-list">${escalations.map((e) => `<li class="row-item"><div class="meta">${verdictBadge('escalate')}<span class="small">${fmtTs(e.created_at)} · ${esc(subjectPlain(e.subject_type))} ${esc(e.subject_id)}</span></div><div class="text">${e.evidence.decision.reason ? 'Reason given. ' + esc(e.evidence.decision.reason) : 'No reason was returned.'}</div></li>`).join('')}</ol>`
       : '<p class="small">No tier movements have been recorded yet.</p>'}`;
     main.innerHTML = `
-      ${head('Providers', 'Only providers that actually did work appear here. Every paid call went through the router — spend-logged, cached, refused past the 80% stop-loss. Decisions are not model calls; the gate&rsquo;s record is below.', 'Who did the work, and what did it cost?')}
+      ${head('Providers', 'Only providers that actually did work appear here. Every paid call went through the router. Each one is logged, cached, and refused past the 80 percent stop loss. Decisions are not model calls. The gate record is below.', 'Who did the work, and what did it cost?')}
       ${failed ? '<p class="view-alert" role="alert">Provider records could not be loaded.</p>' : ''}
       <div class="kv">
         <div class="card"><div class="big">${totalCalls}</div><div class="small">paid router calls (uncached)</div></div>
@@ -807,7 +807,7 @@
       <h2 style="margin-top:24px">Per-memory work</h2>
       ${s.per_memory.length ? s.per_memory.map((w) => `<div class="row-item"><div class="meta"><span class="badge">${esc(w.provider)}</span><span class="small">${esc(w.work)} · ${fmtTs(w.at)}</span></div><div class="text">memory <code class="inline">${esc(w.memory_id)}</code></div>${jevDetail(w.decision)}</div>`).join('')
       : '<div class="empty-state"><h3>No per-memory provider work recorded</h3><p>When the gate decides a proposal from this console, its verdict lands here against the memory it created.</p></div>'}
-      <p class="small" style="margin-top:14px">A note on absence: two further sponsor providers were evaluated for this build and did no work — one was selected but its credit was never redeemed, and the other never confirmed a balance. They are not listed, because a provider panel that credits work nobody did would be decoration, not evidence.</p>
+      <p class="small" style="margin-top:14px">A note on absence. Two further sponsor providers were evaluated for this build and did no work. One was selected but its credit was never redeemed. The other never confirmed a balance. They are not listed, because a provider panel that credits work nobody did would be decoration, not evidence.</p>
     `;
   }
 
@@ -823,7 +823,7 @@
       // unchanged.
       if (lastLearning) { renderLearning(lastLearning, true); return; }
       main.innerHTML = `
-        ${head('Learning', 'Every interaction is an append-only learning event. A lesson stands only because the gate promoted it — its verdict travels with it. Forged lessons (a lesson-shaped record with no gate verdict) are flagged by audit.', 'Improvement is shown, event by event — not asserted.')}
+        ${head('Learning', 'Every interaction is recorded as a learning event, and the record is never rewritten. A lesson stands only because the gate promoted it. Its verdict travels with it. Forged lessons are flagged by audit. A forged lesson is a lesson shaped record with no gate verdict.', 'Improvement is shown event by event. It is not asserted.')}
         <p class="view-alert" role="alert">Learning records could not be loaded.</p>`;
       return;
     }
@@ -834,17 +834,17 @@
     // The filter offers the full kind vocabulary, not only the
     // kinds present in this stream (5.3 re-review: options built
     // from the stream alone made the filtered-empty state
-    // unreachable — a state the product renders but no user could
+    // unreachable, a state the product renders but no user could
     // ever see is a claim, not a feature).
     const kinds = [...new Set([...Object.keys(KIND_PLAIN), ...L.events.map((e) => e.kind)])];
     const verdicts = L.before_after.verdicts;
     main.innerHTML = `
-      ${head('Learning', 'Every interaction is an append-only learning event. A lesson stands only because the gate promoted it — its verdict travels with it. Forged lessons (a lesson-shaped record with no gate verdict) are flagged by audit.', 'Improvement is shown, event by event — not asserted.')}
+      ${head('Learning', 'Every interaction is recorded as a learning event, and the record is never rewritten. A lesson stands only because the gate promoted it. Its verdict travels with it. Forged lessons are flagged by audit. A forged lesson is a lesson shaped record with no gate verdict.', 'Improvement is shown event by event. It is not asserted.')}
       ${failed ? '<p class="view-alert" role="alert">Learning records could not be loaded.</p>' : ''}
-      <h2>Before / after — one task class</h2>
+      <h2>Before and after, one task class</h2>
       ${verdicts.length ? `<div class="timeline-strip">${verdicts.map((v, i, a) => `${i ? '<div class="arrow">→</div>' : ''}<div class="step">${v.decision ? verdictBadge(v.decision.decision) : ''}<br>${esc(v.summary)}<br><span class="small">${fmtTs(v.at)}</span></div>`).join('')}</div>
-        <p class="small">The task: lodge a global factual claim so the gate approves it. Before the lesson, claims escalated for want of citations. After it, the second agent — never corrected itself — approved first try. The full event trail is in the stream below.</p>`
-      : '<div class="empty-state"><h3>No before/after story seeded</h3><p>Run <code class="inline">npm run seed:web</code> to record the learning story into this namespace.</p></div>'}
+        <p class="small">The task is to lodge a global factual claim so the gate approves it. Before the lesson, claims escalated for want of citations. After it, the second agent approved first try, with no correction of its own. The full event trail is in the stream below.</p>`
+      : '<div class="empty-state"><h3>No before and after story yet</h3><p>No lesson has been promoted in this store yet, so there is no story to show.</p></div>'}
       <h2 style="margin-top:22px">Playbook lessons (${L.lessons.length})</h2>
       ${L.lessons.length ? L.lessons.map((l) => {
         // Claim and record card (card S7, Section 6.9): the lesson
@@ -858,7 +858,7 @@
         const gateRecord = l.jev ? jevDetail({ decision: l.jev.promote ? 'promote' : 'decline', model: l.jev.model, probability: l.jev.calibrated?.promote, raw_probability: l.jev.raw?.promote, reason: l.jev.reason }) : '';
         const gateLine = l.jev
           ? `<div class="meta" style="margin-top:8px">${l.jev.promote ? '<span class="badge" data-state="approved">promoted by the gate</span>' : '<span class="badge" data-state="rejected">declined by the gate</span>'}<span class="small">the gate record returned with this lesson</span></div>${gateRecord}`
-          : `<div class="meta" style="margin-top:8px">${forged ? '<span class="badge" data-state="rejected">audit: no verdict — forged</span>' : ''}<span class="small">No gate record was returned for this lesson.</span></div>`;
+          : `<div class="meta" style="margin-top:8px">${forged ? '<span class="badge" data-state="rejected">audit found no verdict, forged</span>' : ''}<span class="small">No gate record was returned for this lesson.</span></div>`;
         const evidence = `<p class="small" style="margin-top:8px">${l.learning_event_id ? 'Learned from learning event <code class="inline">' + esc(l.learning_event_id) + '</code> · ' : ''}Lesson recorded ${fmtDate(l.created_at)}.</p>`;
         return `<article class="card" style="margin-bottom:12px"><h3 class="record-text lesson-text" style="margin:0">${esc(l.text)}</h3>${gateLine}${evidence}</article>`;
       }).join('')
@@ -878,7 +878,7 @@
         // Finding G): an empty STREAM holds no kinds at all, while
         // a filtered-empty set on a live stream does.
         : L.events.length === 0
-          ? '<div class="empty-state"><h3>No events recorded yet</h3><p>The stream is empty — nothing has been logged in this namespace yet. Seed the demo corpus (<code class="inline">npm run seed:web</code>) or use the app, and every interaction will be recorded here.</p></div>'
+          ? '<div class="empty-state"><h3>No events recorded yet</h3><p>The stream is empty. Nothing has been logged in this store yet. Use the app and every interaction will be recorded here.</p></div>'
           : '<div class="empty-state"><h3>No events of this kind</h3><p>The stream holds other kinds. An honest filter shows an empty set rather than padding it.</p></div>';
     };
     render('');
@@ -890,13 +890,13 @@
      from the masked settings view (GET /api/settings). The view
      decides nothing and calls no provider directly: testing goes
      through the settings test endpoint, and a typed key is tested
-     as an unsaved candidate — it is only stored when the user
+     as an unsaved candidate, it is only stored when the user
      presses Save. No full key is ever rendered: the API returns
      masked tails only, and the input is a password field. */
   const SETTINGS_PROVIDERS = [
-    { id: 'meta', name: 'Meta Model API', getKey: 'Get a key at dev.meta.ai — open API keys and create a key for MemoryLoom.', unlocks: 'narration and reasoning calls' },
+    { id: 'meta', name: 'Meta Model API', getKey: 'Get a key at dev.meta.ai. Open API keys and create a key for MemoryLoom.', unlocks: 'narration and reasoning calls' },
     { id: 'baseten', name: 'Baseten', getKey: 'Get a key in the Baseten workspace settings, under API keys.', unlocks: 'the operations tier, once the product paths adopt it. The tier is calibrated, and the key is stored and can be tested here' },
-    { id: 'jev', name: 'Jev (TypeSafe)', getKey: 'Get a key from TypeSafe — Jev is served by the TypeSafe API, so its key comes from TypeSafe.', unlocks: 'the decision gate that approves, rejects or escalates proposals' },
+    { id: 'jev', name: 'Jev (TypeSafe)', getKey: 'Get a key from TypeSafe. Jev is served by the TypeSafe API, so its key comes from TypeSafe.', unlocks: 'the decision gate that approves, rejects or escalates proposals' },
   ];
   let settingsFlash = {};
   function settingsStatus(entry) {
@@ -923,7 +923,7 @@
         ${entry.configured
           ? (entry.last4
             ? `<span id="set-${def.id}-masked">Key ending <span class="masked-tail">•••• ${esc(entry.last4)}</span></span>`
-            : `<span id="set-${def.id}-masked">Configured — the key tail is unavailable for a key this short.</span>`)
+            : `<span id="set-${def.id}-masked">Configured, the key tail is unavailable for a key this short.</span>`)
           : `<span id="set-${def.id}-masked">No key saved.</span>`}
         <span class="small">${esc(st.source)}</span>
       </div>
@@ -965,7 +965,7 @@
       ${head('Settings', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.', 'Your keys stay on this machine.')}
       ${entries.length === 0
         ? '<div class="empty-state"><h2>Nothing to configure</h2><p>There is nothing to configure here. The settings service returned no providers.</p></div>'
-        : `${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h2>No provider keys configured</h2><p>MemoryLoom runs locally without keys — the demo corpus, recall, the graph and time travel all work on this machine. Add a key below to unlock that provider&rsquo;s live calls: Meta Model API for narration and reasoning, and Jev for the decision gate. A Baseten key unlocks the operations tier once the product paths adopt it in the next iteration. For now the key is stored and can be tested here.</p></div>`}
+        : `${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h2>No provider keys configured</h2><p>MemoryLoom can run on your own machine without keys. Recall, the graph and time travel still work. Add a key below to switch on live calls for that provider. The Meta Model API covers narration and reasoning. Jev covers the decision gate. Each key is stored here and can be tested here.</p></div>`}
       <div class="settings-grid">${entries.map(([d, e]) => settingsSection(d, e)).join('')}</div>`}
     `;
     settingsFlash = {};
@@ -1001,7 +1001,7 @@
     };
     saveBtn.addEventListener('click', async () => {
       const key = input.value.trim();
-      if (!key) { show('Paste a key first — there is nothing to save yet.', 'bad'); input.focus(); return; }
+      if (!key) { show('Paste a key first. There is nothing to save yet.', 'bad'); input.focus(); return; }
       setBusy(true);
       show('Saving…');
       try {
@@ -1033,7 +1033,7 @@
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify(key ? { api_key: key } : {}),
         });
-        if (r.ok) { show(`Connected — ${def.name} answered${r.latency_ms != null ? ` in ${r.latency_ms} ms` : ''}.`, 'ok'); ok = true; }
+        if (r.ok) { show(`Connected. ${def.name} answered${r.latency_ms != null ? ` in ${r.latency_ms} ms` : ''}.`, 'ok'); ok = true; }
         else show(r.error || `${def.name} did not answer.`, 'bad');
       } catch (e) {
         show(e.message, 'bad');
@@ -1088,7 +1088,7 @@
   let chatPollTimer = null;
   let chatPollFailed = false;
   const CHAT_HUMAN_AUTHORS = new Set(['Chat user', 'human (console)']);
-  const fmtClock = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+  const fmtClock = (d) => d ? new Date(d).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Not recorded';
   const peerKeyOf = (author) => {
     if (!author) return '';
     return (CHAT_HUMAN_AUTHORS.has(author) || author === 'console') ? 'you' : 'agent:' + author;

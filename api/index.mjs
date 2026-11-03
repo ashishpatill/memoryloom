@@ -16,7 +16,7 @@ let handler = null;
 function getHandler() {
   if (!handler) {
     const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL || process.env.NEON_CONNECTION_STRING, max: 2 });
-    handler = createHandler({ pool, namespace: process.env.WEB_NAMESPACE || 'memoryloom-live' });
+    handler = createHandler({ pool, namespace: String(process.env.WEB_NAMESPACE || 'memoryloom-live').replace(/_/g, '-') });
   }
   return handler;
 }
