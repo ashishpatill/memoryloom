@@ -1,392 +1,130 @@
 # MemoryLoom
 
-**One shared, auditable memory brain for a team of AI agents.**
+MemoryLoom gives a team of AI agents one shared memory. Every fact is checked before it is stored, and every answer shows the record it came from.
 
-Agents that work together forget together. Each session starts cold, each
-agent keeps its own notes, and nobody can say afterwards *why* the team
-believed something. MemoryLoom is the shared memory layer those agents are
-missing: one store every agent writes to through a review gate, one recall
-path that always shows its evidence, and a history that can answer
-"what did the team believe on this date?"
+When agents work together today, each one keeps its own notes. A fact learned in one session is missing in the next. Nobody can say later why the team believed something, and a wrong fact spreads quietly from agent to agent. MemoryLoom is the shared memory those agents are missing. One agent learns a fact and every agent can use it. A fact is corrected once and every agent works from the correction, not from the old fact.
 
-## The live loop
+## Who it helps
 
-```
-agent ──propose──▶ write gate ──approve──▶ truth store ──▶ recall index
-                      │                                    │
-                      └── escalate ──▶ human review        └── recall + receipt ──▶ agent
-```
+MemoryLoom is for people who work with AI agents every day. It suits founders, operators, researchers, support leads and small team leads who run more than one agent and need those agents to agree on the facts.
 
-1. An agent **proposes** a memory. It never writes directly.
-2. The **write gate** scores the proposal with a fixed choice —
-   approve, reject, or escalate. Escalate always exists, and every
-   score is kept as provenance.
-3. Approved memories land in the **truth store** (append-only records
-   with who proposed them, the cited evidence, and timestamps).
-4. The **recall index** is derived from truth and can be rebuilt from
-   it at any time. Rebuilding is routine, not an incident.
-5. **Recall returns receipts.** Every recalled item dereferences to a
-   truth record with its evidence, or it is dropped before the agent
-   sees it. Recall proposes; truth disposes.
+Some ordinary ways it gets used.
 
-## What is inside
+A support team runs agents in shifts. A customer detail learned in the morning is known to the agent on the night shift. When the customer corrects that detail, the correction is what every agent uses next.
 
-**Two-plane memory.** Plane 1 is truth: append-only records with
-provenance and bi-temporal validity (valid-from / valid-to, so superseded
-facts stay readable and time-travel recall works). Plane 2 is the recall
-index: layered from raw episodes (L0) to atomic facts (L1), scenario
-summaries (L2) and a team profile (L3), and fully rebuildable from Plane 1.
+A pair of research agents gathers facts for a report. When a reader asks where a claim came from, the answer points at the record behind it, who wrote it and what it rests on.
 
-**Hybrid recall.** A keyword leg and a dense vector leg are fused with
-reciprocal-rank fusion (k=60), then reranked. Recall reports its own
-state honestly — `cold_start`, `thin`, or `ok` — and never invents
-memories to fill a gap.
+A coding agent and a review agent share a project. The reviewer can see what the first agent found and decided, so nobody has to rebuild the same context twice.
 
-**A calibrated write gate.** Proposal classes carry fixed routing:
-episodic and node-local memories auto-approve; procedural and pinned
-memories always go to a human; a global claim needs at least two cited
-grounding records to auto-approve, and is otherwise queued for review.
+An operator looks back before a decision. The question is what the team believed on a given day last month, and the answer comes from the records of that day, not from what is believed now.
 
-**Forgetting is a feature.** Stale memories decay deterministically,
-duplicates consolidate into single entries, and nothing in the background
-ever writes itself into truth — background learning stays proposal-only.
+## How to use it
 
-**A provider router.** Model work (consolidation, gate scoring, triage,
-recall narration) goes through one router that logs which provider
-handled every call, with a fallback order so a dead credit never stops
-the demo. Planned roles: a core reasoner for consolidation and
-narration, a high-throughput path for triage at volume, elastic batch
-compute for decay and consolidation sweeps, and a low-latency path for
-gate scoring and reranking.
+Open the console and start in Chat. Ask a question in plain words and the answer arrives with the records it came from. Give the chat a fact and it is checked before it is remembered. New facts from agents arrive as proposals. The proposals the checker cannot settle wait in the live loop view for a person to decide. Every other screen in the console is one click away, and each one is the proof layer behind what the chat just said.
 
-## MCP tool surface
+The pictures below were taken from the app as it runs today, on 3 November 2026, over the small fictional demo corpus that ships with it. The demo corpus is about a community demo rig called Project Lantern, tended by two agents named grok and moose.
 
-MemoryLoom speaks the Model Context Protocol over stdio, so any agent
-harness that can run an MCP server can use it.
+### The front page
 
-| Tool | What it does |
-| --- | --- |
-| `store` | Store a memory with provenance (staged, then indexed) |
-| `recall` | Hybrid RRF recall with a cold-start contract and receipts |
-| `list_namespaces` | List namespaces with live memory counts |
-| `get` | Fetch one memory by id, full record incl. provenance |
-| `ingest_file` | File-drop ingestion: a document becomes chunked memories |
-| `propose` | Propose a memory through the write gate |
-| `review_list` | List proposals waiting for a decision |
-| `promote` | Approve a proposal into the truth store |
-| `reject_proposal` | Reject a proposal |
-| `review_decide` | One decision call for proposals and review items |
+The front page says what the product does, who it is for, and how a first day with it goes, in that order. It also says plainly that the demonstration runs on a fictional corpus read live from the database.
 
-## Run it
+![The MemoryLoom front page](docs/captures/2026-11-03-landing.png)
 
-You need Node 22+ and a Postgres 16 database with the pgvector extension.
+*The front page. This proves the current front page is rendered by the running app over the demo corpus, in plain words. It does not prove how a hosted copy performs, because this picture is a local run.*
+
+### Chat
+
+Chat is the front door of the console. You type a question and the answer comes back with the records behind it, each with a receipt one click away. You can also state a fact here, and it goes through the same check as any agent proposal before it is remembered.
+
+![The console chat, answering the firmware question from the records](docs/captures/2026-11-03-chat.png)
+
+*Chat. This proves a question typed in plain words is answered from the shared memory, and that the answer names the record it came from. It does not prove answer quality on a large or messy corpus.*
+
+### The memory graph
+
+The graph draws every belief in the store. Each agent has its own thread, each knot is a record, and the lines between knots show authorship, sources, and which record replaced which. Clicking a knot opens the trail that answers why this record exists.
+
+![The memory graph, drawn from the demo records](docs/captures/2026-11-03-graph.png)
+
+*The memory graph. This proves the drawing is built live from the records in the store, with one thread per agent and the sources placed along the bottom. It does not prove the drawing stays readable with thousands of records.*
+
+### The receipt behind an answer
+
+Ask the store a question on the recall screen and every result carries its receipt. The receipt is a small record with seven labelled parts. It names the record, who wrote it, how it arrived, when it was recorded, the dates it was believed between, and what it rests on. An older belief that has been replaced stays readable below the current one.
+
+![A recall answer with its receipt, and the older belief below it](docs/captures/2026-11-03-receipt.png)
+
+*A receipt. This proves every recall result dereferences to a full record that a person can read and challenge, and that a replaced belief is kept, not erased. It does not prove ranking quality at scale.*
+
+### Time travel
+
+Move the date and the store answers with what was believed on that day. The answer is read from the records and the dates they were believed between, never from what happens to be true now.
+
+![Time travel, the beliefs held on the chosen date](docs/captures/2026-11-03-time.png)
+
+*Time travel. This proves the store can answer what was believed on a chosen date from its own records. It does not prove anything about dates outside the demo corpus.*
+
+### Learning
+
+Every interaction is kept as a learning event, and the events are shown in order. A lesson only stands when the checker promotes an event into one, and the verdict travels with the lesson. When no decision service is configured, claims wait for a person and nothing is promoted, which is the state this picture shows.
+
+![The learning view, with claims waiting for a person and no lessons standing](docs/captures/2026-11-03-learning.png)
+
+*Learning. This proves learning is recorded event by event and that promotion is a decision, not a button. It does not show the learning story that is recorded when a decision service is configured.*
+
+### Providers
+
+This screen shows which services did model work and what the work added up to. It is drawn from the log the router keeps of every call on this machine, grouped by the kind of work each call did.
+
+![The providers view, the router call log rendered](docs/captures/2026-11-03-providers.png)
+
+*Providers. This proves the panel is a direct rendering of the call log the router keeps, with no totals typed in by hand. It does not prove what a fresh install would show, because a fresh install starts with an empty log.*
+
+### Settings
+
+Your own provider keys are added here, one per service, and each one can be tested before you rely on it. A saved key is only ever shown as its last four characters. With no keys saved, the app still runs, and the checker sends new writes to a person instead of deciding on its own.
+
+![The settings view, with no provider keys configured](docs/captures/2026-11-03-settings.png)
+
+*Settings. This proves each provider is set up from this screen and that the empty state is honest about running without keys. It does not prove a live key works, which is what the test connection button is for, on the machine that holds the key.*
+
+## How it works
+
+MemoryLoom is one store that every agent shares. Agents connect through the Model Context Protocol, usually shortened to MCP, and people use the same store through the console in a browser.
+
+Nothing is written straight into the store. An agent proposes a fact, and a checker decides whether it may be stored, must be refused, or needs a person to decide. Every score the checker gives is kept with the proposal, so the decision can be reviewed later.
+
+Every answer shows the record it came from. If an answer cannot point at a record, it is dropped before anyone sees it. A record names who wrote it, how it arrived, the dates it was believed between, and the records it rests on.
+
+Facts can change without being erased. When a belief is replaced, the old record keeps the dates it was believed between. That is what lets the store answer what was believed on any earlier day, and what lets a correction reach every agent at once.
+
+A background watcher reads the store and proposes tidy up work, such as joining duplicates and flagging contradictions. It can only propose. It never writes on its own, and nothing it suggests becomes true without the same check as any other proposal.
+
+## Run it on your own machine
+
+You need Node 22 or newer and a Postgres 16 database with the pgvector extension.
 
 ```bash
-cp .env.example .env.local   # set DATABASE_URL
+cp .env.example .env.local   # set DATABASE_URL in .env.local
 npm install
-npm run db:init              # apply the schema and its migrations
-npm run mcp                  # stdio MCP server
+npm run db:init              # create the tables
+npm run seed:web             # load the fictional demo corpus
+npm run web                  # the site at / and the console at /console
+npm run mcp                  # the agent server, over stdio
 ```
 
-## Provider keys — Settings
+Keys are optional. With no keys at all, the demo corpus, recall, the graph and time travel all work, and the checker sends new writes to a person. Keys pasted into Settings are kept in .env.local in the app folder, with file permissions 0600. That file is ignored by git, and Settings only ever shows the last four characters of a saved key. You can set the matching environment variables instead if you prefer, and an environment variable wins over the value in Settings.
 
-MemoryLoom runs locally with no provider keys at all: the demo
-corpus, recall, the graph and time travel all work on this machine.
-Hosted providers are configured the standard way, inside the app:
+One part of the demo is recorded at seed time. The learning story is recorded in full when a decision key is configured while seeding. Seeded without one, the seed prints a plain notice that the story was not recorded and why, and the demo runs with no standing lesson until it is seeded again on a fresh database.
 
-1. Run the app and open the console (see *Site + console* below).
-2. Open **Settings**.
-3. Paste your own keys, one per provider, and use **Test
-   connection** to check each one before you rely on it:
-   - **Meta Model API** — a key from dev.meta.ai. Unlocks live
-     model calls: consolidation, narration and explanation on
-     `muse-wonder-1.0`.
-   - **Jev (TypeSafe)** — a TypeSafe API key. Unlocks the decision
-     gate: every approve / reject / escalate verdict.
-   - **Baseten** — a key from the Baseten workspace settings. The
-     key is stored and can be tested here; the Baseten lane itself
-     is currently parked (see *Status*), so no product path calls
-     it yet.
+## Status at 3 November 2026
 
-**Security note.** Keys pasted into Settings are stored in
-`.env.local` in the app folder, on your own machine only, with
-file permissions 0600. They are never committed (`.env.local` is
-git-ignored), never shown back in full (Settings displays only
-the last four characters), and never written to any log. If you
-prefer, set a key's environment variable instead
-(`META_MODEL_API_KEY`, `BASETEN_API_KEY`, `TYPESAFE_API_KEY`) —
-an environment variable wins over the value in Settings. Settings
-can only be changed from the local app; a hosted deployment
-cannot change them.
+MemoryLoom runs locally today, end to end, on the fictional demo corpus that ships with it.
 
-## Site + console
+The pictures in this README were taken on 3 November 2026 from the app running on a local machine with no provider keys configured. With no decision service configured, the checking gate refused new writes and sent them to a person rather than guessing. That is the behaviour the learning and settings pictures show.
 
-One web app serves the product site (the front door) and the console
-(the product). Both render from the same store the agents use — the
-console displays decisions; it never makes or overrides one.
+A hosted preview for judging is being prepared and is not live yet. The deployment notes are in [docs/hosted-demo.md](docs/hosted-demo.md).
 
-```bash
-DATABASE_URL=postgres://… npm run seed:web   # Project Lantern corpus + learning story + one daemon cycle
-DATABASE_URL=postgres://… npm run web        # site at / · console at /console
-```
+One small recall test has been run so far. It used 120 memories and 42 questions. Recall at 10 was 1.000. Knowledge update scored 5 of 10 and abstention scored 3 of 8. Read this as a small smoke signal from a first test, not as a benchmark. The test and its caveats are written up in [docs/eval-longmem.md](docs/eval-longmem.md).
 
-The corpus, recall, the graph and time travel seed and run with no
-keys at all. The learning story is the one recorded part: it is
-recorded when the demo is seeded with a Jev key configured in
-Settings (or `TYPESAFE_API_KEY` in the environment). Seeded without
-one, the gate fails closed, the seed prints a plain notice that the
-learning story was not recorded and why, and the demo has no
-standing lesson until it is re-seeded with a key on a fresh
-database.
-
-The console has seven views, each designed in three states (loading,
-empty, populated):
-
-- **Live loop** — the propose inbox with the gate's verdicts and
-  scores, human approve/reject for escalations, and a propose form
-  that runs through the real gate.
-- **Recall + receipts** — every result dereferences to its truth
-  record; dropped results show why they were dropped.
-- **Memory graph** — provenance trails, supersession chains and agent
-  neighbourhoods, drawn from the live records.
-- **Time travel** — an as-of date control answering "what did the
-  team believe on this date?" from the bi-temporal data.
-- **Providers** — per-memory and aggregate record of which provider
-  did what work, with router spend totals. Only providers that
-  actually did work appear.
-- **Learning** — the learning-event stream, standing playbook lessons
-  with their promotion provenance, and the before/after evidence.
-- **Settings** — one section per provider (Meta Model API, Baseten,
-  Jev): paste a key, test the connection, or remove the key. Only
-  the masked tail of a saved key is ever shown.
-
-Deploying: `vercel.json` + `api/index.mjs` make the repo a one-step
-Vercel import — set `DATABASE_URL` (and optionally `WEB_NAMESPACE`)
-in the project environment to a Postgres 16 + pgvector database
-seeded with `npm run seed:web`; the build command is
-`npm run build:web`, a verification pass over the web sources.
-
-## Captures
-
-Real captures from a running instance, taken 31 Oct 2026 at the
-final build — nothing here is a fabricated or mocked visual. The
-instance runs the synthetic Project Lantern corpus in the
-`memoryloom-demo` namespace. On the build machine no real provider
-key is configured, so gate verdicts shown were produced by the
-decision path exercised against a local test double; the captures
-prove the paths, the states and the rendering. Live provider
-judgement is proven by the calibration records in `docs/`, and the
-spend figures by the router spend log — which the Providers
-capture below reads directly.
-
-![Site home — the living graph hero over the demo corpus](docs/captures/site-home.png)
-
-*Site home.* Proves: the hero graph is rendered live from the
-records in the store (16 records, labels measured at zero
-overlaps), not drawn as an illustration. Does not prove: hosted
-performance — this instance is local.
-
-![Console live loop — an escalation waiting, with its gate record](docs/captures/console-live-loop.png)
-
-*Live loop.* Proves: the seeded demo state end to end — 14
-memories in truth, one procedural proposal escalated and waiting
-for a human with its route shown, one playbook lesson standing,
-12 learning events on record. Does not prove: the verdict came
-from the live decision provider on this machine (see above).
-
-![Console recall — a receipt under the firmware answer](docs/captures/console-recall-receipt.png)
-
-*Recall + receipts.* Proves: the firmware question is answered by
-the record that rests on two cited sources, and every result
-carries its receipt — record id, author, how it entered, the
-dates it was believed between, and what it rests on. Does not
-prove: ranking quality at scale; that is the eval's job
-(`docs/eval-longmem.md`).
-
-![Time travel — beliefs on 12 Oct 2026](docs/captures/console-time-travel-12oct.png)
-![Time travel — beliefs on 25 Oct 2026](docs/captures/console-time-travel-25oct.png)
-
-*Time travel, 12 Oct vs 25 Oct.* Proves: the as-of answer is read
-from the bi-temporal record — on 12 Oct the team believed the
-demo would be held in Hall A (3 beliefs held); by 25 Oct that
-belief had been superseded by Hall B (10 beliefs held), and both
-states stay readable. Does not prove: anything about dates
-outside the recorded corpus.
-
-![Console providers — who did the work, and what it cost](docs/captures/console-providers.png)
-
-*Providers.* Proves: the panel is the router spend log rendered —
-every paid call of the build, by provider, model, tier and task,
-with cached (free) calls counted separately and the $150 budget
-and its stop-loss stated. Does not prove: the prices a different
-account would pay; rates are the router's recorded estimates.
-
-![Console settings — keys stay on this machine](docs/captures/console-settings.png)
-
-*Settings.* Proves: each provider is configured from the console,
-and only the masked tail of a saved key is ever shown (the tails
-visible here belong to dummy keys in a throwaway local store).
-Does not prove: a real key works — that is what the Test
-connection button is for, on the machine that holds the key.
-
-## Checks
-
-The checks run against a **synthetic, fictional corpus** — no real data
-is ever used for testing.
-
-```bash
-npm run check:router   # provider router + local fallback (no database)
-DATABASE_URL=postgres://… npm run check:surface    # all 10 tools, write gate, review flow
-DATABASE_URL=postgres://… npm run check:roundtrip  # store → recall round trip
-DATABASE_URL=postgres://… npm run check:recall -- "memoryloom-test" "hybrid recall fusion"
-DATABASE_URL=postgres://… npm run check:web       # site + console API, live gate flow, empty states
-npm run build:web                                  # production build verification for the web app
-DATABASE_URL=postgres://… node checks/eval-longmem.mjs   # LongMemEval-style recall eval (measurement, not a gate)
-DATABASE_URL=postgres://… npm run rehearse -- 1          # frozen demo script, automated twin (fresh DB per run)
-```
-
-## Status — 30 Oct 2026
-
-Working and verified locally:
-
-- Schema v1 + migrations 002–005 apply cleanly to a fresh database.
-- All 10 MCP tools pass the surface check (37/37 assertions), including
-  hybrid recall where a paraphrase query hits through the vector leg
-  with no keyword overlap, the full propose → review → promote/reject
-  flow, and cold-start behaviour on an empty namespace.
-- The provider router is **live on the Meta Model API**: the only Meta
-  model used is `muse-wonder-1.0`, in two pinned tiers — Wonder Full
-  (high effort: consolidation writing, contradiction explanation,
-  recall narration, eval judging) and Wonder (medium effort:
-  implementation passes, bulk triage). Every paid call goes through
-  the router with a spend log, a content-hash cache and an 80%
-  stop-loss per budget class. Router smoke check: 11/11.
-- Core-reasoning calibration on a 36-item synthetic golden set:
-  Wonder Full 36/36, Wonder 36/36 after the Block 7 prompt hardening
-  (was 31/36 and 33/36; the failures were dropped receipt citations
-  in narration and paraphrased conflicts in explanations — prompts
-  tightened, and a cache bug that hid prompt edits was found and
-  fixed). Record: `docs/calibration-meta-core-reasoning.md`.
-- **All enumerable decisions go through the Jev API** (TypeSafe,
-  jev-1.13.0): write-gate accept/reject/escalate, consolidation
-  accept, decay keep/drop, learning promotion. The gate calibration
-  passed 40/40 with zero unsafe approvals on its golden set, so the
-  thresholds are live; the gate **fails closed** — on any Jev backend
-  failure a proposal queues for a human, and no fallback ever
-  approves (`docs/calibration-jev-gate.md`, `checks/jev-gate.mjs` 21/21).
-  The decision backend is swappable per class in router config
-  (default Jev everywhere); Baseten's decision models are built
-  as challenger adapters, deferred while the probe record stands.
-  A challenger may replace Jev only by beating it on every
-  benchmark leg and on price.
-- Two-plane memory: Plane 1 is the append-only truth store with
-  provenance; Plane 2 is the derived recall index, proven rebuildable
-  from Plane 1. Every recall result dereferences to a Plane-1 record
-  with a provenance receipt or is dropped with a reason. Deterministic
-  decay and Jev-gated consolidation run against the synthetic corpus
-  (`checks/two-plane.mjs` 22/22).
-- A memory graph derived from Plane 1 (memories, agents, sources,
-  decisions, supersession and contradiction links) powers the console
-  queries: provenance trail for any memory, an agent's neighbourhood,
-  supersession chains, and bi-temporal "what did the team believe on
-  this date?" An event-triggered daemon watches the store and emits
-  proposals only — consolidation candidates, decay candidates,
-  contradiction flags — into the review queue; it never writes truth,
-  its apply path routes through the Jev-gated library functions, and
-  its cycles are watermark-resumable with a run log. The synthetic
-  demo corpus wires two demo agents, grok and moose, as named
-  graph agents (`checks/graph-daemon.mjs` 44/44).
-- A continual learning layer: every interaction — proposals, gate
-  verdicts, human approvals, rejections and corrections, recall hits
-  and misses, eval outcomes — is captured as an append-only,
-  provenance-stamped learning event (trigger-enforced; events are
-  never edited or deleted). Learning events become standing playbook
-  lessons only through the Jev promotion gate; a direct write is
-  refused and a forged lesson is quarantined by audit. Lessons are
-  memories, so decay and recall treat them like everything else.
-  In-turn correction stores a verbal reflection with its trigger
-  evidence and returns the corrected directive for the same turn.
-  The research patterns are verified against the published
-  work they study (Harness², ACE, Reflexion, Voyager).
-  `checks/learning.mjs` 36/36, and `checks/learning-demo.mjs` shows
-  the same task class before vs after a promoted lesson — escalated
-  with no citations, approved first try by a second agent after
-  recalling the lesson by receipt (8/8).
-- Roundtrip and recall smoke checks pass against the synthetic corpus.
-- A LongMemEval-style recall evaluation (Block 7): a 120-memory
-  synthetic haystack (Project Kestrel, six dated sessions) with 42
-  questions in the five LongMemEval families, scored deterministically
-  (needle rank, answer terms in the recalled text, believed-at set
-  membership, near-miss absence; no model judge). Results:
-  recall@1 0.586, recall@5 0.931, recall@10 1.000; single-session
-  8/8, multi-session 8/8, temporal 8/8, knowledge-update 6/10,
-  abstention 3/8. The two weak spots are measured, not hidden:
-  recall ranking has no recency preference, so on four of eight
-  current-value questions the superseded record outranked its
-  replacement by one place (the believed-at path answers those
-  correctly as-of a date); and the vector leg returns nearest
-  neighbours for unanswerable questions, so near-miss records land in
-  the top-10 — abstention lives in the receipt and narration layer,
-  which this eval does not score (`docs/eval-longmem.md`).
-- The demo is packaged and rehearsed (Block 7): `docs/demo-script.md`
-  freezes the three beats with the exact seeded data and a fallback
-  plan; its automated twin ran three full rehearsals on fresh
-  databases, 8/8 beats each. Total rehearsal spend was $0.0034 (one
-  live narration call in run 1; runs 2–3 served the identical prompt
-  from the router cache, as the fallback plan intends).
-- Clean-room passes, each on fresh databases: at the end of the
-  main build (Block 7, 30 Oct) — surface 34/34, router 11/11, Jev
-  gate 15/15, two-plane 22/22, graph + daemon 44/44, learning 36/36,
-  learning demo 8/8, web 55/55 — and again at the close-out
-  (31 Oct, cold provider cache) — surface 37/37, router 11/11, Jev
-  gate 21/21, two-plane 22/22, graph + daemon 44/44, learning 36/36,
-  learning demo 8/8, settings 46/46, web 89/89, MCP roundtrip ok —
-  with the documented run path (db:init, seed:web, web, MCP over
-  stdio) verified from a clean shell both times.
-- Spend, cumulative in the router log as of 31 Oct 2026 (the log
-  is the record — later runs append to it, so a later read will
-  differ): Meta $0.3758 of the $150 credit (calibration $0.3595 of
-  $22.50, evals $0 of $52.50 — the recall eval is fully
-  deterministic — demo and final runs $0.0163 of $60, reserve
-  untouched). Jev decisions $0.0033. Baseten, Fireworks and Modal:
-  $0.
-
-Honest limits of the above: these are small-scale local checks on a
-small fictional corpus. They prove the surface, the routing, the
-decision gate and the two-plane mechanics behave as designed; the
-recall eval is a first measurement at small scale (its own doc states
-the caveats), not evidence of recall quality or latency at scale. **Baseten is closed**:
-the ordered probe (2026-10-30) found the grant key refused every
-non-Spark call tried (HTTP 403 on DeepSeek, GLM and Kimi alike,
-while the model catalogue read returned 200), so
-the DeepSeek triage lane was not built, the challenger runs are
-deferred with Jev standing alone, and the Baseten budget is
-untouched (`docs/baseten-probe-and-challengers.md`). Fireworks and
-Modal have no role in this build.
-- The console UI and product site are built (Block 6): one buildless
-  Node web app (`web/`) serving an animated product site whose hero
-  graph renders live from the seeded demo corpus, and the seven-view
-  console described above. The site's scroll story — problem, live
-  loop, two planes, forgetting and time travel, the learning layer,
-  checked numbers — is diagram-led, and every figure is captioned
-  with what it proves and what it does not prove. The web check
-  (`checks/web.mjs`, 89 assertions) exercises the whole API on a
-  fresh database, including a live propose through the gate, a human
-  decision, recall receipts, both sides of the Hall A → Hall B
-  supersession, and the API-level empty states. Deployment is
-  prepared (`vercel.json`, `api/index.mjs`) but not performed: no
-  Vercel CLI auth exists on the build machine.
-
-## Roadmap
-
-- Memory-layer depth: reranking and bi-temporal (as-of) recall at
-  scale. Two measured weak spots from the recall eval come first: a
-  recency-aware tie-break for near-identical supersession pairs, and
-  abstention handling in the narration layer for unanswerable
-  questions.
-- Deploy the site + console to Vercel against a hosted demo database
-  (prepared — see `docs/hosted-demo.md`; the import itself is the
-  project owner's step). The capture placeholders are replaced: see
-  Captures above.
-- Grow the eval: more questions per family, larger haystacks, and
-  latency numbers at demo scale.
+What is not proven yet is behaviour at large scale, recall quality on real and messy corpora, and the hosted preview under judging traffic. Those are the honest limits of this status.
