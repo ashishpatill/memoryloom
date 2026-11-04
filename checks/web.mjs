@@ -348,7 +348,7 @@ try {
   assert(emptyHtml.includes('No provider keys configured') && emptyHtml.includes('runs locally without keys'), 'settings empty state: explains that MemoryLoom runs locally without keys');
   assert(emptyHtml.includes('Meta Model API') && emptyHtml.includes('Baseten') && emptyHtml.includes('Jev (TypeSafe)'), 'settings empty state: all three provider sections render');
   assert(emptyHtml.includes('dev.meta.ai') && emptyHtml.includes('Baseten workspace settings') && emptyHtml.includes('from TypeSafe'), 'settings empty state: where to get each key, in plain words');
-  assert(emptyHtml.includes('operations tier') && emptyHtml.includes('can be tested here'), 'settings empty state: Baseten unlocks copy states the calibrated operations tier honestly (no product path yet)');
+  assert(emptyHtml.includes('does not spend on Baseten') && emptyHtml.includes('not used yet'), 'settings empty state: Baseten unlocks copy states honestly that this build does not spend on Baseten yet');
   assert(!emptyHtml.includes('hosted model calls through Baseten') && !emptyHtml.includes('Baseten for hosted model calls'), 'settings empty state: Baseten copy does NOT promise hosted model calls');
   assert((emptyHtml.match(/Not configured/g) || []).length >= 3, 'settings empty state: every provider is marked not configured');
   assert(emptyHtml.includes('type="password"'), 'settings view: key inputs are password fields');
@@ -390,7 +390,7 @@ try {
   });
   await showSettings();
   const popHtml = uiMain.innerHTML;
-  assert(popHtml.includes('Configured by environment') && popHtml.includes(UI_ENV.slice(-4)), 'settings populated: the env provider shows its source and masked tail');
+  assert(popHtml.includes('Set by the owner') && popHtml.includes(UI_ENV.slice(-4)), 'settings populated: the env provider shows its source and masked tail');
   assert(!popHtml.includes(UI_ENV), 'settings populated: the full env key is never rendered');
   assert(popHtml.includes('Configured in Settings') && popHtml.includes('tail is unavailable'), 'settings populated: a short stored key reports configured with no tail shown');
   assert(!popHtml.includes('No provider keys configured'), 'settings populated: the empty-state explanation is gone once any key exists');

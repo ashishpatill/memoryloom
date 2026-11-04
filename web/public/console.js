@@ -27,6 +27,19 @@
     if (!r.ok) throw new Error(body.error || ('HTTP ' + r.status));
     return body;
   }
+  /* Decisions on the hosted site are guarded by the owner word,
+     the same word that guards the agent address. The word lives
+     only in this tab's session storage, is sent only with a
+     decision call, and is never shown or stored anywhere else. */
+  let ownerWord = '';
+  try { ownerWord = sessionStorage.getItem('ml-owner-word') || ''; } catch {}
+  async function decideCall(id, decision) {
+    const headers = { 'content-type': 'application/json' };
+    if (ownerWord) headers.authorization = 'Bearer ' + ownerWord;
+    return api(`/api/proposals/${encodeURIComponent(id)}/decide`, {
+      method: 'POST', headers, body: JSON.stringify({ decision }),
+    });
+  }
   function skeleton(count = 4) {
     main.innerHTML = `<div class="skeleton" role="status"><span class="sr-only">Loading…</span>${'<div class="sk"></div>'.repeat(count)}</div>`;
   }
@@ -169,6 +182,22 @@
     if (form === 'plain') return `<div class="receipt receipt-plain"><dl class="record-list">${items}</dl></div>`;
     return `<aside class="record receipt" aria-label="Receipt"><dl class="record-list">${items}</dl></aside>`;
   }
+  /* The gate's stored reason is a machine string. Some reasons
+     recorded earlier carry internal error text, a server path, a
+     file name, or a variable name. None of that is shown. The
+     display sentence says what happened in plain words, and the
+     stored record itself is never changed. */
+  function displayReason(jev) {
+    const r = String(jev.reason || '');
+    if (jev.failed === true || jev.fail_closed === true || /EROFS|read-only|no API key configured|unavailable/i.test(r)) {
+      return 'The decision service could not be reached at that moment, so the gate approved nothing and sent this to a person.';
+    }
+    if (r.includes('human-required wins')) return 'A claim like this needs a human decision, so the gate sent it to a person.';
+    if (r.includes('policy-approve wins')) return 'The gate approved this under its standing rules.';
+    if (r.includes('policy-reject wins')) return 'The gate turned this away under its standing rules.';
+    const clean = plainReason(r.replace(/^jev:\s*/i, ''));
+    return clean ? clean.charAt(0).toUpperCase() + clean.slice(1) : 'The gate recorded its decision on this proposal.';
+  }
   function jevDetail(jev) {
     if (!jev) return '';
     const facts = [];
@@ -176,7 +205,7 @@
     if (jev.model) facts.push(['Model', esc(jev.model)]);
     if (jev.probability !== undefined) facts.push(['Calibrated score', Number(jev.probability).toFixed(2)]);
     if (jev.raw_probability !== undefined) facts.push(['Raw score', Number(jev.raw_probability).toFixed(2)]);
-    if (jev.reason) facts.push(['Reason', esc(jev.reason), true]);
+    if (jev.reason) facts.push(['Reason', esc(displayReason(jev)), true]);
     return recordHTML(facts, 'Gate record');
   }
 
@@ -333,20 +362,44 @@
     if (actionable) {
       div.querySelectorAll('button[data-act]').forEach((b) => b.addEventListener('click', async () => {
         const msg = div.querySelector('.act-msg');
-        div.querySelectorAll('button').forEach((x) => (x.disabled = true));
-        msg.textContent = 'Recording your decision…';
-        try {
-          await api(`/api/proposals/${encodeURIComponent(p.id)}/decide`, {
-            method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ decision: b.dataset.act }),
+        const act = b.dataset.act;
+        const showUnlock = () => {
+          if (div.querySelector('.owner-unlock')) return;
+          const box = document.createElement('div');
+          box.className = 'owner-unlock';
+          box.style.marginTop = '8px';
+          box.innerHTML = `<p class="small">Decisions on this hosted site need the owner word, the same word that guards the agent address. It stays in this tab only and is never shown.</p>
+            <input type="password" class="owner-word" autocomplete="off" placeholder="Owner word" aria-label="Owner word">
+            <button class="btn small-btn" type="button">Unlock and record my decision</button>`;
+          div.querySelector('.actions').appendChild(box);
+          box.querySelector('button').addEventListener('click', async () => {
+            const v = box.querySelector('.owner-word').value.trim();
+            if (!v) return;
+            ownerWord = v;
+            try { sessionStorage.setItem('ml-owner-word', v); } catch {}
+            box.remove();
+            await run();
           });
-          loopFlash = `Your decision was recorded: ${b.dataset.act === 'approve' ? 'approved into truth' : 'rejected'}.`;
-          msg.textContent = 'Decided. Reloading…';
-          setTimeout(viewLoop, 700);
-        } catch (e) {
-          msg.textContent = 'Failed: ' + e.message;
-          div.querySelectorAll('button').forEach((x) => (x.disabled = false));
-        }
+        };
+        const run = async () => {
+          div.querySelectorAll('button').forEach((x) => (x.disabled = true));
+          msg.textContent = 'Recording your decision…';
+          try {
+            await decideCall(p.id, act);
+            loopFlash = `Your decision was recorded: ${act === 'approve' ? 'approved into truth' : 'rejected'}.`;
+            msg.textContent = 'Decided. Reloading…';
+            setTimeout(viewLoop, 700);
+          } catch (e) {
+            div.querySelectorAll('button').forEach((x) => (x.disabled = false));
+            if (e.message === 'FORBIDDEN') {
+              msg.textContent = ownerWord ? 'That owner word was not accepted.' : 'This decision needs the owner word.';
+              showUnlock();
+            } else {
+              msg.textContent = 'Failed: ' + e.message;
+            }
+          }
+        };
+        await run();
       }));
     }
     return div;
@@ -895,7 +948,7 @@
      masked tails only, and the input is a password field. */
   const SETTINGS_PROVIDERS = [
     { id: 'meta', name: 'Meta Model API', getKey: 'Get a key at dev.meta.ai. Open API keys and create a key for MemoryLoom.', unlocks: 'narration and reasoning calls' },
-    { id: 'baseten', name: 'Baseten', getKey: 'Get a key in the Baseten workspace settings, under API keys.', unlocks: 'the operations tier, once the product paths adopt it. The tier is calibrated, and the key is stored and can be tested here' },
+    { id: 'baseten', name: 'Baseten', getKey: 'Get a key in the Baseten workspace settings, under API keys.', unlocks: 'the fast screening calls. This build does not spend on Baseten, so a key saved here is not used yet' },
     { id: 'jev', name: 'Jev (TypeSafe)', getKey: 'Get a key from TypeSafe. Jev is served by the TypeSafe API, so its key comes from TypeSafe.', unlocks: 'the decision gate that approves, rejects or escalates proposals' },
   ];
   let settingsFlash = {};
@@ -903,7 +956,7 @@
     // Tokens v2: standing by word + marker shape (data-state),
     // never by a colour class (the v1 ok/bad hues are gone).
     if (!entry.configured) return { state: 'pending', label: 'Not configured', source: 'Source: not configured yet' };
-    if (entry.source === 'env') return { state: 'approved', label: 'Configured by environment', source: 'Source: the environment variable on this machine' };
+    if (entry.source === 'env') return { state: 'approved', label: 'Set by the owner', source: 'Source: set by the owner for this site' };
     if (entry.source === 'store') return { state: 'approved', label: 'Configured in Settings', source: 'Source: saved in Settings on this machine' };
     return { state: 'approved', label: 'Configured', source: 'Source: not returned by the settings response' };
   }
@@ -928,7 +981,7 @@
         <span class="small">${esc(st.source)}</span>
       </div>
       ${!entry.configured && def.getKey ? `<p class="small settings-hint" id="set-${def.id}-getkey">${esc(def.getKey)} Adding it unlocks ${esc(def.unlocks)}.</p>` : ''}
-      ${entry.source === 'env' ? `<p class="small settings-hint" id="set-${def.id}-envnote">This key comes from the environment, so it wins over anything saved here and Settings cannot remove it. A key you save is kept for when the environment variable is not set.</p>` : ''}
+      ${entry.source === 'env' ? `<p class="small settings-hint" id="set-${def.id}-envnote">The owner set this key for the site itself, so it is the one in use, and it cannot be removed from this page.</p>` : ''}
       ${!entry.configured ? `<p class="small settings-hint" id="set-${def.id}-remove-reason">There is no saved key to remove.</p>` : ''}
       <label class="f" for="set-${def.id}-key">${entry.configured ? `Replace the ${esc(def.name)} key` : `${esc(def.name)} key`}</label>
       <input type="password" id="set-${def.id}-key" autocomplete="off" spellcheck="false" placeholder="Paste a key" aria-describedby="${describedBy.join(' ')}">
@@ -948,7 +1001,7 @@
       // in a role alert line at the head of the view, and no
       // provider rows guessed.
       main.innerHTML = `
-        ${head('Settings', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.', 'Your keys stay on this machine.')}
+        ${head('Settings', 'Keys for the services MemoryLoom can call. A key is only used when you press Test connection, or when the service is called for real work. Keys are never shown in full.', 'Your keys stay yours.')}
         <p class="view-alert" role="alert">Settings could not be loaded. No key was changed.</p>`;
       return;
     }
@@ -962,7 +1015,7 @@
     const entries = Object.entries(providers).map(([id, entry]) => [defsById[id] || { id, name: id, getKey: '', unlocks: '' }, entry]);
     const anyConfigured = entries.some(([, e]) => e.configured);
     main.innerHTML = `
-      ${head('Settings', 'Your own keys for the hosted providers, kept on this machine and never committed. The console calls a provider only when you press Test connection, and only through the settings test endpoint.', 'Your keys stay on this machine.')}
+      ${head('Settings', 'Keys for the services MemoryLoom can call. A key is only used when you press Test connection, or when the service is called for real work. Keys are never shown in full.', 'Your keys stay yours.')}
       ${entries.length === 0
         ? '<div class="empty-state"><h2>Nothing to configure</h2><p>There is nothing to configure here. The settings service returned no providers.</p></div>'
         : `${anyConfigured ? '' : `<div class="empty-state" style="margin-bottom:16px"><h2>No provider keys configured</h2><p>MemoryLoom can run on your own machine without keys. Recall, the graph and time travel still work. Add a key below to switch on live calls for that provider. The Meta Model API covers narration and reasoning. Jev covers the decision gate. Each key is stored here and can be tested here.</p></div>`}
